@@ -1,0 +1,6 @@
+.env
+*.pem
+last-sync.json
+sync-log-*.txt
+node_modules/
+.DS_Store
