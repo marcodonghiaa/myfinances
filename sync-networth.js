@@ -1,4 +1,4 @@
-const { checkSessionExpiry } = require('./check-session');
+const { checkSessionExpiry } = require('./session-check');
 checkSessionExpiry();
 
 require('dotenv').config();
