@@ -12,6 +12,7 @@ const PRIVATE_KEY = fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
 const FETCH_TIMEOUT_MS = 60000;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+const USER_ID = process.env.USER_ID;
 
 
 const ACCOUNTS = [
@@ -48,6 +49,7 @@ async function getBalances(token, uid) {
 }
 
 async function main() {
+  if (!USER_ID) throw new Error('USER_ID missing from .env');
   const token = getToken();
   const today = new Date().toISOString().slice(0, 10);
   const rows = [];
@@ -70,6 +72,7 @@ async function main() {
       currency: balance.balance_amount.currency,
       amount,
       snapshot_date: today,
+      user_id: USER_ID,
     });
   }
 

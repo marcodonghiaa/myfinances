@@ -13,6 +13,7 @@ const SYNC_STATE_FILE = 'last-sync.json';
 const FETCH_TIMEOUT_MS = 60000; // matches Actual Budget's Enable Banking timeout
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+const USER_ID = process.env.USER_ID;
 console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
 console.log('SUPABASE_SECRET_KEY:', process.env.SUPABASE_SECRET_KEY ? 'present' : 'MISSING');
 
@@ -86,17 +87,19 @@ function mapToRow(tx, accountUid) {
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
     raw: tx,
+    user_id: USER_ID,
   };
 }
 
 async function main() {
+  if (!USER_ID) throw new Error('USER_ID missing from .env');
   const token = getToken();
   const lastSync = loadLastSync();
   const today = new Date().toISOString().slice(0, 10);
 
   // make sure accounts exist in Supabase
   for (const account of ACCOUNTS) {
-    await supabase.from('accounts').upsert({ uid: account.uid, currency: account.currency }, { onConflict: 'uid' });
+    await supabase.from('accounts').upsert({ uid: account.uid, currency: account.currency, user_id: USER_ID }, { onConflict: 'uid' });
   }
 
   for (const account of ACCOUNTS) {
