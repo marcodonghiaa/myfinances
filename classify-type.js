@@ -7,37 +7,25 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const BATCH_SIZE = 40;
 
-const CATEGORIES = [
-  'Shopping', 'Entertainment', 'Groceries', 'Dine Out', 'Services', 'Travel',
-  'Experiences', 'Income', 'Transfers', 'Other',
-];
+const TYPES = ['Subscription', 'One-time'];
 
-async function fetchUncategorized() {
+async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator')
-    .is('category', null)
+    .select('entry_reference, creditor_name, remittance_info, amount, currency, credit_debit_indicator')
+    .is('transaction_type', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
   return data;
 }
 
 async function classifyBatch(rows) {
-  const prompt = `You are categorizing personal bank transactions into exactly one of these categories: ${CATEGORIES.join(', ')}.
+  const prompt = `You are classifying personal bank transactions as either "Subscription" or "One-time".
 
-Category guide:
-- Shopping: clothes, tech purchases (phones, laptops, electronics), Amazon, general retail.
-- Entertainment: video games, streaming (Netflix, Spotify), movies, hobbies.
-- Groceries: supermarkets, grocery delivery.
-- Dine Out: restaurants, cafes, bars, takeout, drinks out.
-- Services: rent, mobile/phone plans, internet, utilities, insurance, subscriptions for software/services (not entertainment ones — e.g. cloud storage, AI tools).
-- Travel: bus, car/gas, trains, flights, commuting and transport of any kind.
-- Experiences: hotels, events, concerts, tickets, activities while traveling or out.
-- Income: incoming payments (credit_debit_indicator CRDT) that look like salary/earnings.
-- Transfers: account-to-account or P2P transfers, not purchases.
-- Other: only if nothing else plausibly fits.
-
-Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language.
+Rules:
+- "Subscription" = recurring billing: streaming (Netflix, Spotify), SaaS/software (Anthropic, Google One, iCloud), memberships, gyms, insurance, phone/internet plans, cloud hosting, subscription boxes — anything billed on a repeating schedule.
+- "One-time" = everything else: groceries, restaurants, one-off purchases, transfers, salary/income, fees, travel bookings, etc.
+- Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. If genuinely ambiguous, default to "One-time".
 
 Transactions (JSON array):
 ${JSON.stringify(rows.map((r) => ({
@@ -49,7 +37,7 @@ ${JSON.stringify(rows.map((r) => ({
   direction: r.credit_debit_indicator,
 })), null, 2)}
 
-Return a JSON array of {"entry_reference": string, "category": string} for every transaction above, same order, one entry each. category must be exactly one of the allowed categories.`;
+Return a JSON array of {"entry_reference": string, "transaction_type": string} for every transaction above, same order, one entry each. transaction_type must be exactly one of the allowed values.`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
@@ -66,9 +54,9 @@ Return a JSON array of {"entry_reference": string, "category": string} for every
               type: 'OBJECT',
               properties: {
                 entry_reference: { type: 'STRING' },
-                category: { type: 'STRING', enum: CATEGORIES },
+                transaction_type: { type: 'STRING', enum: TYPES },
               },
-              required: ['entry_reference', 'category'],
+              required: ['entry_reference', 'transaction_type'],
             },
           },
         },
@@ -83,19 +71,19 @@ Return a JSON array of {"entry_reference": string, "category": string} for every
   return JSON.parse(text);
 }
 
-async function applyCategories(results) {
-  for (const { entry_reference, category } of results) {
-    if (!CATEGORIES.includes(category)) {
-      console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
+async function applyTypes(results) {
+  for (const { entry_reference, transaction_type } of results) {
+    if (!TYPES.includes(transaction_type)) {
+      console.warn(`Skipping invalid type "${transaction_type}" for ${entry_reference}`);
       continue;
     }
-    // .is('category', null) guard: only ever fills in the category, never overwrites
+    // .is('transaction_type', null) guard: only ever fills in the type, never overwrites
     // a value set by something else in the meantime.
     const { error } = await supabase
       .from('transactions')
-      .update({ category })
+      .update({ transaction_type })
       .eq('entry_reference', entry_reference)
-      .is('category', null);
+      .is('transaction_type', null);
     if (error) console.error(`Failed to update ${entry_reference}:`, error.message);
   }
 }
@@ -103,20 +91,20 @@ async function applyCategories(results) {
 async function main() {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
 
-  let totalCategorized = 0;
+  let totalClassified = 0;
   while (true) {
-    const rows = await fetchUncategorized();
+    const rows = await fetchUnclassified();
     if (rows.length === 0) break;
 
-    console.log(`Categorizing ${rows.length} transaction(s)...`);
+    console.log(`Classifying ${rows.length} transaction(s)...`);
     const results = await classifyBatch(rows);
-    await applyCategories(results);
-    totalCategorized += rows.length;
+    await applyTypes(results);
+    totalClassified += rows.length;
 
     if (rows.length < BATCH_SIZE) break; // fewer than a full page means we're caught up
   }
 
-  console.log(`Done. Categorized ${totalCategorized} transaction(s).`);
+  console.log(`Done. Classified ${totalClassified} transaction(s).`);
 }
 
 main().catch((err) => {
