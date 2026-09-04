@@ -8,8 +8,8 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const BATCH_SIZE = 40;
 
 const CATEGORIES = [
-  'Shopping', 'Entertainment', 'Groceries', 'Dine Out', 'Services', 'Travel',
-  'Experiences', 'Income', 'Transfers', 'Other',
+  'Shopping', 'Entertainment', 'Groceries', 'Dine Out', 'Services', 'Housing',
+  'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Others',
 ];
 
 async function fetchUncategorized() {
@@ -30,12 +30,14 @@ Category guide:
 - Entertainment: video games, streaming (Netflix, Spotify), movies, hobbies.
 - Groceries: supermarkets, grocery delivery.
 - Dine Out: restaurants, cafes, bars, takeout, drinks out.
-- Services: rent, mobile/phone plans, internet, utilities, insurance, subscriptions for software/services (not entertainment ones — e.g. cloud storage, AI tools).
-- Travel: bus, car/gas, trains, flights, commuting and transport of any kind.
+- Services: mobile/phone plans, internet, insurance, professional services, non-entertainment software/cloud subscriptions (e.g. AI tools, cloud storage).
+- Housing: rent, mortgage, utilities (electricity, water, gas bill for the home).
+- Transports: bus, car/gas, trains, flights, commuting and transport of any kind.
 - Experiences: hotels, events, concerts, tickets, activities while traveling or out.
 - Income: incoming payments (credit_debit_indicator CRDT) that look like salary/earnings.
-- Transfers: account-to-account or P2P transfers, not purchases.
-- Other: only if nothing else plausibly fits.
+- Health: pharmacy, doctor, gym, fitness, medical expenses.
+- Transfer: account-to-account or P2P transfers, not purchases.
+- Others: only if nothing else plausibly fits.
 
 Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language.
 
