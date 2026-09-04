@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
+const { getAccounts } = require('./accounts');
 
 const APP_ID = process.env.APP_ID;
 const PRIVATE_KEY = fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
@@ -14,12 +15,6 @@ const FETCH_TIMEOUT_MS = 60000;
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
 
-
-const ACCOUNTS = [
-  { uid: '504db292-966a-4808-ad70-8d660cd87686', currency: 'EUR' },
-  { uid: '04f7711e-a065-41f5-a97b-4db6d5db86d1', currency: 'USD' },
-  { uid: 'a97a916a-909b-4550-9aa3-b7d1e77ebbb6', currency: 'GBP' },
-];
 
 function getToken() {
   const now = Math.floor(Date.now() / 1000);
@@ -52,9 +47,10 @@ async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
   const token = getToken();
   const today = new Date().toISOString().slice(0, 10);
+  const accounts = await getAccounts(supabase, USER_ID);
   const rows = [];
 
-  for (const account of ACCOUNTS) {
+  for (const account of accounts) {
     console.log(`\n=== ${account.currency} account ===`);
     const data = await getBalances(token, account.uid);
     const balance = data.balances?.[0];

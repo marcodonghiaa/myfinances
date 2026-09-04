@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
+const { getAccounts } = require('./accounts');
 
 const APP_ID = process.env.APP_ID;
 const PRIVATE_KEY = fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
@@ -16,12 +17,6 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SEC
 const USER_ID = process.env.USER_ID;
 console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
 console.log('SUPABASE_SECRET_KEY:', process.env.SUPABASE_SECRET_KEY ? 'present' : 'MISSING');
-
-const ACCOUNTS = [
-  { uid: '504db292-966a-4808-ad70-8d660cd87686', currency: 'EUR' },
-  { uid: '04f7711e-a065-41f5-a97b-4db6d5db86d1', currency: 'USD' },
-  { uid: 'a97a916a-909b-4550-9aa3-b7d1e77ebbb6', currency: 'GBP' },
-];
 
 function getToken() {
   const now = Math.floor(Date.now() / 1000);
@@ -96,13 +91,9 @@ async function main() {
   const token = getToken();
   const lastSync = loadLastSync();
   const today = new Date().toISOString().slice(0, 10);
+  const accounts = await getAccounts(supabase, USER_ID);
 
-  // make sure accounts exist in Supabase
-  for (const account of ACCOUNTS) {
-    await supabase.from('accounts').upsert({ uid: account.uid, currency: account.currency, user_id: USER_ID }, { onConflict: 'uid' });
-  }
-
-  for (const account of ACCOUNTS) {
+  for (const account of accounts) {
     const dateFrom = lastSync[account.uid] || new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     console.log(`\n=== ${account.currency} — syncing since ${dateFrom} ===`);
 
