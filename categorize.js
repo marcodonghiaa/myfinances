@@ -36,10 +36,10 @@ Category guide:
 - Experiences: hotels, events, concerts, tickets, activities while traveling or out.
 - Income: incoming payments (credit_debit_indicator CRDT) that look like salary/earnings.
 - Health: pharmacy, doctor, gym, fitness, medical expenses.
-- Transfer: account-to-account or P2P transfers, not purchases.
+- Transfer: account-to-account or P2P transfers with no indicated purpose (e.g. splitting rent, paying someone back with no note).
 - Others: only if nothing else plausibly fits.
 
-Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language.
+Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. This matters especially for P2P/bank transfers to a person: creditor_name alone (a person's name) tells you nothing, but remittance_info often does — e.g. a transfer to a friend with remittance_info mentioning "spotify" or "netflix" should be categorized by that actual purpose (Entertainment), not filed under Transfer just because the payment method was a person-to-person transfer. Only use Transfer when nothing in remittance_info indicates a real purpose.
 
 Transactions (JSON array):
 ${JSON.stringify(rows.map((r) => ({
