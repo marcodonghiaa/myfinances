@@ -22,6 +22,38 @@ async function fetchUncategorized() {
   return data;
 }
 
+async function fetchRules() {
+  const { data, error } = await supabase
+    .from('category_rules')
+    .select('match_field, match_text, set_category, set_transaction_type')
+    .not('set_category', 'is', null)
+    .order('priority', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+function matchRule(row, rule) {
+  const text = rule.match_text.toLowerCase();
+  const fields =
+    rule.match_field === 'any'
+      ? [row.creditor_name, row.remittance_info]
+      : [row[rule.match_field]];
+  return fields.some((f) => (f || '').toLowerCase().includes(text));
+}
+
+// Deterministic user-authored rules take priority over the AI -- cheaper, faster,
+// and exactly what the user asked for, not a guess.
+function applyRules(rows, rules) {
+  const matched = [];
+  const unmatched = [];
+  for (const row of rows) {
+    const rule = rules.find((r) => matchRule(row, r));
+    if (rule) matched.push({ row, rule });
+    else unmatched.push(row);
+  }
+  return { matched, unmatched };
+}
+
 async function classifyBatch(rows) {
   const prompt = `You are categorizing personal bank transactions into exactly one of these categories: ${CATEGORIES.join(', ')}.
 
@@ -102,19 +134,44 @@ async function applyCategories(results) {
   }
 }
 
+async function applyRuleMatches(matched) {
+  for (const { row, rule } of matched) {
+    const update = { category: rule.set_category };
+    if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
+    const { error } = await supabase
+      .from('transactions')
+      .update(update)
+      .eq('entry_reference', row.entry_reference)
+      .is('category', null);
+    if (error) console.error(`Failed to apply rule to ${row.entry_reference}:`, error.message);
+  }
+}
+
 async function main() {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
+
+  const rules = await fetchRules();
+  if (rules.length > 0) console.log(`Loaded ${rules.length} categorization rule(s).`);
 
   let totalCategorized = 0;
   while (true) {
     const rows = await fetchUncategorized();
     if (rows.length === 0) break;
 
-    console.log(`Categorizing ${rows.length} transaction(s)...`);
-    const results = await classifyBatch(rows);
-    await applyCategories(results);
-    totalCategorized += rows.length;
+    const { matched, unmatched } = applyRules(rows, rules);
 
+    if (matched.length > 0) {
+      console.log(`Applying ${matched.length} rule match(es)...`);
+      await applyRuleMatches(matched);
+    }
+
+    if (unmatched.length > 0) {
+      console.log(`Categorizing ${unmatched.length} transaction(s) via AI...`);
+      const results = await classifyBatch(unmatched);
+      await applyCategories(results);
+    }
+
+    totalCategorized += rows.length;
     if (rows.length < BATCH_SIZE) break; // fewer than a full page means we're caught up
   }
 
