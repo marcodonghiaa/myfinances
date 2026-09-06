@@ -12,11 +12,24 @@ const TYPES = ['Subscription', 'One-time'];
 async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, creditor_name, remittance_info, amount, currency, credit_debit_indicator')
+    .select('entry_reference, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category')
     .is('transaction_type', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
   return data;
+}
+
+// Transfers are always One-time by definition -- deterministic, not an AI judgment
+// call, and it skips the API call entirely for these rows.
+async function applyTransferDefault(rows) {
+  for (const row of rows) {
+    const { error } = await supabase
+      .from('transactions')
+      .update({ transaction_type: 'One-time' })
+      .eq('entry_reference', row.entry_reference)
+      .is('transaction_type', null);
+    if (error) console.error(`Failed to update ${row.entry_reference}:`, error.message);
+  }
 }
 
 async function classifyBatch(rows) {
@@ -96,9 +109,20 @@ async function main() {
     const rows = await fetchUnclassified();
     if (rows.length === 0) break;
 
-    console.log(`Classifying ${rows.length} transaction(s)...`);
-    const results = await classifyBatch(rows);
-    await applyTypes(results);
+    const transferRows = rows.filter((r) => r.category === 'Transfer');
+    const otherRows = rows.filter((r) => r.category !== 'Transfer');
+
+    if (transferRows.length > 0) {
+      console.log(`Setting ${transferRows.length} transfer(s) to One-time...`);
+      await applyTransferDefault(transferRows);
+    }
+
+    if (otherRows.length > 0) {
+      console.log(`Classifying ${otherRows.length} transaction(s)...`);
+      const results = await classifyBatch(otherRows);
+      await applyTypes(results);
+    }
+
     totalClassified += rows.length;
 
     if (rows.length < BATCH_SIZE) break; // fewer than a full page means we're caught up
