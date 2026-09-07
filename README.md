@@ -2,7 +2,7 @@
 
 The data pipeline behind [My Wealth View](https://myfinancesss.lovable.app) — a personal net worth tracker spanning bank accounts, an investment portfolio, and crypto holdings.
 
-European PSD2 open banking (via [Enable Banking](https://enablebanking.com), currently connected to Revolut) + manually-tracked brokerage/crypto holdings → Supabase (Postgres) → deterministic rules + Gemini categorization → [Lovable](https://lovable.dev) dashboard.
+European PSD2 open banking (via [Enable Banking](https://enablebanking.com), currently connected to Revolut, Wise, and Fineco) + manually-tracked brokerage/crypto holdings → Supabase (Postgres) → deterministic rules + Gemini categorization → [Lovable](https://lovable.dev) dashboard.
 
 This repo is the backend half. The frontend lives in a separate repo, [my-wealth-view](https://github.com/marcodonghiaa/my-wealth-view).
 
@@ -32,7 +32,7 @@ Supabase project `diwezyrtlwdbrsgegkay` (org "Marcoo"). Every table is Row Level
 **Tables**
 | Table | Purpose |
 |---|---|
-| `accounts` | Bank accounts known to the pipeline (drives sync instead of hardcoded arrays). |
+| `accounts` | Bank accounts known to the pipeline (drives sync instead of hardcoded arrays), each with its own `consent_valid_until` since every linked bank's PSD2 consent expires independently. |
 | `transactions` | One row per bank transaction — amount, currency, category, transaction_type, raw payload. Update access is trigger-restricted to just `category`/`transaction_type`. |
 | `net_worth_snapshots` | Daily bank account balance snapshots. |
 | `fx_rates` | Daily EUR conversion rates per currency. |
@@ -45,7 +45,7 @@ Supabase project `diwezyrtlwdbrsgegkay` (org "Marcoo"). Every table is Row Level
 
 ## Local state (gitignored, never committed)
 
-- `.env` — Enable Banking app ID + PSD2 key path, Supabase URL + secret key, Gemini API key, Coinbase API credentials, session expiry date.
+- `.env` — Enable Banking app ID + PSD2 key path, Supabase URL + secret key, Gemini API key, Coinbase API credentials.
 - `*.pem` — Enable Banking PSD2 private key.
 - `last-sync.json` — per-account watermark so re-runs only pull new transactions.
 - `sync-log-*.txt` — daily run logs.
@@ -63,18 +63,19 @@ APP_ID=<enable banking application id>
 PRIVATE_KEY_FILE=<path to your PSD2 private key .pem>
 SUPABASE_URL=<supabase project url>
 SUPABASE_SECRET_KEY=<supabase secret key, sb_secret_...>
-SESSION_VALID_UNTIL=<ISO date your current bank session expires>
 GEMINI_API_KEY=<gemini api key>
 USER_ID=<your supabase auth user id>
 COINBASE_API_KEY_NAME=<coinbase api key id>
 COINBASE_API_PRIVATE_KEY=<coinbase ed25519 private key, base64>
 ```
 
-Authorize with the bank (one-time, or whenever the session expires):
+Link a bank (one-time per bank, or whenever its consent expires — `session-check.js` warns per-bank as expiry approaches):
 
 ```bash
-node start-auth.js   # open the printed URL, log in, approve consent
-node exchange-code.js   # paste the code from the redirect into the script, run again
+node start-auth.js "<Bank Name>" <COUNTRY>   # e.g. node start-auth.js "FinecoBank" IT
+# open the printed URL, log in, approve consent — you'll be redirected to
+# https://localhost:3000/callback?code=... (the page won't load, that's expected)
+node exchange-code.js <code>   # prints the linked account(s) — add them to the `accounts` table
 ```
 
 Run a full sync manually:
