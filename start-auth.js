@@ -16,14 +16,20 @@ function getToken() {
 }
 
 async function main() {
+  const [aspspName, country] = process.argv.slice(2);
+  if (!aspspName || !country) {
+    console.error('Usage: node start-auth.js "<Bank Name>" <COUNTRY>\n  e.g. node start-auth.js "FinecoBank" IT');
+    process.exit(1);
+  }
+
   const token = getToken();
 
   const res = await fetch('https://api.enablebanking.com/auth', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      access: { valid_until: new Date(Date.now() + 24 * 3600 * 1000).toISOString() },
-      aspsp: { name: 'Revolut', country: 'IT' },
+      access: { valid_until: new Date(Date.now() + 180 * 24 * 3600 * 1000).toISOString() },
+      aspsp: { name: aspspName, country },
       state: 'test123',
       redirect_url: 'https://localhost:3000/callback',
       psu_type: 'personal',
@@ -31,8 +37,11 @@ async function main() {
   });
 
   const data = await res.json();
-  console.log('Full response:', JSON.stringify(data, null, 2));
-  console.log('Open this URL in your browser to log into Revolut:\n');
+  if (!data.url) {
+    console.error('Full response:', JSON.stringify(data, null, 2));
+    process.exit(1);
+  }
+  console.log(`Open this URL in your browser to log into ${aspspName}:\n`);
   console.log(data.url);
 }
 

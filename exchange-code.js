@@ -5,7 +5,11 @@ const fetch = require('node-fetch');
 
 const APP_ID = process.env.APP_ID;
 const PRIVATE_KEY = fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
-const CODE = 'ed7e5a86-e137-4d70-a66b-3cc9c3e7b863';
+const CODE = process.argv[2];
+if (!CODE) {
+  console.error('Usage: node exchange-code.js <code>\n  (the "code" query param from the redirect URL after logging into your bank)');
+  process.exit(1);
+}
 
 function getToken() {
   const now = Math.floor(Date.now() / 1000);

@@ -1,5 +1,4 @@
 const { checkSessionExpiry } = require('./session-check');
-checkSessionExpiry();
 
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
@@ -45,31 +44,36 @@ async function getBalances(token, uid) {
 
 async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
+  await checkSessionExpiry(supabase, USER_ID);
   const token = getToken();
   const today = new Date().toISOString().slice(0, 10);
   const accounts = await getAccounts(supabase, USER_ID);
   const rows = [];
 
   for (const account of accounts) {
-    console.log(`\n=== ${account.currency} account ===`);
-    const data = await getBalances(token, account.uid);
-    const balance = data.balances?.[0];
+    console.log(`\n=== ${account.label ?? account.currency} ===`);
+    try {
+      const data = await getBalances(token, account.uid);
+      const balance = data.balances?.[0];
 
-    if (!balance) {
-      console.log('No balance returned.');
-      continue;
+      if (!balance) {
+        console.log('No balance returned.');
+        continue;
+      }
+
+      const amount = parseFloat(balance.balance_amount.amount);
+      console.log(`Balance: ${amount} ${balance.balance_amount.currency}`);
+
+      rows.push({
+        account_uid: account.uid,
+        currency: balance.balance_amount.currency,
+        amount,
+        snapshot_date: today,
+        user_id: USER_ID,
+      });
+    } catch (err) {
+      console.error(`Failed to fetch balance for ${account.label ?? account.currency}:`, err.message);
     }
-
-    const amount = parseFloat(balance.balance_amount.amount);
-    console.log(`Balance: ${amount} ${balance.balance_amount.currency}`);
-
-    rows.push({
-      account_uid: account.uid,
-      currency: balance.balance_amount.currency,
-      amount,
-      snapshot_date: today,
-      user_id: USER_ID,
-    });
   }
 
   if (rows.length > 0) {

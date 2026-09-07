@@ -1,5 +1,4 @@
 const { checkSessionExpiry } = require('./session-check');
-checkSessionExpiry();
 
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
@@ -88,6 +87,7 @@ function mapToRow(tx, accountUid) {
 
 async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
+  await checkSessionExpiry(supabase, USER_ID);
   const token = getToken();
   const lastSync = loadLastSync();
   const today = new Date().toISOString().slice(0, 10);
@@ -95,26 +95,31 @@ async function main() {
 
   for (const account of accounts) {
     const dateFrom = lastSync[account.uid] || new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    console.log(`\n=== ${account.currency} — syncing since ${dateFrom} ===`);
+    console.log(`\n=== ${account.label ?? account.currency} — syncing since ${dateFrom} ===`);
 
-    const transactions = await getAllTransactions(token, account.uid, dateFrom);
-    const rows = transactions.map(tx => mapToRow(tx, account.uid));
+    try {
+      const transactions = await getAllTransactions(token, account.uid, dateFrom);
+      const rows = transactions.map(tx => mapToRow(tx, account.uid));
 
-    if (rows.length > 0) {
-      const { error } = await supabase
-        .from('transactions')
-        .upsert(rows, { onConflict: 'entry_reference' }); // dedup, Actual-Budget-style
+      if (rows.length > 0) {
+        const { error } = await supabase
+          .from('transactions')
+          .upsert(rows, { onConflict: 'entry_reference' }); // dedup, Actual-Budget-style
 
-      if (error) {
-        console.error(`Supabase insert error for ${account.currency}:`, error.message);
+        if (error) {
+          console.error(`Supabase insert error for ${account.label ?? account.currency}:`, error.message);
+        } else {
+          console.log(`Upserted ${rows.length} transactions.`);
+        }
       } else {
-        console.log(`Upserted ${rows.length} transactions.`);
+        console.log('No new transactions.');
       }
-    } else {
-      console.log('No new transactions.');
-    }
 
-    lastSync[account.uid] = today;
+      lastSync[account.uid] = today;
+    } catch (err) {
+      // One bank's consent expiring or API hiccup shouldn't stop the others from syncing.
+      console.error(`Failed to sync ${account.label ?? account.currency}:`, err.message);
+    }
   }
 
   saveLastSync(lastSync);
