@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 const fetch = require('node-fetch');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-const CURRENCIES = ['USD', 'GBP']; // add more here as you add accounts in other currencies
+const CURRENCIES = ['USD', 'GBP', 'CHF']; // add more here as you add accounts in other currencies
 
 async function main() {
   const res = await fetch(`https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${CURRENCIES.join(',')}`);
