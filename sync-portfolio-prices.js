@@ -8,11 +8,13 @@ const USER_ID = process.env.USER_ID;
 async function fetchHoldings() {
   const { data, error } = await supabase
     .from('portfolio_holdings')
-    .select('isin, yahoo_symbol, name, shares')
+    .select('isin, yahoo_symbol, name, shares, asset_type')
     .eq('user_id', USER_ID);
   if (error) throw error;
   return data;
 }
+
+const ASSET_TYPE_MAP = { EQUITY: 'Stock', ETF: 'ETF', MUTUALFUND: 'Fund', BOND: 'Bond' };
 
 async function fetchQuote(symbol) {
   const res = await fetch(
@@ -23,7 +25,11 @@ async function fetchQuote(symbol) {
   const data = await res.json();
   const result = data.chart?.result?.[0];
   if (!result) throw new Error(`No quote data for ${symbol}: ${JSON.stringify(data.chart?.error)}`);
-  return { price: result.meta.regularMarketPrice, currency: result.meta.currency };
+  return {
+    price: result.meta.regularMarketPrice,
+    currency: result.meta.currency,
+    assetType: ASSET_TYPE_MAP[result.meta.instrumentType] || 'Other',
+  };
 }
 
 async function getLatestFxRate(currency) {
@@ -45,10 +51,11 @@ async function main() {
   const holdings = await fetchHoldings();
   const today = new Date().toISOString().slice(0, 10);
   const rows = [];
+  const typeUpdates = [];
 
   for (const holding of holdings) {
     try {
-      const { price, currency } = await fetchQuote(holding.yahoo_symbol);
+      const { price, currency, assetType } = await fetchQuote(holding.yahoo_symbol);
       const rateToEur = await getLatestFxRate(currency);
       const valueNative = price * holding.shares;
       const valueEur = valueNative * rateToEur;
@@ -63,10 +70,23 @@ async function main() {
         value_eur: valueEur,
       });
 
+      if (assetType && assetType !== holding.asset_type) {
+        typeUpdates.push({ isin: holding.isin, asset_type: assetType });
+      }
+
       console.log(`${holding.name}: ${price} ${currency} x ${holding.shares} = ${valueEur.toFixed(2)} EUR`);
     } catch (err) {
       console.error(`Failed to price ${holding.name} (${holding.yahoo_symbol}):`, err.message);
     }
+  }
+
+  for (const update of typeUpdates) {
+    const { error } = await supabase
+      .from('portfolio_holdings')
+      .update({ asset_type: update.asset_type })
+      .eq('user_id', USER_ID)
+      .eq('isin', update.isin);
+    if (error) console.error(`Failed to update asset_type for ${update.isin}:`, error.message);
   }
 
   if (rows.length > 0) {
