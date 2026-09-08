@@ -1,5 +1,5 @@
 #!/bin/bash
-cd "/Users/marcodonghia/Desktop/finance app"
+cd "/Users/marcodonghia/Developer/finance app"
 LOG_FILE="sync-log-$(date +%Y-%m-%d).txt"
 
 echo "=== Sync started at $(date) ===" >> "$LOG_FILE"
