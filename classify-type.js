@@ -12,11 +12,23 @@ const TYPES = ['Subscription', 'One-time'];
 async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category')
+    .select('entry_reference, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category, bank_transaction_code')
     .is('transaction_type', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
   return data;
+}
+
+// A P2P/wire transfer is always One-time regardless of what category it landed in --
+// e.g. a Spotify-split payment to a friend gets category "Entertainment" (correctly,
+// per its remittance note) but is still a one-off transfer, not a real subscription
+// billing relationship. Checking category alone loses that signal once the AI
+// reclassifies the category away from the generic "Transfer" bucket, so this checks
+// the bank's own transfer code instead.
+function isTransferCode(code) {
+  if (!code) return false;
+  const c = code.toLowerCase();
+  return c === 'transfer' || c.includes('bonifico');
 }
 
 // Transfers are always One-time by definition -- deterministic, not an AI judgment
@@ -109,8 +121,8 @@ async function main() {
     const rows = await fetchUnclassified();
     if (rows.length === 0) break;
 
-    const transferRows = rows.filter((r) => r.category === 'Transfer');
-    const otherRows = rows.filter((r) => r.category !== 'Transfer');
+    const transferRows = rows.filter((r) => isTransferCode(r.bank_transaction_code));
+    const otherRows = rows.filter((r) => !isTransferCode(r.bank_transaction_code));
 
     if (transferRows.length > 0) {
       console.log(`Setting ${transferRows.length} transfer(s) to One-time...`);
