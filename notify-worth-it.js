@@ -60,6 +60,28 @@ async function sendToAllSubscriptions(subscriptions, payload) {
   }
 }
 
+// One transaction: the specific deep-link prompt. Several at once (e.g. an hour
+// where multiple purchases all crossed the 3h line together, or an old backlog
+// from a period without hourly sync) become ONE digest push instead of a stack
+// of separate notifications for the same shopping spree.
+function buildPayload(transactions) {
+  if (transactions.length === 1) {
+    const tx = transactions[0];
+    return {
+      title: 'Worth it?',
+      body: `€${tx.amount} at ${tx.creditor_name || 'a merchant'} — ${tx.category}`,
+      url: `/transactions?highlight=${encodeURIComponent(tx.entry_reference)}`,
+    };
+  }
+  const names = transactions.slice(0, 3).map((t) => t.creditor_name || 'a merchant');
+  const extra = transactions.length > 3 ? ` +${transactions.length - 3} more` : '';
+  return {
+    title: 'Worth it?',
+    body: `${transactions.length} purchases today: ${names.join(', ')}${extra}`,
+    url: '/transactions',
+  };
+}
+
 async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
   if (!process.env.VAPID_PRIVATE_KEY) throw new Error('VAPID_PRIVATE_KEY missing from .env');
@@ -76,20 +98,15 @@ async function main() {
     return;
   }
 
-  for (const tx of transactions) {
-    const payload = {
-      title: 'Worth it?',
-      body: `€${tx.amount} at ${tx.creditor_name || 'a merchant'} — ${tx.category}`,
-      url: `/transactions?highlight=${encodeURIComponent(tx.entry_reference)}`,
-    };
-    await sendToAllSubscriptions(subscriptions, payload);
+  await sendToAllSubscriptions(subscriptions, buildPayload(transactions));
 
+  const now = new Date().toISOString();
+  for (const tx of transactions) {
     const { error } = await supabase
       .from('transactions')
-      .update({ worth_it_prompted_at: new Date().toISOString() })
+      .update({ worth_it_prompted_at: now })
       .eq('entry_reference', tx.entry_reference);
     if (error) console.error(`Failed to mark ${tx.entry_reference} prompted:`, error.message);
-
     console.log(`Prompted: ${tx.creditor_name} (${tx.amount} ${tx.currency})`);
   }
 }
