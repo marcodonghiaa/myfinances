@@ -80,7 +80,7 @@ async function main() {
     const payload = {
       title: 'Worth it?',
       body: `€${tx.amount} at ${tx.creditor_name || 'a merchant'} — ${tx.category}`,
-      url: '/transactions',
+      url: `/transactions?highlight=${encodeURIComponent(tx.entry_reference)}`,
     };
     await sendToAllSubscriptions(subscriptions, payload);
 
