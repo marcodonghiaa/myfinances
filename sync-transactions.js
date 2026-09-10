@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
-const { getAccounts } = require('./accounts');
+const { getAccounts, getAllUserIds } = require('./accounts');
 
 const APP_ID = process.env.APP_ID;
 const PRIVATE_KEY = fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
@@ -13,9 +13,6 @@ const SYNC_STATE_FILE = 'last-sync.json';
 const FETCH_TIMEOUT_MS = 60000; // matches Actual Budget's Enable Banking timeout
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-const USER_ID = process.env.USER_ID;
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
-console.log('SUPABASE_SECRET_KEY:', process.env.SUPABASE_SECRET_KEY ? 'present' : 'MISSING');
 
 function getToken() {
   const now = Math.floor(Date.now() / 1000);
@@ -67,7 +64,7 @@ async function getAllTransactions(token, uid, dateFrom) {
   return all;
 }
 
-function mapToRow(tx, accountUid) {
+function mapToRow(tx, accountUid, userId) {
   return {
     entry_reference: tx.entry_reference,
     account_uid: accountUid,
@@ -81,44 +78,47 @@ function mapToRow(tx, accountUid) {
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
     raw: tx,
-    user_id: USER_ID,
+    user_id: userId,
   };
 }
 
 async function main() {
-  if (!USER_ID) throw new Error('USER_ID missing from .env');
-  await checkSessionExpiry(supabase, USER_ID);
   const token = getToken();
   const lastSync = loadLastSync();
   const today = new Date().toISOString().slice(0, 10);
-  const accounts = await getAccounts(supabase, USER_ID);
+  const userIds = await getAllUserIds(supabase);
 
-  for (const account of accounts) {
-    const dateFrom = lastSync[account.uid] || new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    console.log(`\n=== ${account.label ?? account.currency} — syncing since ${dateFrom} ===`);
+  for (const userId of userIds) {
+    await checkSessionExpiry(supabase, userId);
+    const accounts = await getAccounts(supabase, userId);
 
-    try {
-      const transactions = await getAllTransactions(token, account.uid, dateFrom);
-      const rows = transactions.map(tx => mapToRow(tx, account.uid));
+    for (const account of accounts) {
+      const dateFrom = lastSync[account.uid] || new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+      console.log(`\n=== ${account.label ?? account.currency} — syncing since ${dateFrom} ===`);
 
-      if (rows.length > 0) {
-        const { error } = await supabase
-          .from('transactions')
-          .upsert(rows, { onConflict: 'entry_reference' }); // dedup, Actual-Budget-style
+      try {
+        const transactions = await getAllTransactions(token, account.uid, dateFrom);
+        const rows = transactions.map(tx => mapToRow(tx, account.uid, userId));
 
-        if (error) {
-          console.error(`Supabase insert error for ${account.label ?? account.currency}:`, error.message);
+        if (rows.length > 0) {
+          const { error } = await supabase
+            .from('transactions')
+            .upsert(rows, { onConflict: 'entry_reference' }); // dedup, Actual-Budget-style
+
+          if (error) {
+            console.error(`Supabase insert error for ${account.label ?? account.currency}:`, error.message);
+          } else {
+            console.log(`Upserted ${rows.length} transactions.`);
+          }
         } else {
-          console.log(`Upserted ${rows.length} transactions.`);
+          console.log('No new transactions.');
         }
-      } else {
-        console.log('No new transactions.');
-      }
 
-      lastSync[account.uid] = today;
-    } catch (err) {
-      // One bank's consent expiring or API hiccup shouldn't stop the others from syncing.
-      console.error(`Failed to sync ${account.label ?? account.currency}:`, err.message);
+        lastSync[account.uid] = today;
+      } catch (err) {
+        // One bank's consent expiring or API hiccup shouldn't stop the others from syncing.
+        console.error(`Failed to sync ${account.label ?? account.currency}:`, err.message);
+      }
     }
   }
 
