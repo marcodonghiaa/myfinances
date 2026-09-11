@@ -5,12 +5,20 @@
 // from a dropdown instead of typing a bank name that has to match exactly.
 // Same JWT-signing as start-bank-consent/bank-consent-callback; no writes,
 // read-only lookup.
+//
+// Requires a signed-in user -- otherwise this is an unauthenticated proxy to
+// the operator's Enable Banking credentials/quota. verify_jwt is also set in
+// supabase/config.toml as a gateway-level backstop; this in-function check is
+// the one that's actually reproducible from a plain `supabase functions deploy`.
+
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const ENABLE_BANKING_APP_ID = Deno.env.get("ENABLE_BANKING_APP_ID")!;
 const ENABLE_BANKING_PRIVATE_KEY = Deno.env.get("ENABLE_BANKING_PRIVATE_KEY")!;
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL")!;
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": FRONTEND_URL,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -75,6 +83,16 @@ Deno.serve(async (req) => {
   }
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
+  }
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
+  );
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) {
+    return json({ error: "Not signed in" }, 401);
   }
 
   let body: { country?: string };

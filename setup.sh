@@ -79,7 +79,7 @@ SECRET_KEY=$(node -e "
 const keys = JSON.parse(process.argv[1]);
 console.log(keys.find(k => k.api_key?.startsWith('sb_secret_'))?.api_key ?? '');
 " "$KEYS_JSON")
-[ -n "$PUBLISHABLE_KEY" ] && [ -n "$SECRET_KEY" ] || die "Could not find sb_publishable_/sb_secret_ keys in: $KEYS_JSON"
+[ -n "$PUBLISHABLE_KEY" ] && [ -n "$SECRET_KEY" ] || die "Could not find sb_publishable_/sb_secret_ keys. Verify the Supabase CLI response format."
 SUPABASE_URL="https://${PROJECT_REF}.supabase.co"
 echo "Got URL and keys."
 
@@ -109,17 +109,22 @@ step "Gemini API key (for AI transaction categorization)"
 echo "Get one free at https://aistudio.google.com/apikey"
 read -rp "GEMINI_API_KEY: " GEMINI_API_KEY
 
+step "Frontend URL (for bank-linking redirects)"
+read -rp "Public URL the frontend will be served at [https://localhost:3000]: " FRONTEND_URL
+FRONTEND_URL="${FRONTEND_URL:-https://localhost:3000}"
+
 step "Deploying Edge Functions and secrets"
 supabase secrets set --project-ref "$PROJECT_REF" \
   "ENABLE_BANKING_APP_ID=$EB_APP_ID" \
-  "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY"
+  "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY" \
+  "FRONTEND_URL=$FRONTEND_URL"
 supabase functions deploy --project-ref "$PROJECT_REF"
 echo "Edge Functions live."
 
 step "Writing .env files"
 cat > .env <<EOF
 APP_ID=$EB_APP_ID
-PRIVATE_KEY_FILE=
+PRIVATE_KEY_FILE=$EB_PEM_PATH
 PRIVATE_KEY=$EB_PRIVATE_KEY_ENV
 SUPABASE_URL=$SUPABASE_URL
 SUPABASE_SECRET_KEY=$SECRET_KEY
@@ -136,6 +141,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 VITE_SUPABASE_URL=$SUPABASE_URL
 FRONTEND_DIR=$FRONTEND_DIR
 EOF
+chmod 600 .env
 
 cat > "$FRONTEND_DIR/.env" <<EOF
 SUPABASE_PROJECT_ID=$PROJECT_REF

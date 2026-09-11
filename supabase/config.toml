@@ -403,6 +403,18 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
+# Bank-linking Edge Functions -- gateway-level JWT verification, codified
+# here rather than a manual per-deploy step. bank-consent-callback gets a
+# plain unauthenticated browser GET from Enable Banking's redirect (no
+# Authorization header to verify), so it stays off; the other two are only
+# ever called from a signed-in browser session via supabase.functions.invoke.
+[functions.list-banks]
+verify_jwt = true
+[functions.start-bank-consent]
+verify_jwt = true
+[functions.bank-consent-callback]
+verify_jwt = false
+
 # pg-delta is the schema diff engine for db diff / db pull / db remote commit.
 # Set enabled = false to fall back to the legacy migra engine.
 [experimental.pgdelta]

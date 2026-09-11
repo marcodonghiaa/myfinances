@@ -63,7 +63,7 @@ async function signEnableBankingJwt(): Promise<string> {
   return `${signingInput}.${base64url(signature)}`;
 }
 
-const APP_URL = "https://myfinancesss.lovable.app";
+const APP_URL = Deno.env.get("FRONTEND_URL")!;
 
 // Land back in the real app instead of a bare Edge Function page -- the app
 // reads bank_linked/bank_link_error off /accounts and shows a proper toast.
@@ -163,14 +163,15 @@ Deno.serve(async (req) => {
       }
 
       if (existingUid) {
+        const patch: Record<string, unknown> = {
+          consent_valid_until: consentValidUntil,
+          currency: a.currency,
+        };
+        if (label !== null) patch.label = label;
+        if (identificationHash !== null) patch.identification_hash = identificationHash;
         const { error } = await supabase
           .from("accounts")
-          .update({
-            consent_valid_until: consentValidUntil,
-            label,
-            currency: a.currency,
-            identification_hash: identificationHash,
-          })
+          .update(patch)
           .eq("uid", existingUid);
         if (error) {
           return redirectToApp({ bank_link_error: error.message });
