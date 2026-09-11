@@ -1,5 +1,5 @@
 #!/bin/bash
-cd "/Users/marcodonghia/Developer/finance app"
+cd "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="sync-log-$(date +%Y-%m-%d).txt"
 
 echo "=== Sync started at $(date) ===" >> "$LOG_FILE"

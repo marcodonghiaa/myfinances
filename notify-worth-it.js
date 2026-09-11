@@ -26,6 +26,7 @@ async function fetchEligibleTransactions() {
     .eq('credit_debit_indicator', 'DBIT')
     .in('category', DISCRETIONARY_CATEGORIES)
     .is('worth_it', null) // not "already pushed" -- "not yet answered" (in-app or via push)
+    .is('worth_it_prompted_at', null)
     .gte('amount', MIN_AMOUNT)
     .lte('created_at', new Date(Date.now() - MIN_AGE_HOURS * 3600 * 1000).toISOString())
     .gte('created_at', new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000).toISOString());
@@ -69,7 +70,7 @@ function buildPayload(transactions) {
     const tx = transactions[0];
     return {
       title: 'Worth it?',
-      body: `€${tx.amount} at ${tx.creditor_name || 'a merchant'} — ${tx.category}`,
+      body: `${tx.amount} ${tx.currency} at ${tx.creditor_name || 'a merchant'} — ${tx.category}`,
       url: `/transactions?highlight=${encodeURIComponent(tx.entry_reference)}`,
     };
   }

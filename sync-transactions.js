@@ -102,12 +102,14 @@ async function main() {
         const transactions = await getAllTransactions(token, account.uid, dateFrom);
         const rows = transactions.map(tx => mapToRow(tx, account.uid, userId));
 
+        let upsertOk = true;
         if (rows.length > 0) {
           const { error } = await supabase
             .from('transactions')
             .upsert(rows, { onConflict: 'entry_reference' }); // dedup, Actual-Budget-style
 
           if (error) {
+            upsertOk = false;
             console.error(`Supabase insert error for ${account.label ?? account.currency}:`, error.message);
           } else {
             console.log(`Upserted ${rows.length} transactions.`);
@@ -116,7 +118,7 @@ async function main() {
           console.log('No new transactions.');
         }
 
-        lastSync[account.uid] = today;
+        if (upsertOk) lastSync[account.uid] = today;
       } catch (err) {
         // One bank's consent expiring or API hiccup shouldn't stop the others from syncing.
         console.error(`Failed to sync ${account.label ?? account.currency}:`, err.message);

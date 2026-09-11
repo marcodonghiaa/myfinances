@@ -18,7 +18,13 @@ function loadEd25519PrivateKey(base64Key) {
   return crypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
 }
 
-const PRIVATE_KEY = loadEd25519PrivateKey(process.env.COINBASE_API_PRIVATE_KEY || '');
+let cachedPrivateKey;
+function getPrivateKey() {
+  if (!cachedPrivateKey) {
+    cachedPrivateKey = loadEd25519PrivateKey(process.env.COINBASE_API_PRIVATE_KEY || '');
+  }
+  return cachedPrivateKey;
+}
 
 const HOST = 'api.coinbase.com';
 const PATH = '/api/v3/brokerage/accounts';
@@ -56,7 +62,7 @@ function buildJwt() {
   };
 
   const signingInput = `${base64url(Buffer.from(JSON.stringify(header)))}.${base64url(Buffer.from(JSON.stringify(payload)))}`;
-  const signature = crypto.sign(null, Buffer.from(signingInput), PRIVATE_KEY);
+  const signature = crypto.sign(null, Buffer.from(signingInput), getPrivateKey());
   return `${signingInput}.${base64url(signature)}`;
 }
 
@@ -72,7 +78,9 @@ async function fetchCoinbaseAccounts() {
 
 async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
-  if (!KEY_NAME || !PRIVATE_KEY) throw new Error('COINBASE_API_KEY_NAME / COINBASE_API_PRIVATE_KEY missing from .env');
+  if (!KEY_NAME || !process.env.COINBASE_API_PRIVATE_KEY) {
+    throw new Error('COINBASE_API_KEY_NAME / COINBASE_API_PRIVATE_KEY missing from .env');
+  }
 
   const accounts = await fetchCoinbaseAccounts();
   const rows = [];
