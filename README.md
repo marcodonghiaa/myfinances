@@ -67,6 +67,20 @@ Supabase project `diwezyrtlwdbrsgegkay` (org "Marcoo"). Every table is Row Level
 
 ## Setup
 
+**Guided (recommended):** clone this repo and the [frontend repo](https://github.com/marcodonghiaa/my-wealth-view) as siblings, then run the wizard. It logs you into Supabase (browser), creates or links a project, applies the schema, walks you through Enable Banking's free signup, generates push-notification keys, deploys the Edge Functions, and writes both apps' `.env` files.
+
+```bash
+git clone https://github.com/marcodonghiaa/myfinances.git
+git clone https://github.com/marcodonghiaa/my-wealth-view.git
+cd myfinances
+./setup.sh
+docker compose up -d --build
+```
+
+The one thing it can't do for you: Enable Banking's signup itself has no API, so you'll get sent to their site mid-wizard to create a free application and download a key. Everything else — Supabase, Edge Functions, `.env` files — is automated.
+
+**Manual, if you'd rather do it by hand:**
+
 1. **Supabase project.** Create one at [supabase.com](https://supabase.com), then apply the schema:
    ```bash
    supabase link --project-ref <your-project-ref>
@@ -110,17 +124,9 @@ On Linux, a `cron` entry (`0 * * * * cd /path/to/finance-app && bash run-daily-s
 
 ## Docker
 
-The quickest path to self-hosting: two containers (sync scheduler + frontend), both talking to your own Supabase Cloud project. Doesn't containerize Supabase itself — you still create a free project there first and run the migrations (step 1 above).
+Two containers (sync scheduler + frontend), both talking to your own Supabase Cloud project — not containerized itself. `./setup.sh` (see Setup above) writes the `.env` files these need and finishes with the exact `docker compose up -d --build` command.
 
-```bash
-git clone https://github.com/marcodonghiaa/myfinances.git
-git clone https://github.com/marcodonghiaa/my-wealth-view.git
-cd myfinances
-cp .env.example .env   # fill in Enable Banking (PRIVATE_KEY, not PRIVATE_KEY_FILE), Supabase, VITE_* vars
-docker compose up -d --build
-```
-
-The frontend is served at `http://localhost:3000`; the sync container runs on its own internal schedule (`scheduler.js`, hourly sync + 30-minute notify check, no host cron needed). Self-serve bank linking still needs the Edge Functions deployed (step 3 above) — those run on Supabase, not in a container.
+The frontend is served at `http://localhost:3000`; the sync container runs on its own internal schedule (`scheduler.js`, hourly sync + 30-minute notify check, no host cron needed).
 
 ## Security notes
 
