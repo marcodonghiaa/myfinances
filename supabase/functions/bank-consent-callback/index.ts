@@ -193,6 +193,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch an immediate balance for each linked account instead of leaving
+    // it invisible until the next scheduled sync (up to an hour away) --
+    // same /accounts/{uid}/balances call sync-networth.js makes on its
+    // batch schedule, just run once here for the accounts that just linked.
+    // Best-effort: a failure here doesn't fail the link, the batch job
+    // catches it up within the hour regardless.
+    const today = new Date().toISOString().slice(0, 10);
+    for (const row of savedRows) {
+      try {
+        const balRes = await fetch(
+          `https://api.enablebanking.com/accounts/${row.uid}/balances`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!balRes.ok) continue;
+        const balData = await balRes.json();
+        const balance = balData.balances?.[0];
+        if (!balance) continue;
+        await supabase.from("net_worth_snapshots").upsert(
+          {
+            account_uid: row.uid,
+            user_id: userId,
+            currency: balance.balance_amount.currency,
+            amount: parseFloat(balance.balance_amount.amount),
+            snapshot_date: today,
+          },
+          { onConflict: "account_uid,snapshot_date" },
+        );
+      } catch {
+        // best-effort, batch sync will catch up
+      }
+    }
+
     return redirectToApp({ bank_linked: String(savedRows.length) });
   } catch (err) {
     return redirectToApp({ bank_link_error: (err as Error).message });

@@ -312,8 +312,8 @@ create view public.v_bank_accounts_latest with (security_invoker = true) as
     a.user_id, a.uid, a.label, a.iban, a.currency, a.consent_valid_until,
     e.snapshot_date, e.amount, e.amount_eur
    from public.accounts a
-     join public.v_net_worth_eur e on e.user_id = a.user_id and e.account_uid = a.uid
-   order by a.user_id, a.uid, e.snapshot_date desc;
+     left join public.v_net_worth_eur e on e.user_id = a.user_id and e.account_uid = a.uid
+   order by a.user_id, a.uid, e.snapshot_date desc nulls last;
 
 create view public.v_cd_holdings with (security_invoker = true) as
  select c.id, c.user_id, c.label, c.bank_label, c.currency, c.principal, c.annual_rate,
