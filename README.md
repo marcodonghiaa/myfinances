@@ -121,4 +121,4 @@ This is a public portfolio piece handling real personal financial data, so it's 
 
 ## License
 
-TBD — coming soon.
+[MIT](LICENSE)
