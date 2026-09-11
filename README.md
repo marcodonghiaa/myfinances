@@ -29,9 +29,10 @@ Everything runs hourly through `run-daily-sync.sh` (name predates the schedule c
 3. **`fx-sync.js`** — pulls daily EUR exchange rates (Frankfurter/ECB) into `fx_rates`, used to convert every non-EUR balance/transaction to EUR across the dashboard.
 4. **`categorize.js`** — categorizes each transaction. A deterministic rules engine (`category_rules` table, user-editable in the dashboard) runs first; anything unmatched falls through to Gemini.
 5. **`classify-type.js`** — classifies each transaction as `Subscription` or `One-time`. Transfers are forced to `One-time` deterministically (no AI call); everything else goes through Gemini.
-6. **`sync-portfolio-prices.js`** — fetches live prices for stock/ETF holdings (`portfolio_holdings`) from Yahoo Finance's free public quote endpoint (the same public-data source [Ghostfolio](https://ghostfolio.dev) uses) and writes `portfolio_snapshots`.
-7. **`sync-crypto-coinbase.js`** — pulls live Coinbase balances via the Advanced Trade API (read-only key, JWT auth signed with Ed25519) and upserts them into `crypto_holdings`.
-8. **`sync-crypto-prices.js`** — fetches live prices for all crypto holdings (Coinbase-synced and manually-tracked Ledger holdings alike) from CoinGecko's free API and writes `crypto_snapshots`.
+6. **`classify-flow.js`** — classifies each transaction's `flow_type` (`spend`/`income`/`transfer`), deterministic only, no AI call: a currency exchange or wallet top-up is a `transfer`, not real income, so it's excluded from both spend and income analytics.
+7. **`sync-portfolio-prices.js`** — fetches live prices for stock/ETF holdings (`portfolio_holdings`) from Yahoo Finance's free public quote endpoint (the same public-data source [Ghostfolio](https://ghostfolio.dev) uses) and writes `portfolio_snapshots`.
+8. **`sync-crypto-coinbase.js`** — pulls live Coinbase balances via the Advanced Trade API (read-only key, JWT auth signed with Ed25519) and upserts them into `crypto_holdings`.
+9. **`sync-crypto-prices.js`** — fetches live prices for all crypto holdings (Coinbase-synced and manually-tracked Ledger holdings alike) from CoinGecko's free API and writes `crypto_snapshots`.
 
 Two more jobs run independently:
 
@@ -48,7 +49,7 @@ Supabase project `diwezyrtlwdbrsgegkay` (org "Marcoo"). Every table is Row Level
 | Table | Purpose |
 |---|---|
 | `accounts` | Bank accounts known to the pipeline (drives sync instead of hardcoded arrays), each with its own `consent_valid_until` since every linked bank's PSD2 consent expires independently. |
-| `transactions` | One row per bank transaction — amount, currency, category, transaction_type, raw payload. Update access is trigger-restricted to just `category`/`transaction_type`. |
+| `transactions` | One row per bank transaction — amount, currency, category, transaction_type, flow_type (spend/income/transfer), raw payload. `personal_amount`/`owed_by`/`owed_settled` split a transaction fronted for others out of your spend analytics. Update access is trigger-restricted (see Security notes). |
 | `net_worth_snapshots` | Daily bank account balance snapshots. |
 | `fx_rates` | Daily EUR conversion rates per currency. |
 | `category_rules` | User-editable deterministic categorization rules, checked before Gemini. |
@@ -135,7 +136,7 @@ This is a public portfolio piece handling real personal financial data, so it's 
 - `.env`, `*.pem`, and `last-sync.json` are gitignored and must never be committed.
 - All Supabase tables are RLS-scoped to the authenticated user (`auth.uid() = user_id`) — no table is readable across users.
 - The frontend never uses a service-role key — only the anon/publishable key, subject to RLS. Supabase's modern key system (`sb_publishable_...` / `sb_secret_...`) is used throughout; the legacy JWT key pair that could bypass RLS has been fully disabled.
-- `transactions` is otherwise append-only from the pipeline's perspective — a Postgres trigger restricts user-initiated updates to just the `category` and `transaction_type` columns, with `EXECUTE` on the trigger function itself revoked from `anon`/`authenticated` so it can't be invoked directly via RPC.
+- `transactions` is otherwise append-only from the pipeline's perspective — a Postgres trigger blocks user-initiated updates to every bank-sourced column (amount, currency, dates, account_uid, raw payload, etc.), leaving only the user-editable fields (category, transaction_type, worth_it, flow_type, personal_amount, owed_by, owed_settled) writable. `EXECUTE` on the trigger function itself is revoked from `anon`/`authenticated` so it can't be invoked directly via RPC.
 - The Coinbase integration uses a read-only ("View") API key — it can never place trades or move funds.
 - The PSD2 private key (`*.pem`) authenticates this app to Enable Banking; treat it like a password.
 
