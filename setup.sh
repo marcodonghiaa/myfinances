@@ -64,7 +64,7 @@ for i in $(seq 1 20); do
   [ "$i" -eq 20 ] && { cat /tmp/setup-link-err >&2; die "Project never became ready after ~10 minutes."; }
   sleep 30
 done
-supabase db push
+supabase db push --yes
 echo "Migrations applied."
 
 step "Fetching API keys"
@@ -90,6 +90,13 @@ read -rp "Enable Banking APP_ID: " EB_APP_ID
 read -rp "Path to the downloaded .pem private key: " EB_PEM_PATH
 [ -f "$EB_PEM_PATH" ] || die "No file at $EB_PEM_PATH"
 EB_PRIVATE_KEY=$(cat "$EB_PEM_PATH")
+# .env is one KEY=VALUE per line -- the real multi-line PEM above is fine as
+# a `supabase secrets set` argument, but breaks .env parsing the moment a
+# body line starts with a character like '+'. For the .env file only, store
+# it as a single line with literal \n escapes instead (same convention as
+# Firebase/GCP service-account keys in .env files); sync-transactions.js and
+# sync-networth.js unescape it back to real newlines when they read it.
+EB_PRIVATE_KEY_ENV=$(awk '{printf "%s\\n", $0}' "$EB_PEM_PATH")
 
 step "Generating VAPID keys for push notifications"
 VAPID_OUT=$(npx --yes web-push generate-vapid-keys 2>&1)
@@ -113,7 +120,7 @@ step "Writing .env files"
 cat > .env <<EOF
 APP_ID=$EB_APP_ID
 PRIVATE_KEY_FILE=
-PRIVATE_KEY=$EB_PRIVATE_KEY
+PRIVATE_KEY=$EB_PRIVATE_KEY_ENV
 SUPABASE_URL=$SUPABASE_URL
 SUPABASE_SECRET_KEY=$SECRET_KEY
 SESSION_VALID_UNTIL=90
@@ -127,6 +134,7 @@ VAPID_SUBJECT=mailto:you@example.com
 VITE_SUPABASE_PROJECT_ID=$PROJECT_REF
 VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 VITE_SUPABASE_URL=$SUPABASE_URL
+FRONTEND_DIR=$FRONTEND_DIR
 EOF
 
 cat > "$FRONTEND_DIR/.env" <<EOF

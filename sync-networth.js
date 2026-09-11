@@ -8,7 +8,9 @@ const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
 
 const APP_ID = process.env.APP_ID;
-const PRIVATE_KEY = process.env.PRIVATE_KEY || fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
+const PRIVATE_KEY = process.env.PRIVATE_KEY
+  ? process.env.PRIVATE_KEY.replace(/\\n/g, '\n')
+  : fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
 const FETCH_TIMEOUT_MS = 60000;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
