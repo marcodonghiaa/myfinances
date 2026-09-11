@@ -1,0 +1,23 @@
+# Requires my-wealth-view checked out as a sibling directory:
+#   git clone https://github.com/marcodonghiaa/myfinances.git
+#   git clone https://github.com/marcodonghiaa/my-wealth-view.git
+# Both apps still connect to your own Supabase Cloud project -- this does
+# not containerize Supabase itself. Copy .env.example to .env here first
+# (it also carries the frontend's VITE_* build args, read by docker compose
+# automatically from this file's .env).
+services:
+  sync:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../my-wealth-view
+      args:
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

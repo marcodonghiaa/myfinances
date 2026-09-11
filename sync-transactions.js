@@ -8,7 +8,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
 
 const APP_ID = process.env.APP_ID;
-const PRIVATE_KEY = fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
+const PRIVATE_KEY = process.env.PRIVATE_KEY || fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
 const SYNC_STATE_FILE = 'last-sync.json';
 const FETCH_TIMEOUT_MS = 60000; // matches Actual Budget's Enable Banking timeout
 

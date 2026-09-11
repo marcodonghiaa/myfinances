@@ -108,6 +108,20 @@ launchctl bootout gui/$(id -u)/com.marco.financesync.plist
 
 On Linux, a `cron` entry (`0 * * * * cd /path/to/finance-app && bash run-daily-sync.sh`) or a systemd timer does the same job — there's nothing macOS-specific in the scripts themselves.
 
+## Docker
+
+The quickest path to self-hosting: two containers (sync scheduler + frontend), both talking to your own Supabase Cloud project. Doesn't containerize Supabase itself — you still create a free project there first and run the migrations (step 1 above).
+
+```bash
+git clone https://github.com/marcodonghiaa/myfinances.git
+git clone https://github.com/marcodonghiaa/my-wealth-view.git
+cd myfinances
+cp .env.example .env   # fill in Enable Banking (PRIVATE_KEY, not PRIVATE_KEY_FILE), Supabase, VITE_* vars
+docker compose up -d --build
+```
+
+The frontend is served at `http://localhost:3000`; the sync container runs on its own internal schedule (`scheduler.js`, hourly sync + 30-minute notify check, no host cron needed). Self-serve bank linking still needs the Edge Functions deployed (step 3 above) — those run on Supabase, not in a container.
+
 ## Security notes
 
 This is a public portfolio piece handling real personal financial data, so it's built security-first:
