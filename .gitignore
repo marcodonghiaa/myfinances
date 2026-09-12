@@ -5,4 +5,4 @@ sync-log-*.txt
 notify-log-*.txt
 node_modules/
 .DS_Store
-.claude/
+.claude/graphify-out/

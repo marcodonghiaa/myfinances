@@ -88,7 +88,7 @@ The one thing it can't do for you: Enable Banking's signup itself has no API, so
    supabase db push   # runs supabase/migrations/
    ```
 2. **Enable Banking.** Sign up at [enablebanking.com](https://enablebanking.com), create an application (free "Restricted Production" tier works for whitelisting your own accounts — see the [ToS notes](supabase/functions/README.md) before going further), download the PSD2 private key.
-3. **Edge Functions** (self-serve bank linking from the dashboard): deploy the three functions in `supabase/functions/` and set `ENABLE_BANKING_APP_ID` / `ENABLE_BANKING_PRIVATE_KEY` as Supabase Edge Function secrets — see [`supabase/functions/README.md`](supabase/functions/README.md).
+3. **Edge Functions** (self-serve bank linking from the dashboard): deploy the three functions in `supabase/functions/` and set `ENABLE_BANKING_APP_ID` / `ENABLE_BANKING_PRIVATE_KEY` / `FRONTEND_URL` as Supabase Edge Function secrets — see [`supabase/functions/README.md`](supabase/functions/README.md).
 4. **Local scripts:**
    ```bash
    npm install

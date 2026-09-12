@@ -19,8 +19,10 @@ step "Checking prerequisites"
 command -v supabase >/dev/null || die "supabase CLI not found. Install: brew install supabase/tap/supabase"
 command -v node >/dev/null || die "node not found. Install Node 18+."
 command -v npx >/dev/null || die "npx not found (ships with Node)."
+command -v docker >/dev/null || die "docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop"
+docker compose version >/dev/null 2>&1 || die "docker compose (v2 plugin) not found. Update Docker Desktop, or install the compose plugin."
 [ -d "$FRONTEND_DIR" ] || die "Frontend repo not found at $FRONTEND_DIR. Clone it as a sibling directory, or set FRONTEND_DIR=/path/to/my-wealth-view."
-echo "OK: supabase CLI, node, frontend repo at $FRONTEND_DIR"
+echo "OK: supabase CLI, node, docker, frontend repo at $FRONTEND_DIR"
 
 json_get() {
   # json_get '<json>' 'key' -- tiny JSON field reader, avoids adding a jq dependency
@@ -37,6 +39,11 @@ step "Supabase project"
 read -rp "Use an existing Supabase project? [y/N] " USE_EXISTING
 if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
   read -rp "Project ref (20-char id from the dashboard URL): " PROJECT_REF
+  PROJECTS_JSON=$(supabase projects list --output json)
+  node -e "
+    const projects = JSON.parse(process.argv[1]);
+    process.exit(projects.some(p => p.id === process.argv[2]) ? 0 : 1);
+  " "$PROJECTS_JSON" "$PROJECT_REF" || die "No project with ref '$PROJECT_REF' found in your Supabase account. Check the ref (from the dashboard URL, e.g. supabase.com/dashboard/project/<ref>) and try again."
 else
   ORGS_JSON=$(supabase orgs list --output json)
   ORG_ID=$(json_get "$ORGS_JSON" "0.id")
@@ -110,8 +117,8 @@ echo "Get one free at https://aistudio.google.com/apikey"
 read -rp "GEMINI_API_KEY: " GEMINI_API_KEY
 
 step "Frontend URL (for bank-linking redirects)"
-read -rp "Public URL the frontend will be served at [https://localhost:3000]: " FRONTEND_URL
-FRONTEND_URL="${FRONTEND_URL:-https://localhost:3000}"
+read -rp "Public URL the frontend will be served at [http://localhost:3000]: " FRONTEND_URL
+FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 
 step "Deploying Edge Functions and secrets"
 supabase secrets set --project-ref "$PROJECT_REF" \
