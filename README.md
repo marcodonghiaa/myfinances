@@ -10,6 +10,8 @@ European PSD2 open banking (via [Enable Banking](https://enablebanking.com) — 
 
 This repo is the backend half — sync scripts, Supabase Edge Functions, and DB migrations. The frontend lives in a separate repo, [my-wealth-view](https://github.com/marcodonghiaa/my-wealth-view).
 
+If this is useful to you, a ⭐ on both repos helps other people find them.
+
 ## Why this instead of X
 
 - **[Firefly III](https://www.firefly-iii.org/) / [Actual Budget](https://actualbudget.org/)** — great for manual budgeting, but no automated bank sync or AI categorization out of the box.
