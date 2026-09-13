@@ -91,8 +91,16 @@ SUPABASE_URL="https://${PROJECT_REF}.supabase.co"
 echo "Got URL and keys."
 
 step "Enable Banking (manual signup required)"
-echo "If you haven't already: sign up at https://enablebanking.com, create an"
-echo "application (free Restricted Production tier), and download its PSD2 private key."
+echo "If you haven't already: sign up at https://enablebanking.com/sign-in/,"
+echo "then in the Control Panel -> API applications -> Add a new application:"
+echo "  - Choose Production (not Sandbox)"
+echo "  - Redirect URL: https://${PROJECT_REF}.supabase.co/functions/v1/bank-consent-callback"
+echo "  - Register -> downloads a .pem private key to your Downloads folder"
+echo "The app starts Inactive. Click 'Activate by linking accounts' and link any"
+echo "one of your own accounts through Enable Banking's UI -- this unlocks the"
+echo "app for free Restricted Production use. It does NOT connect that account"
+echo "to this app yet; you'll do that separately from this app's own dashboard"
+echo "once setup finishes."
 read -rp "Enable Banking APP_ID: " EB_APP_ID
 read -rp "Path to the downloaded .pem private key: " EB_PEM_PATH
 [ -f "$EB_PEM_PATH" ] || die "No file at $EB_PEM_PATH"

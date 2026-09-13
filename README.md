@@ -89,7 +89,7 @@ The one thing it can't do for you: Enable Banking's signup itself has no API, so
    supabase link --project-ref <your-project-ref>
    supabase db push   # runs supabase/migrations/
    ```
-2. **Enable Banking.** Sign up at [enablebanking.com](https://enablebanking.com), create an application (free "Restricted Production" tier works for whitelisting your own accounts — see the [ToS notes](supabase/functions/README.md) before going further), download the PSD2 private key.
+2. **Enable Banking.** Sign up at [enablebanking.com](https://enablebanking.com), create a **Production** application (not Sandbox), and set its redirect URL to `https://<your-project-ref>.supabase.co/functions/v1/bank-consent-callback` — must match exactly, or bank linking fails later. Registering downloads the PSD2 private key. The app starts **"Inactive"**; in Enable Banking's own Control Panel, click **"Activate by linking accounts"** and link any one of your own real accounts through their UI — this is a one-time gate that unlocks the app for free, non-commercial "Restricted Production" use (see the [ToS notes](supabase/functions/README.md)). It does **not** connect that account to this app — that's a separate step, below.
 3. **Edge Functions** (self-serve bank linking from the dashboard): deploy the three functions in `supabase/functions/` and set `ENABLE_BANKING_APP_ID` / `ENABLE_BANKING_PRIVATE_KEY` / `FRONTEND_URL` as Supabase Edge Function secrets — see [`supabase/functions/README.md`](supabase/functions/README.md).
 4. **Local scripts:**
    ```bash
@@ -97,7 +97,7 @@ The one thing it can't do for you: Enable Banking's signup itself has no API, so
    cp .env.example .env   # fill in Enable Banking, Supabase, Gemini, Coinbase (optional), VAPID keys
    ```
 
-Link your first bank (one-time per bank, or whenever its consent expires — `session-check.js` warns as expiry approaches). Easiest via the dashboard's "Connect a bank" button (Accounts page) once Edge Functions are deployed; or from the CLI:
+**Link your first bank into the app itself** (a separate step from activating the Enable Banking application above, even for the same account — Enable Banking's own activation never authorizes on this app's behalf). One-time per bank, or whenever its consent expires (`session-check.js` warns as expiry approaches). Easiest via the dashboard's "Connect a bank" button (Accounts page) once Edge Functions are deployed; or from the CLI:
 
 ```bash
 node start-auth.js "<Bank Name>" <COUNTRY>   # e.g. node start-auth.js "FinecoBank" IT
