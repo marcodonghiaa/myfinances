@@ -33,6 +33,7 @@ async function fetchRules() {
 }
 
 function matchRule(row, rule) {
+  if (!rule.match_text) return false; // no text to match -- skip, don't crash or match everything
   const text = rule.match_text.toLowerCase();
   const fields =
     rule.match_field === 'any'

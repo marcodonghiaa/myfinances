@@ -1,5 +1,7 @@
 #!/bin/bash
 cd "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+exec 9>/tmp/run-daily-sync.lock
+flock -n 9 || { echo "Previous sync still running, skipping this run." >&2; exit 0; }
 LOG_FILE="sync-log-$(date +%Y-%m-%d).txt"
 
 echo "=== Sync started at $(date) ===" >> "$LOG_FILE"

@@ -43,13 +43,19 @@ async function fetchSubscriptions() {
   return data;
 }
 
+// Returns true if at least one subscription actually received the push --
+// callers use this to decide whether it's safe to mark transactions as
+// prompted (a transient failure on every subscription should retry next run,
+// not get silently swallowed by worth_it_prompted_at).
 async function sendToAllSubscriptions(subscriptions, payload) {
+  let delivered = false;
   for (const sub of subscriptions) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload),
       );
+      delivered = true;
     } catch (err) {
       if (err.statusCode === 404 || err.statusCode === 410) {
         // subscription dead (uninstalled, permission revoked) — stop trying it
@@ -59,6 +65,7 @@ async function sendToAllSubscriptions(subscriptions, payload) {
       }
     }
   }
+  return delivered;
 }
 
 // One transaction: the specific deep-link prompt. Several at once (e.g. an hour
@@ -99,7 +106,11 @@ async function main() {
     return;
   }
 
-  await sendToAllSubscriptions(subscriptions, buildPayload(transactions));
+  const delivered = await sendToAllSubscriptions(subscriptions, buildPayload(transactions));
+  if (!delivered) {
+    console.error('Push delivery failed for every subscription -- not marking prompted, will retry next run.');
+    return;
+  }
 
   const now = new Date().toISOString();
   for (const tx of transactions) {

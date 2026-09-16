@@ -144,21 +144,23 @@ Deno.serve(async (req) => {
 
       let existingUid: string | null = null;
       if (iban) {
-        const { data: existing } = await supabase
+        const { data: existing, error } = await supabase
           .from("accounts")
           .select("uid")
           .eq("user_id", userId)
           .eq("iban", iban)
           .maybeSingle();
+        if (error) return redirectToApp({ bank_link_error: error.message });
         existingUid = existing?.uid ?? null;
       }
       if (!existingUid && identificationHash) {
-        const { data: existing } = await supabase
+        const { data: existing, error } = await supabase
           .from("accounts")
           .select("uid")
           .eq("user_id", userId)
           .eq("identification_hash", identificationHash)
           .maybeSingle();
+        if (error) return redirectToApp({ bank_link_error: error.message });
         existingUid = existing?.uid ?? null;
       }
 
