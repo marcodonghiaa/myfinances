@@ -127,6 +127,7 @@ read -rp "GEMINI_API_KEY: " GEMINI_API_KEY
 step "Frontend URL (for bank-linking redirects)"
 read -rp "Public URL the frontend will be served at [http://localhost:3000]: " FRONTEND_URL
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
+FRONTEND_URL="${FRONTEND_URL%/}" # strip trailing slash -- must exact-match the browser's Origin header for CORS
 
 step "Deploying Edge Functions and secrets"
 supabase secrets set --project-ref "$PROJECT_REF" \
