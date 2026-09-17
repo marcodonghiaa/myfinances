@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const fetch = require('node-fetch');
+const { classifyWithGemini } = require('./gemini-classify');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -86,36 +86,13 @@ ${JSON.stringify(rows.map((r) => ({
 
 Return a JSON array of {"entry_reference": string, "category": string} for every transaction above, same order, one entry each. category must be exactly one of the allowed categories.`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'ARRAY',
-            items: {
-              type: 'OBJECT',
-              properties: {
-                entry_reference: { type: 'STRING' },
-                category: { type: 'STRING', enum: CATEGORIES },
-              },
-              required: ['entry_reference', 'category'],
-            },
-          },
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) throw new Error(`Gemini API error ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(`Unexpected Gemini response: ${JSON.stringify(data)}`);
-  return JSON.parse(text);
+  return classifyWithGemini({
+    prompt,
+    resultKey: 'category',
+    resultEnum: CATEGORIES,
+    apiKey: GEMINI_API_KEY,
+    model: GEMINI_MODEL,
+  });
 }
 
 async function applyCategories(results) {
