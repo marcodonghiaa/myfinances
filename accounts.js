@@ -1,5 +1,5 @@
-// Guest demo account (public /demo page seed data) -- its accounts.uid rows are
-// fake, not real Enable Banking accounts, so the sync pipeline must skip it.
+// Leftover guest account rows have fake uids, not real Enable Banking accounts,
+// so the sync pipeline must skip them.
 const GUEST_USER_ID = '88218f96-7cd3-4400-9080-20859c72a986';
 
 async function getAccounts(supabase, userId) {

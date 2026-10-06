@@ -3,9 +3,7 @@
 -- Exported from the live project via introspection (no direct DB credentials
 -- were available to run a real pg_dump) -- this is a faithful reconstruction
 -- of the current production schema, not a redesign. Core tables, indexes,
--- RLS, and views only; the optional public-demo-mode policies live in a
--- separate migration since they're specific to running a public /demo page,
--- not something every self-hoster needs.
+-- RLS, and views only.
 
 create extension if not exists pgcrypto;
 create extension if not exists "uuid-ossp";
@@ -180,7 +178,7 @@ create index idx_transactions_user_id on public.transactions (user_id);
 
 -- ============================================================================
 -- Row Level Security -- every table is owner-only. No public/anon access
--- here; that's the separate optional demo-mode migration.
+-- here.
 -- ============================================================================
 
 alter table public.accounts enable row level security;

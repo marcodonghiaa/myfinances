@@ -1,76 +1,34 @@
-# finance-app
+# myfinances
 
-An open-source, self-hosted net worth tracker: bank accounts, investment portfolio, and crypto holdings in one place, kept in sync automatically.
+A self-hosted net worth tracker. It syncs European bank accounts through PSD2 open banking, adds your brokerage and crypto holdings, categorizes everything, and stores it in your own Supabase project.
 
-European PSD2 open banking (via [Enable Banking](https://enablebanking.com) — Revolut, Wise, Fineco and 2000+ other European banks) + manually-tracked brokerage/crypto holdings → your own Supabase (Postgres) project → deterministic rules + Gemini categorization → a [TanStack Start](https://tanstack.com/start) dashboard.
+![Dashboard](https://raw.githubusercontent.com/marcodonghiaa/my-wealth-view/main/public/og-image.png)
 
-**Live demo (read-only, no login):** [myfinancesss.lovable.app/demo](https://myfinancesss.lovable.app/demo)
+This repo is the backend: sync scripts, Supabase Edge Functions and migrations. The dashboard is [my-wealth-view](https://github.com/marcodonghiaa/my-wealth-view).
 
-![Dashboard screenshot](https://raw.githubusercontent.com/marcodonghiaa/my-wealth-view/main/public/og-image.png)
+**What you get:** automatic bank sync via [Enable Banking](https://enablebanking.com) (Revolut, Wise, Fineco and 2000+ other European banks), AI + rule-based categorization, subscription detection, portfolio and crypto pricing, and a "worth it?" push notification after discretionary purchases.
 
-This repo is the backend half — sync scripts, Supabase Edge Functions, and DB migrations. The frontend lives in a separate repo, [my-wealth-view](https://github.com/marcodonghiaa/my-wealth-view).
-
-If this is useful to you, a ⭐ on both repos helps other people find them.
-
-## Why this instead of X
-
-- **[Firefly III](https://www.firefly-iii.org/) / [Actual Budget](https://actualbudget.org/)** — great for manual budgeting, but no automated bank sync or AI categorization out of the box.
-- **[Ghostfolio](https://ghostfolio.dev/)** — great for portfolio tracking, but it's investments-only: no bank accounts, no transaction categorization.
-- **This project** — automated PSD2 bank sync + AI categorization + subscriptions (auto-detected billing frequency, normalized to a true monthly cost) + portfolio + crypto, all in one net worth number, self-hosted on your own Supabase project. Trade-off: European (PSD2) banks only, and you run the sync yourself (cron/launchd, not a managed service).
-
-## Status
-
-Runs on autopilot via local scheduled jobs (`launchd` on macOS, or `cron`/systemd timers anywhere else): hourly bank sync, FX rates, AI categorization, and price refresh for portfolio/crypto, plus a "worth it?" push notification job for discretionary spending. The reference deployment is published at [myfinancesss.lovable.app](https://myfinancesss.lovable.app).
+**Trade-offs:** European (PSD2) banks only, and you run the sync yourself (cron, launchd or Docker).
 
 ## How it works
 
-Everything runs hourly through `run-daily-sync.sh` (name predates the schedule change — it loops over every linked user, in order):
+A sync runs every 6 hours (banks typically cap unattended access at about 4 calls a day per account) and loops over every linked user:
 
-1. **`sync-transactions.js`** — pulls new bank transactions since the last sync (Enable Banking API) and upserts them into `transactions`.
-2. **`sync-networth.js`** — pulls current bank account balances into `net_worth_snapshots`.
-3. **`fx-sync.js`** — pulls daily EUR exchange rates (Frankfurter/ECB) into `fx_rates`, used to convert every non-EUR balance/transaction to EUR across the dashboard.
-4. **`categorize.js`** — categorizes each transaction. A deterministic rules engine (`category_rules` table, user-editable in the dashboard) runs first; anything unmatched falls through to Gemini.
-5. **`classify-type.js`** — classifies each transaction as `Subscription` or `One-time`. Transfers are forced to `One-time` deterministically (no AI call); everything else goes through Gemini.
-6. **`classify-flow.js`** — classifies each transaction's `flow_type` (`spend`/`income`/`transfer`), deterministic only, no AI call: a currency exchange or wallet top-up is a `transfer`, not real income, so it's excluded from both spend and income analytics.
-7. **`sync-portfolio-prices.js`** — fetches live prices for stock/ETF holdings (`portfolio_holdings`) from Yahoo Finance's free public quote endpoint (the same public-data source [Ghostfolio](https://ghostfolio.dev) uses) and writes `portfolio_snapshots`.
-8. **`sync-crypto-coinbase.js`** — pulls live Coinbase balances via the Advanced Trade API (read-only key, JWT auth signed with Ed25519) and upserts them into `crypto_holdings`.
-9. **`sync-crypto-prices.js`** — fetches live prices for all crypto holdings (Coinbase-synced and manually-tracked Ledger holdings alike) from CoinGecko's free API and writes `crypto_snapshots`.
+1. `sync-transactions.js` pulls new transactions, with a 7-day overlap because banks post late.
+2. `sync-networth.js` stores daily account balances.
+3. `fx-sync.js` stores daily EUR rates (Frankfurter/ECB) and backfills history on first run.
+4. `categorize.js` applies your `category_rules` first, then Gemini for the rest.
+5. `classify-type.js` marks each transaction `Subscription` or `One-time`.
+6. `classify-flow.js` marks `spend`, `income` or `transfer`, so exchanges and top-ups don't count as income.
+7. `sync-portfolio-prices.js`, `sync-crypto-coinbase.js`, `sync-crypto-prices.js` price your holdings (Yahoo Finance, Coinbase, CoinGecko).
 
-Two more jobs run independently:
+`notify-worth-it.js` runs every 30 minutes and sends a Web Push prompt for recent discretionary purchases. Portfolio and crypto scripts and notifications are single-user (`USER_ID`); bank sync is multi-user.
 
-- **`notify-worth-it.js`** (every 30 min, `run-notify.sh`) — finds recent discretionary transactions (Shopping/Entertainment/Dine Out/Experiences, above a minimum amount, 3-24h old) with no `worth_it` answer yet, and sends a Web Push "worth it?" prompt (bundled into one digest notification if there are several), so you reflect on a purchase after the initial urge has faded but while it's still fresh.
-- **`portfolio-reminder.sh`** (monthly) — fires a native OS notification on the 1st, since brokerage holdings (`portfolio_holdings`) are updated manually rather than live-synced.
-
-Self-serve bank linking (connecting a new bank from the dashboard, no CLI needed) runs as three Supabase Edge Functions — see [`supabase/functions/README.md`](supabase/functions/README.md).
-
-## Data model
-
-Supabase project `diwezyrtlwdbrsgegkay` (org "Marcoo"). Every table is Row Level Security-scoped to `auth.uid() = user_id`.
-
-**Tables**
-| Table | Purpose |
-|---|---|
-| `accounts` | Bank accounts known to the pipeline (drives sync instead of hardcoded arrays), each with its own `consent_valid_until` since every linked bank's PSD2 consent expires independently. |
-| `transactions` | One row per bank transaction — amount, currency, category, transaction_type, flow_type (spend/income/transfer), raw payload. `personal_amount`/`owed_by`/`owed_settled` split a transaction fronted for others out of your spend analytics. Update access is trigger-restricted (see Security notes). |
-| `net_worth_snapshots` | Daily bank account balance snapshots. |
-| `fx_rates` | Daily EUR conversion rates per currency. |
-| `category_rules` | User-editable deterministic categorization rules, checked before Gemini. |
-| `subscription_billing_overrides` | Manual override for a subscription's detected billing frequency (e.g. correcting a yearly prepayment that would otherwise look like a huge "monthly" charge). |
-| `portfolio_holdings` / `portfolio_snapshots` | Stock/ETF holdings (manually maintained) and their daily priced value. |
-| `crypto_holdings` / `crypto_snapshots` | Crypto holdings (Coinbase-synced or manually tracked) and their daily priced value. |
-
-**Views** (all `security_invoker=true`, so RLS applies through them): `v_net_worth_eur`, `v_net_worth_daily` (unions bank/portfolio/crypto snapshot dates, each forward-filled independently), `v_transactions_eur`, `v_spend_by_category_monthly`, `v_income_vs_expenses_monthly`, `v_subscriptions` (auto-detects billing frequency from charge intervals), `v_portfolio_latest`, `v_crypto_latest`.
-
-## Local state (gitignored, never committed)
-
-- `.env` — Enable Banking app ID + PSD2 key path, Supabase URL + secret key, Gemini API key, Coinbase API credentials.
-- `*.pem` — Enable Banking PSD2 private key.
-- `last-sync.json` — per-account watermark so re-runs only pull new transactions.
-- `sync-log-*.txt` — daily run logs.
+Bank linking from the dashboard runs as three Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
 
 ## Setup
 
-**Guided (recommended):** clone this repo and the [frontend repo](https://github.com/marcodonghiaa/my-wealth-view) as siblings, then run the wizard. It logs you into Supabase (browser), creates or links a project, applies the schema, walks you through Enable Banking's free signup, generates push-notification keys, deploys the Edge Functions, and writes both apps' `.env` files.
+Guided: clone both repos side by side and run the wizard. It creates or links a Supabase project, applies the schema, deploys the functions and writes both `.env` files.
 
 ```bash
 git clone https://github.com/marcodonghiaa/myfinances.git
@@ -80,67 +38,44 @@ cd myfinances
 docker compose up -d --build
 ```
 
-The one thing it can't do for you: Enable Banking's signup itself has no API, so you'll get sent to their site mid-wizard to create a free application and download a key. Everything else — Supabase, Edge Functions, `.env` files — is automated.
+The only manual step is Enable Banking's signup, which has no API. The wizard sends you there to create a free **Production** application and download a key.
 
-**Manual, if you'd rather do it by hand:**
+Manual:
 
-1. **Supabase project.** Create one at [supabase.com](https://supabase.com), then apply the schema:
-   ```bash
-   supabase link --project-ref <your-project-ref>
-   supabase db push   # runs supabase/migrations/
-   ```
-2. **Enable Banking.** Sign up at [enablebanking.com](https://enablebanking.com), create a **Production** application (not Sandbox), and set its redirect URL to `https://<your-project-ref>.supabase.co/functions/v1/bank-consent-callback` — must match exactly, or bank linking fails later. Registering downloads the PSD2 private key. The app starts **"Inactive"**; in Enable Banking's own Control Panel, click **"Activate by linking accounts"** and link any one of your own real accounts through their UI — this is a one-time gate that unlocks the app for free, non-commercial "Restricted Production" use (see the [ToS notes](supabase/functions/README.md)). It does **not** connect that account to this app — that's a separate step, below.
-3. **Edge Functions** (self-serve bank linking from the dashboard): deploy the three functions in `supabase/functions/` and set `ENABLE_BANKING_APP_ID` / `ENABLE_BANKING_PRIVATE_KEY` / `FRONTEND_URL` as Supabase Edge Function secrets — see [`supabase/functions/README.md`](supabase/functions/README.md).
-4. **Local scripts:**
-   ```bash
-   npm install
-   cp .env.example .env   # fill in Enable Banking, Supabase, Gemini, Coinbase (optional), VAPID keys
-   ```
+1. Create a Supabase project, then `supabase link --project-ref <ref>` and `supabase db push`.
+2. In Enable Banking, create a Production application with redirect URL `https://<ref>.supabase.co/functions/v1/bank-consent-callback` (must match exactly). Activate it by linking one of your own accounts in their panel.
+3. Deploy the functions and set `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY` and `FRONTEND_URL` as Edge Function secrets.
+4. `npm install`, then `cp .env.example .env` and fill it in.
 
-**Link your first bank into the app itself** (a separate step from activating the Enable Banking application above, even for the same account — Enable Banking's own activation never authorizes on this app's behalf). One-time per bank, or whenever its consent expires (`session-check.js` warns as expiry approaches). Easiest via the dashboard's "Connect a bank" button (Accounts page) once Edge Functions are deployed; or from the CLI:
+Link a bank from the dashboard's "Connect a bank" button, or from the CLI:
 
 ```bash
-node start-auth.js "<Bank Name>" <COUNTRY>   # e.g. node start-auth.js "FinecoBank" IT
-# open the printed URL, log in, approve consent — you'll be redirected to
-# https://localhost:3000/callback?code=... (the page won't load, that's expected)
-node exchange-code.js <code>   # prints the linked account(s) — add them to the `accounts` table
+node start-auth.js "<Bank Name>" <COUNTRY>   # e.g. "FinecoBank" IT
+node exchange-code.js <code>                 # code from the redirect URL; add the printed accounts to `accounts`
 ```
 
-Run a full sync manually:
+Run a sync by hand: `bash run-daily-sync.sh`
 
-```bash
-bash run-daily-sync.sh
+## Scheduling
+
+Docker runs everything on its own schedule (`scheduler.js`). Without Docker, use cron or launchd:
+
+```
+0 */6 * * *    cd /path/to/myfinances && bash run-daily-sync.sh
+*/30 * * * *   cd /path/to/myfinances && bash run-notify.sh
 ```
 
-## Automated sync (launchd, cron, or systemd)
+## Data model
 
-macOS (`launchd`) is what the reference deployment uses — see `com.marco.financesync.plist` (hourly, runs `run-daily-sync.sh`) and `com.marco.worthitnotify.plist` (every 30 min, runs `run-notify.sh`) for the exact job definitions.
+Every table is Row Level Security scoped to `auth.uid() = user_id`. Main tables: `accounts`, `transactions` (primary key `(account_uid, entry_reference)`), `net_worth_snapshots`, `fx_rates`, `category_rules`, `subscription_billing_overrides`, `portfolio_holdings/snapshots`, `crypto_holdings/snapshots`. The dashboard reads `security_invoker` views such as `v_net_worth_daily`, `v_transactions_eur` and `v_subscriptions`.
 
-```bash
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.marco.financesync.plist
-launchctl print gui/$(id -u)/com.marco.financesync        # check it's loaded
-launchctl kickstart -p gui/$(id -u)/com.marco.financesync # trigger manually
-launchctl bootout gui/$(id -u)/com.marco.financesync.plist
-```
+## Security
 
-On Linux, a `cron` entry (`0 * * * * cd /path/to/finance-app && bash run-daily-sync.sh`) or a systemd timer does the same job — there's nothing macOS-specific in the scripts themselves.
-
-## Docker
-
-Two containers (sync scheduler + frontend), both talking to your own Supabase Cloud project — not containerized itself. `./setup.sh` (see Setup above) writes the `.env` files these need and finishes with the exact `docker compose up -d --build` command.
-
-The frontend is served at `http://localhost:3000`; the sync container runs on its own internal schedule (`scheduler.js`, hourly sync + 30-minute notify check, no host cron needed).
-
-## Security notes
-
-This is a public portfolio piece handling real personal financial data, so it's built security-first:
-
-- `.env`, `*.pem`, and `last-sync.json` are gitignored and must never be committed.
-- All Supabase tables are RLS-scoped to the authenticated user (`auth.uid() = user_id`) — no table is readable across users.
-- The frontend never uses a service-role key — only the anon/publishable key, subject to RLS. Supabase's modern key system (`sb_publishable_...` / `sb_secret_...`) is used throughout; the legacy JWT key pair that could bypass RLS has been fully disabled.
-- `transactions` is otherwise append-only from the pipeline's perspective — a Postgres trigger blocks user-initiated updates to every bank-sourced column (amount, currency, dates, account_uid, raw payload, etc.), leaving only the user-editable fields (category, transaction_type, worth_it, flow_type, personal_amount, owed_by, owed_settled) writable. `EXECUTE` on the trigger function itself is revoked from `anon`/`authenticated` so it can't be invoked directly via RPC.
-- The Coinbase integration uses a read-only ("View") API key — it can never place trades or move funds.
-- The PSD2 private key (`*.pem`) authenticates this app to Enable Banking; treat it like a password.
+- `.env`, `*.pem` and `last-sync.json` are gitignored. The Enable Banking key authenticates your app, so treat it like a password.
+- The dashboard only uses the publishable key. The service-role key stays in the sync scripts and Edge Functions.
+- A Postgres trigger blocks users from editing bank-sourced columns on `transactions`. Only category, type, flow, split and worth-it fields are writable.
+- The bank-linking `state` is a single-use token, not a user id.
+- The Coinbase integration uses a read-only key.
 
 ## License
 
