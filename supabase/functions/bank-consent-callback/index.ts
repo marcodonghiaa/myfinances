@@ -197,11 +197,11 @@ Deno.serve(async (req) => {
     }
 
     // Fetch an immediate balance for each linked account instead of leaving
-    // it invisible until the next scheduled sync (up to an hour away) --
+    // it invisible until the next scheduled sync (up to 6 hours away) --
     // same /accounts/{uid}/balances call sync-networth.js makes on its
     // batch schedule, just run once here for the accounts that just linked.
     // Best-effort: a failure here doesn't fail the link, the batch job
-    // catches it up within the hour regardless.
+    // catches it up at the next sync regardless.
     const today = new Date().toISOString().slice(0, 10);
     for (const row of savedRows) {
       try {

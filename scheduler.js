@@ -36,5 +36,6 @@ function runNotify() {
 
 runSync();
 runNotify();
-setInterval(runSync, 60 * 60 * 1000); // hourly
+// Every 6h = 4 runs/day: banks typically cap unattended (PSD2) account access around 4 calls/day.
+setInterval(runSync, 6 * 60 * 60 * 1000);
 setInterval(runNotify, 30 * 60 * 1000); // every 30 min

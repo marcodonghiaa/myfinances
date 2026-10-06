@@ -12,7 +12,7 @@ const TYPES = ['Subscription', 'One-time'];
 async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category, bank_transaction_code')
+    .select('entry_reference, account_uid, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category, bank_transaction_code')
     .is('transaction_type', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
@@ -38,6 +38,7 @@ async function applyTransferDefault(rows) {
     const { error } = await supabase
       .from('transactions')
       .update({ transaction_type: 'One-time' })
+      .eq('account_uid', row.account_uid)
       .eq('entry_reference', row.entry_reference)
       .is('transaction_type', null);
     if (error) console.error(`Failed to update ${row.entry_reference}:`, error.message);
@@ -73,8 +74,11 @@ Return a JSON array of {"entry_reference": string, "transaction_type": string} f
   });
 }
 
-async function applyTypes(results) {
+async function applyTypes(results, rows) {
+  const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
   for (const { entry_reference, transaction_type } of results) {
+    const account_uid = accountByRef.get(entry_reference);
+    if (!account_uid) continue; // model echoed a reference we never sent
     if (!TYPES.includes(transaction_type)) {
       console.warn(`Skipping invalid type "${transaction_type}" for ${entry_reference}`);
       continue;
@@ -84,6 +88,7 @@ async function applyTypes(results) {
     const { error } = await supabase
       .from('transactions')
       .update({ transaction_type })
+      .eq('account_uid', account_uid)
       .eq('entry_reference', entry_reference)
       .is('transaction_type', null);
     if (error) console.error(`Failed to update ${entry_reference}:`, error.message);
@@ -94,9 +99,18 @@ async function main() {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
 
   let totalClassified = 0;
+  let lastPageKey = null;
   while (true) {
     const rows = await fetchUnclassified();
     if (rows.length === 0) break;
+
+    // Same page back means nothing got written (bad AI answer, failed update): stop instead of looping and re-billing Gemini.
+    const pageKey = rows.map((r) => `${r.account_uid}:${r.entry_reference}`).join();
+    if (pageKey === lastPageKey) {
+      console.warn('No progress on the last batch, stopping.');
+      break;
+    }
+    lastPageKey = pageKey;
 
     const transferRows = rows.filter((r) => isTransferCode(r.bank_transaction_code));
     const otherRows = rows.filter((r) => !isTransferCode(r.bank_transaction_code));
@@ -109,7 +123,7 @@ async function main() {
     if (otherRows.length > 0) {
       console.log(`Classifying ${otherRows.length} transaction(s)...`);
       const results = await classifyBatch(otherRows);
-      await applyTypes(results);
+      await applyTypes(results, otherRows);
     }
 
     totalClassified += rows.length;

@@ -21,7 +21,7 @@ function resolveFlowType(row) {
 async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, bank_transaction_code, credit_debit_indicator')
+    .select('entry_reference, account_uid, bank_transaction_code, credit_debit_indicator')
     .is('flow_type', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
@@ -38,6 +38,7 @@ async function main() {
       const { error } = await supabase
         .from('transactions')
         .update({ flow_type: resolveFlowType(row) })
+        .eq('account_uid', row.account_uid)
         .eq('entry_reference', row.entry_reference)
         .is('flow_type', null);
       if (error) console.error(`Failed to update ${row.entry_reference}:`, error.message);

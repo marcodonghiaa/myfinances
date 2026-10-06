@@ -50,8 +50,15 @@ async function main() {
   const rows = [];
 
   for (const userId of userIds) {
-    await checkSessionExpiry(supabase, userId);
-    const accounts = await getAccounts(supabase, userId);
+    let accounts;
+    try {
+      await checkSessionExpiry(supabase, userId);
+      accounts = await getAccounts(supabase, userId);
+    } catch (err) {
+      // One user's failure shouldn't stop everyone after them from syncing.
+      console.error(`Skipping user ${userId}:`, err.message);
+      continue;
+    }
 
     for (const account of accounts) {
       console.log(`\n=== ${account.label ?? account.currency} ===`);

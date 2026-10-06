@@ -21,7 +21,7 @@ webpush.setVapidDetails(
 async function fetchEligibleTransactions() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, creditor_name, amount, currency, category')
+    .select('entry_reference, account_uid, creditor_name, amount, currency, category')
     .eq('user_id', USER_ID)
     .eq('credit_debit_indicator', 'DBIT')
     .in('category', DISCRETIONARY_CATEGORIES)
@@ -70,7 +70,7 @@ async function sendToAllSubscriptions(subscriptions, payload) {
 
 // One transaction: the specific deep-link prompt. Several at once (e.g. an hour
 // where multiple purchases all crossed the 3h line together, or an old backlog
-// from a period without hourly sync) become ONE digest push instead of a stack
+// from a period without sync) become ONE digest push instead of a stack
 // of separate notifications for the same shopping spree.
 function buildPayload(transactions) {
   if (transactions.length === 1) {
@@ -117,6 +117,7 @@ async function main() {
     const { error } = await supabase
       .from('transactions')
       .update({ worth_it_prompted_at: now })
+      .eq('account_uid', tx.account_uid)
       .eq('entry_reference', tx.entry_reference);
     if (error) console.error(`Failed to mark ${tx.entry_reference} prompted:`, error.message);
     console.log(`Prompted: ${tx.creditor_name} (${tx.amount} ${tx.currency})`);

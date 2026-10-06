@@ -13,6 +13,7 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY
   : fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
 const SYNC_STATE_FILE = 'last-sync.json';
 const FETCH_TIMEOUT_MS = 60000; // matches Actual Budget's Enable Banking timeout
+const OVERLAP_DAYS = 7;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
@@ -91,11 +92,22 @@ async function main() {
   const userIds = await getAllUserIds(supabase);
 
   for (const userId of userIds) {
-    await checkSessionExpiry(supabase, userId);
-    const accounts = await getAccounts(supabase, userId);
+    let accounts;
+    try {
+      await checkSessionExpiry(supabase, userId);
+      accounts = await getAccounts(supabase, userId);
+    } catch (err) {
+      // One user's failure shouldn't stop everyone after them from syncing.
+      console.error(`Skipping user ${userId}:`, err.message);
+      continue;
+    }
 
     for (const account of accounts) {
-      const dateFrom = lastSync[account.uid] || new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+      // Re-fetch an overlap before the cursor: banks post transactions days after their
+      // booking_date, so a cursor of "today" would skip them forever. Upsert dedupes.
+      const dateFrom = lastSync[account.uid]
+        ? new Date(Date.parse(lastSync[account.uid]) - OVERLAP_DAYS * 24 * 3600 * 1000).toISOString().slice(0, 10)
+        : new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
       console.log(`\n=== ${account.label ?? account.currency} — syncing since ${dateFrom} ===`);
 
       try {
@@ -106,7 +118,7 @@ async function main() {
         if (rows.length > 0) {
           const { error } = await supabase
             .from('transactions')
-            .upsert(rows, { onConflict: 'entry_reference' }); // dedup, Actual-Budget-style
+            .upsert(rows, { onConflict: 'account_uid,entry_reference' }); // dedup, Actual-Budget-style
 
           if (error) {
             upsertOk = false;

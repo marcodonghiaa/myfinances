@@ -15,7 +15,7 @@ const CATEGORIES = [
 async function fetchUncategorized() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator')
+    .select('entry_reference, account_uid, user_id, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator')
     .is('category', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
@@ -25,7 +25,7 @@ async function fetchUncategorized() {
 async function fetchRules() {
   const { data, error } = await supabase
     .from('category_rules')
-    .select('match_field, match_text, set_category, set_transaction_type')
+    .select('user_id, match_field, match_text, set_category, set_transaction_type')
     .not('set_category', 'is', null)
     .order('priority', { ascending: true });
   if (error) throw error;
@@ -33,6 +33,7 @@ async function fetchRules() {
 }
 
 function matchRule(row, rule) {
+  if (rule.user_id !== row.user_id) return false; // rules are per-user; the service role sees everyone's
   if (!rule.match_text) return false; // no text to match -- skip, don't crash or match everything
   const text = rule.match_text.toLowerCase();
   const fields =
@@ -95,8 +96,11 @@ Return a JSON array of {"entry_reference": string, "category": string} for every
   });
 }
 
-async function applyCategories(results) {
+async function applyCategories(results, rows) {
+  const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
   for (const { entry_reference, category } of results) {
+    const account_uid = accountByRef.get(entry_reference);
+    if (!account_uid) continue; // model echoed a reference we never sent
     if (!CATEGORIES.includes(category)) {
       console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
       continue;
@@ -106,6 +110,7 @@ async function applyCategories(results) {
     const { error } = await supabase
       .from('transactions')
       .update({ category })
+      .eq('account_uid', account_uid)
       .eq('entry_reference', entry_reference)
       .is('category', null);
     if (error) console.error(`Failed to update ${entry_reference}:`, error.message);
@@ -119,6 +124,7 @@ async function applyRuleMatches(matched) {
     const { error } = await supabase
       .from('transactions')
       .update(update)
+      .eq('account_uid', row.account_uid)
       .eq('entry_reference', row.entry_reference)
       .is('category', null);
     if (error) console.error(`Failed to apply rule to ${row.entry_reference}:`, error.message);
@@ -132,9 +138,18 @@ async function main() {
   if (rules.length > 0) console.log(`Loaded ${rules.length} categorization rule(s).`);
 
   let totalCategorized = 0;
+  let lastPageKey = null;
   while (true) {
     const rows = await fetchUncategorized();
     if (rows.length === 0) break;
+
+    // Same page back means nothing got written (bad AI answer, failed update): stop instead of looping and re-billing Gemini.
+    const pageKey = rows.map((r) => `${r.account_uid}:${r.entry_reference}`).join();
+    if (pageKey === lastPageKey) {
+      console.warn('No progress on the last batch, stopping.');
+      break;
+    }
+    lastPageKey = pageKey;
 
     const { matched, unmatched } = applyRules(rows, rules);
 
@@ -146,7 +161,7 @@ async function main() {
     if (unmatched.length > 0) {
       console.log(`Categorizing ${unmatched.length} transaction(s) via AI...`);
       const results = await classifyBatch(unmatched);
-      await applyCategories(results);
+      await applyCategories(results, unmatched);
     }
 
     totalCategorized += rows.length;
