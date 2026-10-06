@@ -1,29 +1,14 @@
 const { checkSessionExpiry } = require('./session-check');
 
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
-const fs = require('fs');
-const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
+const { getToken } = require('./eb-token');
 
-const APP_ID = process.env.APP_ID;
-const PRIVATE_KEY = process.env.PRIVATE_KEY
-  ? process.env.PRIVATE_KEY.replace(/\\n/g, '\n')
-  : fs.readFileSync(process.env.PRIVATE_KEY_FILE, 'utf8');
 const FETCH_TIMEOUT_MS = 60000;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
-
-function getToken() {
-  const now = Math.floor(Date.now() / 1000);
-  return jwt.sign(
-    { iss: 'enablebanking.com', aud: 'api.enablebanking.com', iat: now, exp: now + 3600 },
-    PRIVATE_KEY,
-    { algorithm: 'RS256', header: { typ: 'JWT', alg: 'RS256', kid: APP_ID } }
-  );
-}
 
 async function fetchWithTimeout(url, options) {
   const controller = new AbortController();

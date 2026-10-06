@@ -47,12 +47,7 @@ Manual:
 3. Deploy the functions and set `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY` and `FRONTEND_URL` as Edge Function secrets.
 4. `npm install`, then `cp .env.example .env` and fill it in.
 
-Link a bank from the dashboard's "Connect a bank" button, or from the CLI:
-
-```bash
-node start-auth.js "<Bank Name>" <COUNTRY>   # e.g. "FinecoBank" IT
-node exchange-code.js <code>                 # code from the redirect URL; add the printed accounts to `accounts`
-```
+Link a bank from the dashboard's "Connect a bank" button on the Accounts page. Re-link it when its consent expires (`session-check.js` warns beforehand).
 
 Run a sync by hand: `bash run-daily-sync.sh`
 

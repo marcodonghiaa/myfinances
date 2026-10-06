@@ -1,6 +1,5 @@
 require('dotenv').config();
 const crypto = require('crypto');
-const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
@@ -45,9 +44,8 @@ function base64url(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// jsonwebtoken (used elsewhere in this repo for Enable Banking's RS256 JWTs)
-// doesn't support EdDSA, so this builds and signs the JWT by hand -- Node's
-// crypto module natively supports Ed25519 signing (sign algorithm = null).
+// Builds and signs the JWT by hand -- Node's crypto module natively supports
+// Ed25519 signing (sign algorithm = null).
 function buildJwt() {
   const nonce = crypto.randomBytes(16).toString('hex');
   const now = Math.floor(Date.now() / 1000);

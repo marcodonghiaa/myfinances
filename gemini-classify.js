@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 
 // Shared by categorize.js and classify-type.js: both send a batch of
 // transactions to Gemini and expect back a JSON array of

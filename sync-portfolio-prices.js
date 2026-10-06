@@ -1,6 +1,5 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const fetch = require('node-fetch');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;

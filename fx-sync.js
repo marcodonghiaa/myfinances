@@ -1,6 +1,5 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const fetch = require('node-fetch');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const CURRENCIES = ['USD', 'GBP', 'CHF']; // add more here as you add accounts in other currencies

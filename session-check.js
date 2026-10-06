@@ -17,7 +17,7 @@ async function checkSessionExpiry(supabase, userId) {
     const daysLeft = Math.ceil((validUntil - now) / (1000 * 60 * 60 * 24));
 
     if (daysLeft <= 0) {
-      console.error(`\n⚠️  ${row.label}: Enable Banking consent EXPIRED on ${row.consent_valid_until}. Redo the auth flow (start-auth.js → exchange-code.js) for this bank.\n`);
+      console.error(`\n⚠️  ${row.label}: Enable Banking consent EXPIRED on ${row.consent_valid_until}. Re-link this bank from the dashboard's Accounts page.\n`);
     } else if (daysLeft <= 14) {
       console.warn(`\n⚠️  ${row.label}: Enable Banking consent expires in ${daysLeft} day(s) (${row.consent_valid_until}). Plan to re-authorize soon.\n`);
     }
