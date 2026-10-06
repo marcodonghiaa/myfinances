@@ -1,8 +1,8 @@
 // Supabase Edge Function: start-bank-consent
 //
 // First step of self-serve bank linking. Given a bank name + country, signs
-// the Enable Banking RS256 JWT server-side (same logic as the local
-// start-auth.js CLI script, just moved off the Mac) and returns the consent
+// the Enable Banking RS256 JWT server-side (logic that used to live in a
+// local CLI script) and returns the consent
 // URL the user's browser should be redirected to.
 //
 // Called via supabase.functions.invoke from the browser, so it needs real
