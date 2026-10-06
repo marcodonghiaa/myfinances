@@ -1,7 +1,3 @@
-// Leftover guest account rows have fake uids, not real Enable Banking accounts,
-// so the sync pipeline must skip them.
-const GUEST_USER_ID = '88218f96-7cd3-4400-9080-20859c72a986';
-
 async function getAccounts(supabase, userId) {
   const { data, error } = await supabase
     .from('accounts')
@@ -22,8 +18,7 @@ async function getAllUserIds(supabase) {
   const { data, error } = await supabase.from('accounts').select('user_id');
   if (error) throw new Error(`Failed to load user ids: ${error.message}`);
   const ids = new Set((data || []).map((row) => row.user_id));
-  ids.delete(GUEST_USER_ID);
   return Array.from(ids);
 }
 
-module.exports = { getAccounts, getAllUserIds, GUEST_USER_ID };
+module.exports = { getAccounts, getAllUserIds };
