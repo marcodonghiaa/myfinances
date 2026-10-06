@@ -14,54 +14,13 @@
 // user id only comes from looking up and deleting that row here.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { signEnableBankingJwt } from "../_shared/enable-banking.ts";
 
-const ENABLE_BANKING_APP_ID = Deno.env.get("ENABLE_BANKING_APP_ID")!;
-const ENABLE_BANKING_PRIVATE_KEY = Deno.env.get("ENABLE_BANKING_PRIVATE_KEY")!;
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
-
-function base64url(bytes: ArrayBuffer | Uint8Array): string {
-  const bin = String.fromCharCode(...new Uint8Array(bytes));
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  const der = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/, "")
-    .replace(/-----END PRIVATE KEY-----/, "")
-    .replace(/\s+/g, "");
-  const bin = atob(der);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return crypto.subtle.importKey(
-    "pkcs8",
-    bytes,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-}
-
-async function signEnableBankingJwt(): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  const header = { typ: "JWT", alg: "RS256", kid: ENABLE_BANKING_APP_ID };
-  const payload = {
-    iss: "enablebanking.com",
-    aud: "api.enablebanking.com",
-    iat: now,
-    exp: now + 3600,
-  };
-  const signingInput = `${base64url(new TextEncoder().encode(JSON.stringify(header)))}.${base64url(new TextEncoder().encode(JSON.stringify(payload)))}`;
-  const key = await importPrivateKey(ENABLE_BANKING_PRIVATE_KEY);
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    new TextEncoder().encode(signingInput),
-  );
-  return `${signingInput}.${base64url(signature)}`;
-}
 
 const APP_URL = Deno.env.get("FRONTEND_URL")!;
 
