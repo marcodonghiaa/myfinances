@@ -4,4 +4,4 @@ node_modules
 .git
 sync-log-*.txt
 notify-log-*.txt
-last-sync.json
+last-sync.json*

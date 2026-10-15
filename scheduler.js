@@ -6,6 +6,9 @@
 // run-daily-sync.sh and run-notify.sh directly.
 const { spawnSync } = require("node:child_process");
 
+// A script that hangs would otherwise block every later step and run forever.
+const SCRIPT_TIMEOUT_MS = 10 * 60 * 1000;
+
 const SYNC_STEPS = [
   "sync-transactions.js",
   "sync-networth.js",
@@ -20,8 +23,10 @@ const SYNC_STEPS = [
 
 function run(script) {
   console.log(`[scheduler] ${new Date().toISOString()} running ${script}`);
-  const result = spawnSync(process.execPath, [script], { cwd: __dirname, stdio: "inherit" });
-  if (result.status !== 0) {
+  const result = spawnSync(process.execPath, [script], { cwd: __dirname, stdio: "inherit", timeout: SCRIPT_TIMEOUT_MS });
+  if (result.error?.code === "ETIMEDOUT") {
+    console.error(`[scheduler] ${script} killed after ${SCRIPT_TIMEOUT_MS / 1000}s`);
+  } else if (result.status !== 0) {
     console.error(`[scheduler] ${script} exited with code ${result.status}`);
   }
 }

@@ -1,5 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const { fetchWithTimeout } = require('./http');
+const { parseQuote } = require('./yahoo-quote');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -13,22 +15,13 @@ async function fetchHoldings() {
   return data;
 }
 
-const ASSET_TYPE_MAP = { EQUITY: 'Stock', ETF: 'ETF', MUTUALFUND: 'Fund', BOND: 'Bond' };
-
 async function fetchQuote(symbol) {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
     { headers: { 'User-Agent': 'Mozilla/5.0' } }
   );
   if (!res.ok) throw new Error(`Yahoo Finance error ${res.status} for ${symbol}: ${await res.text()}`);
-  const data = await res.json();
-  const result = data.chart?.result?.[0];
-  if (!result) throw new Error(`No quote data for ${symbol}: ${JSON.stringify(data.chart?.error)}`);
-  return {
-    price: result.meta.regularMarketPrice,
-    currency: result.meta.currency,
-    assetType: ASSET_TYPE_MAP[result.meta.instrumentType] || 'Other',
-  };
+  return parseQuote(await res.json(), symbol);
 }
 
 async function getLatestFxRate(currency) {

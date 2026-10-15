@@ -4,21 +4,10 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
-
-const FETCH_TIMEOUT_MS = 60000;
+const { fetchWithTimeout } = require('./http');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
-
-async function fetchWithTimeout(url, options) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 async function getBalances(token, uid) {
   const res = await fetchWithTimeout(`https://api.enablebanking.com/accounts/${uid}/balances`, {

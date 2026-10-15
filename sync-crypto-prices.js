@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const { fetchWithTimeout } = require('./http');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -15,7 +16,7 @@ async function fetchHoldings() {
 
 async function fetchPrices(coingeckoIds) {
   const ids = [...new Set(coingeckoIds)].join(',');
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`,
     { headers: { Accept: 'application/json' } }
   );

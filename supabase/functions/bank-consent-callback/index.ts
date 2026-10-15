@@ -32,6 +32,13 @@ function redirectToApp(params: Record<string, string>): Response {
   return new Response(null, { status: 302, headers: { Location: url.toString() } });
 }
 
+// Log the real reason server-side; the redirect URL (and the toast it feeds) only
+// gets a generic message so database or upstream error text never reaches the browser.
+function failLink(detail: string): Response {
+  console.error("bank-consent-callback failed:", detail);
+  return redirectToApp({ bank_link_error: "Couldn't link the bank, please try again" });
+}
+
 interface EnableBankingAccount {
   uid: string;
   currency: string;
@@ -47,7 +54,9 @@ Deno.serve(async (req) => {
   const errorParam = url.searchParams.get("error");
 
   if (errorParam) {
-    return redirectToApp({ bank_link_error: errorParam });
+    // errorParam comes from a public GET, so it is logged, not echoed into the app.
+    console.error("bank declined consent:", errorParam);
+    return redirectToApp({ bank_link_error: "The bank did not approve the connection" });
   }
   if (!code || !state) {
     return redirectToApp({ bank_link_error: "Missing code or state" });
@@ -78,9 +87,9 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return redirectToApp({ bank_link_error: data.message ?? "Enable Banking error" });
+      return failLink(data.message ?? `Enable Banking error ${res.status}`);
     }
 
     const accounts = (data.accounts ?? []) as Array<EnableBankingAccount>;
@@ -109,7 +118,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId)
           .eq("iban", iban)
           .maybeSingle();
-        if (error) return redirectToApp({ bank_link_error: error.message });
+        if (error) return failLink(error.message);
         existingUid = existing?.uid ?? null;
       }
       if (!existingUid && identificationHash) {
@@ -119,7 +128,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId)
           .eq("identification_hash", identificationHash)
           .maybeSingle();
-        if (error) return redirectToApp({ bank_link_error: error.message });
+        if (error) return failLink(error.message);
         existingUid = existing?.uid ?? null;
       }
 
@@ -135,7 +144,7 @@ Deno.serve(async (req) => {
           .update(patch)
           .eq("uid", existingUid);
         if (error) {
-          return redirectToApp({ bank_link_error: error.message });
+          return failLink(error.message);
         }
         savedRows.push({ uid: existingUid, label, currency: a.currency });
       } else {
@@ -149,7 +158,7 @@ Deno.serve(async (req) => {
           consent_valid_until: consentValidUntil,
         });
         if (error) {
-          return redirectToApp({ bank_link_error: error.message });
+          return failLink(error.message);
         }
         savedRows.push({ uid: a.uid, label, currency: a.currency });
       }
@@ -189,6 +198,6 @@ Deno.serve(async (req) => {
 
     return redirectToApp({ bank_linked: String(savedRows.length) });
   } catch (err) {
-    return redirectToApp({ bank_link_error: (err as Error).message });
+    return failLink((err as Error).message);
   }
 });

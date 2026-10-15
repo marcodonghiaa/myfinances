@@ -1,6 +1,7 @@
 require('dotenv').config();
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { fetchWithTimeout } = require('./http');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -66,7 +67,7 @@ function buildJwt() {
 
 async function fetchCoinbaseAccounts() {
   const token = buildJwt();
-  const res = await fetch(`https://${HOST}${PATH}`, {
+  const res = await fetchWithTimeout(`https://${HOST}${PATH}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Coinbase API error ${res.status}: ${await res.text()}`);

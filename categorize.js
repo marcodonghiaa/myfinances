@@ -1,6 +1,10 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { classifyWithGemini } = require('./gemini-classify');
+const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
+const { fetchBatchForOneUser } = require('./user-batch');
+const { createStallGuard } = require('./stall-guard');
+const { applyGroupedUpdates } = require('./batch-update');
+const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -12,14 +16,13 @@ const CATEGORIES = [
   'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Others',
 ];
 
-async function fetchUncategorized() {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('entry_reference, account_uid, user_id, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator')
-    .is('category', null)
-    .limit(BATCH_SIZE);
-  if (error) throw error;
-  return data;
+function fetchUncategorized(excludeUserIds) {
+  return fetchBatchForOneUser(supabase, {
+    select: 'entry_reference, account_uid, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator',
+    nullColumn: 'category',
+    limit: BATCH_SIZE,
+    excludeUserIds,
+  });
 }
 
 async function fetchRules() {
@@ -30,30 +33,6 @@ async function fetchRules() {
     .order('priority', { ascending: true });
   if (error) throw error;
   return data;
-}
-
-function matchRule(row, rule) {
-  if (rule.user_id !== row.user_id) return false; // rules are per-user; the service role sees everyone's
-  if (!rule.match_text) return false; // no text to match -- skip, don't crash or match everything
-  const text = rule.match_text.toLowerCase();
-  const fields =
-    rule.match_field === 'any'
-      ? [row.creditor_name, row.remittance_info]
-      : [row[rule.match_field]];
-  return fields.some((f) => (f || '').toLowerCase().includes(text));
-}
-
-// Deterministic user-authored rules take priority over the AI -- cheaper, faster,
-// and exactly what the user asked for, not a guess.
-function applyRules(rows, rules) {
-  const matched = [];
-  const unmatched = [];
-  for (const row of rows) {
-    const rule = rules.find((r) => matchRule(row, r));
-    if (rule) matched.push({ row, rule });
-    else unmatched.push(row);
-  }
-  return { matched, unmatched };
 }
 
 async function classifyBatch(rows) {
@@ -74,6 +53,8 @@ Category guide:
 - Others: only if nothing else plausibly fits.
 
 Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. This matters especially for P2P/bank transfers to a person: creditor_name alone (a person's name) tells you nothing, but remittance_info often does — e.g. a transfer to a friend with remittance_info mentioning "spotify" or "netflix" should be categorized by that actual purpose (Entertainment), not filed under Transfer just because the payment method was a person-to-person transfer. Only use Transfer when nothing in remittance_info indicates a real purpose.
+
+${UNTRUSTED_TEXT_NOTE}
 
 Transactions (JSON array):
 ${JSON.stringify(rows.map((r) => ({
@@ -98,6 +79,7 @@ Return a JSON array of {"entry_reference": string, "category": string} for every
 
 async function applyCategories(results, rows) {
   const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
+  const items = [];
   for (const { entry_reference, category } of results) {
     const account_uid = accountByRef.get(entry_reference);
     if (!account_uid) continue; // model echoed a reference we never sent
@@ -105,51 +87,70 @@ async function applyCategories(results, rows) {
       console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
       continue;
     }
-    // .is('category', null) guard: only ever fills in the category, never overwrites
-    // a value set by something else in the meantime.
-    const { error } = await supabase
-      .from('transactions')
-      .update({ category })
-      .eq('account_uid', account_uid)
-      .eq('entry_reference', entry_reference)
-      .is('category', null);
-    if (error) console.error(`Failed to update ${entry_reference}:`, error.message);
+    items.push({ account_uid, entry_reference, update: { category, category_source: 'ai' }, guardColumn: 'category' });
   }
+  await applyGroupedUpdates(supabase, items);
 }
 
 async function applyRuleMatches(matched) {
-  for (const { row, rule } of matched) {
-    const update = { category: rule.set_category };
-    if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
-    const { error } = await supabase
-      .from('transactions')
-      .update(update)
-      .eq('account_uid', row.account_uid)
-      .eq('entry_reference', row.entry_reference)
-      .is('category', null);
-    if (error) console.error(`Failed to apply rule to ${row.entry_reference}:`, error.message);
+  await applyGroupedUpdates(
+    supabase,
+    matched.map(({ row, rule }) => {
+      const update = { category: rule.set_category, category_source: 'rule' };
+      if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
+      return { account_uid: row.account_uid, entry_reference: row.entry_reference, update, guardColumn: 'category' };
+    }),
+  );
+}
+
+
+const REAPPLY_PAGE_SIZE = 1000;
+
+// Re-runs the current rules over rows the AI or an earlier rule categorized. Rows a user
+// edited by hand (category_source 'manual') or that predate provenance ('legacy') are
+// never selected, and the update statement guards on the same column.
+async function reapplyRules() {
+  const rules = await fetchRules();
+  if (rules.length === 0) {
+    console.log('No categorization rules to apply.');
+    return;
   }
+  let changed = 0;
+  for (let from = 0; ; from += REAPPLY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('user_id, account_uid, entry_reference, creditor_name, remittance_info, category, category_source')
+      .in('category_source', REAPPLY_SOURCES)
+      .order('account_uid')
+      .order('entry_reference')
+      .range(from, from + REAPPLY_PAGE_SIZE - 1);
+    if (error) throw error;
+    const items = planRuleReapply(data, rules);
+    await applyGroupedUpdates(supabase, items);
+    changed += items.length;
+    if (data.length < REAPPLY_PAGE_SIZE) break;
+  }
+  console.log(`Done. Re-applied rules to ${changed} transaction(s).`);
 }
 
 async function main() {
+  if (process.argv.includes('--reapply-rules')) return reapplyRules();
+
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
 
   const rules = await fetchRules();
   if (rules.length > 0) console.log(`Loaded ${rules.length} categorization rule(s).`);
 
   let totalCategorized = 0;
-  let lastPageKey = null;
+  const stalls = createStallGuard();
   while (true) {
-    const rows = await fetchUncategorized();
+    const rows = await fetchUncategorized(stalls.stuckUserIds);
     if (rows.length === 0) break;
 
-    // Same page back means nothing got written (bad AI answer, failed update): stop instead of looping and re-billing Gemini.
-    const pageKey = rows.map((r) => `${r.account_uid}:${r.entry_reference}`).join();
-    if (pageKey === lastPageKey) {
-      console.warn('No progress on the last batch, stopping.');
-      break;
+    if (stalls.isStalled(rows)) {
+      console.warn(`No progress for user ${rows[0].user_id}, skipping them for this run.`);
+      continue;
     }
-    lastPageKey = pageKey;
 
     const { matched, unmatched } = applyRules(rows, rules);
 
@@ -165,7 +166,6 @@ async function main() {
     }
 
     totalCategorized += rows.length;
-    if (rows.length < BATCH_SIZE) break; // fewer than a full page means we're caught up
   }
 
   console.log(`Done. Categorized ${totalCategorized} transaction(s).`);

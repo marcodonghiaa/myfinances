@@ -1,35 +1,17 @@
 const { checkSessionExpiry } = require('./session-check');
 
 require('dotenv').config();
-const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
+const { buildRows } = require('./transaction-rows');
+const { fetchWithTimeout } = require('./http');
+const { loadSyncState, saveSyncState } = require('./sync-state');
 
-const SYNC_STATE_FILE = 'last-sync.json';
-const FETCH_TIMEOUT_MS = 60000; // matches Actual Budget's Enable Banking timeout
+const SYNC_STATE_FILE = process.env.SYNC_STATE_FILE || 'last-sync.json';
 const OVERLAP_DAYS = 7;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-
-function loadLastSync() {
-  if (fs.existsSync(SYNC_STATE_FILE)) return JSON.parse(fs.readFileSync(SYNC_STATE_FILE, 'utf8'));
-  return {};
-}
-
-function saveLastSync(state) {
-  fs.writeFileSync(SYNC_STATE_FILE, JSON.stringify(state, null, 2));
-}
-
-async function fetchWithTimeout(url, options) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 async function getTransactionsPage(token, uid, dateFrom, continuationKey) {
   const params = new URLSearchParams({ date_from: dateFrom });
@@ -53,27 +35,9 @@ async function getAllTransactions(token, uid, dateFrom) {
   return all;
 }
 
-function mapToRow(tx, accountUid, userId) {
-  return {
-    entry_reference: tx.entry_reference,
-    account_uid: accountUid,
-    amount: parseFloat(tx.transaction_amount.amount),
-    currency: tx.transaction_amount.currency,
-    credit_debit_indicator: tx.credit_debit_indicator,
-    creditor_name: tx.creditor?.name || null,
-    debtor_name: tx.debtor?.name || null,
-    remittance_info: (tx.remittance_information || []).join(' '),
-    booking_date: tx.booking_date,
-    value_date: tx.value_date,
-    bank_transaction_code: tx.bank_transaction_code?.code || null,
-    raw: tx,
-    user_id: userId,
-  };
-}
-
 async function main() {
   const token = getToken();
-  const lastSync = loadLastSync();
+  const lastSync = loadSyncState(SYNC_STATE_FILE);
   const today = new Date().toISOString().slice(0, 10);
   const userIds = await getAllUserIds(supabase);
 
@@ -98,7 +62,7 @@ async function main() {
 
       try {
         const transactions = await getAllTransactions(token, account.uid, dateFrom);
-        const rows = transactions.map(tx => mapToRow(tx, account.uid, userId));
+        const rows = buildRows(transactions, account.uid, userId);
 
         let upsertOk = true;
         if (rows.length > 0) {
@@ -124,7 +88,7 @@ async function main() {
     }
   }
 
-  saveLastSync(lastSync);
+  saveSyncState(SYNC_STATE_FILE, lastSync);
 }
 
 main();

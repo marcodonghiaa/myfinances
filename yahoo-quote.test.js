@@ -1,0 +1,30 @@
+const test = require('node:test');
+const assert = require('node:assert');
+const { parseQuote } = require('./yahoo-quote');
+
+const chart = (meta) => ({ chart: { result: [{ meta }] } });
+
+test('parses price, currency and asset type', () => {
+  assert.deepStrictEqual(
+    parseQuote(chart({ regularMarketPrice: 12.5, currency: 'USD', instrumentType: 'ETF' }), 'VWCE'),
+    { price: 12.5, currency: 'USD', assetType: 'ETF' }
+  );
+});
+
+test('unknown instrument type maps to Other', () => {
+  const q = parseQuote(chart({ regularMarketPrice: 1, currency: 'EUR', instrumentType: 'FUTURE' }), 'X');
+  assert.strictEqual(q.assetType, 'Other');
+});
+
+test('throws when Yahoo omits the price, so no NaN row reaches the upsert', () => {
+  assert.throws(() => parseQuote(chart({ currency: 'EUR' }), 'X'), /No valid price for X/);
+});
+
+test('throws on a non-finite or non-numeric price', () => {
+  assert.throws(() => parseQuote(chart({ regularMarketPrice: 'n/a', currency: 'EUR' }), 'X'), /No valid price/);
+  assert.throws(() => parseQuote(chart({ regularMarketPrice: NaN, currency: 'EUR' }), 'X'), /No valid price/);
+});
+
+test('throws when the response has no result', () => {
+  assert.throws(() => parseQuote({ chart: { result: null, error: { code: 'Not Found' } } }, 'X'), /No quote data for X/);
+});
