@@ -14,6 +14,11 @@ function fakeSupabase(rows) {
         select() { return q; },
         is(col, val) { filters.push((r) => r[col] === val); return q; },
         eq(col, val) { filters.push((r) => r[col] === val); return q; },
+        not(col, op, val) {
+          const ids = val.slice(1, -1).split(',');
+          filters.push((r) => !ids.includes(r[col]));
+          return q;
+        },
         limit(n) { max = n; return q; },
         then(resolve) {
           resolve({ data: rows.filter((r) => filters.every((f) => f(r))).slice(0, max), error: null });
@@ -48,4 +53,15 @@ test('returns an empty array when nothing is pending', async () => {
 test('throws when the query fails', async () => {
   const failing = { from: () => ({ select: () => ({ is: () => ({ limit: () => Promise.resolve({ data: null, error: new Error('boom') }) }) }) }) };
   await assert.rejects(() => fetchBatchForOneUser(failing, opts), /boom/);
+});
+
+test('skips excluded users and serves the next one', async () => {
+  const db = fakeSupabase([row('a', '1'), row('b', '2')]);
+  const batch = await fetchBatchForOneUser(db, { ...opts, excludeUserIds: new Set(['a']) });
+  assert.deepStrictEqual(batch.map((r) => r.user_id), ['b']);
+});
+
+test('returns an empty array when every pending user is excluded', async () => {
+  const db = fakeSupabase([row('a', '1')]);
+  assert.deepStrictEqual(await fetchBatchForOneUser(db, { ...opts, excludeUserIds: new Set(['a']) }), []);
 });

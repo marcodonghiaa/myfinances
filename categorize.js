@@ -2,6 +2,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
 const { fetchBatchForOneUser } = require('./user-batch');
+const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
 const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
 
@@ -15,11 +16,12 @@ const CATEGORIES = [
   'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Others',
 ];
 
-function fetchUncategorized() {
+function fetchUncategorized(excludeUserIds) {
   return fetchBatchForOneUser(supabase, {
     select: 'entry_reference, account_uid, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator',
     nullColumn: 'category',
     limit: BATCH_SIZE,
+    excludeUserIds,
   });
 }
 
@@ -140,18 +142,15 @@ async function main() {
   if (rules.length > 0) console.log(`Loaded ${rules.length} categorization rule(s).`);
 
   let totalCategorized = 0;
-  let lastPageKey = null;
+  const stalls = createStallGuard();
   while (true) {
-    const rows = await fetchUncategorized();
+    const rows = await fetchUncategorized(stalls.stuckUserIds);
     if (rows.length === 0) break;
 
-    // Same page back means nothing got written (bad AI answer, failed update): stop instead of looping and re-billing Gemini.
-    const pageKey = rows.map((r) => `${r.account_uid}:${r.entry_reference}`).join();
-    if (pageKey === lastPageKey) {
-      console.warn('No progress on the last batch, stopping.');
-      break;
+    if (stalls.isStalled(rows)) {
+      console.warn(`No progress for user ${rows[0].user_id}, skipping them for this run.`);
+      continue;
     }
-    lastPageKey = pageKey;
 
     const { matched, unmatched } = applyRules(rows, rules);
 

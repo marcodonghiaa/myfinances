@@ -2,6 +2,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
 const { fetchBatchForOneUser } = require('./user-batch');
+const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
@@ -11,11 +12,12 @@ const BATCH_SIZE = 40;
 
 const TYPES = ['Subscription', 'One-time'];
 
-function fetchUnclassified() {
+function fetchUnclassified(excludeUserIds) {
   return fetchBatchForOneUser(supabase, {
     select: 'entry_reference, account_uid, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category, bank_transaction_code',
     nullColumn: 'transaction_type',
     limit: BATCH_SIZE,
+    excludeUserIds,
   });
 }
 
@@ -95,18 +97,15 @@ async function main() {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
 
   let totalClassified = 0;
-  let lastPageKey = null;
+  const stalls = createStallGuard();
   while (true) {
-    const rows = await fetchUnclassified();
+    const rows = await fetchUnclassified(stalls.stuckUserIds);
     if (rows.length === 0) break;
 
-    // Same page back means nothing got written (bad AI answer, failed update): stop instead of looping and re-billing Gemini.
-    const pageKey = rows.map((r) => `${r.account_uid}:${r.entry_reference}`).join();
-    if (pageKey === lastPageKey) {
-      console.warn('No progress on the last batch, stopping.');
-      break;
+    if (stalls.isStalled(rows)) {
+      console.warn(`No progress for user ${rows[0].user_id}, skipping them for this run.`);
+      continue;
     }
-    lastPageKey = pageKey;
 
     const transferRows = rows.filter((r) => isTransferCode(r.bank_transaction_code));
     const otherRows = rows.filter((r) => !isTransferCode(r.bank_transaction_code));
