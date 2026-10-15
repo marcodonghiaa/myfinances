@@ -7,6 +7,7 @@
 // stays as ordinary spend/income.
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const { applyGroupedUpdates } = require('./batch-update');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const BATCH_SIZE = 200;
@@ -34,15 +35,15 @@ async function main() {
     const rows = await fetchUnclassified();
     if (rows.length === 0) break;
 
-    for (const row of rows) {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ flow_type: resolveFlowType(row) })
-        .eq('account_uid', row.account_uid)
-        .eq('entry_reference', row.entry_reference)
-        .is('flow_type', null);
-      if (error) console.error(`Failed to update ${row.entry_reference}:`, error.message);
-    }
+    await applyGroupedUpdates(
+      supabase,
+      rows.map((row) => ({
+        account_uid: row.account_uid,
+        entry_reference: row.entry_reference,
+        update: { flow_type: resolveFlowType(row) },
+        guardColumn: 'flow_type',
+      })),
+    );
 
     totalClassified += rows.length;
     if (rows.length < BATCH_SIZE) break;

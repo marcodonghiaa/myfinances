@@ -2,6 +2,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
 const { fetchBatchForOneUser } = require('./user-batch');
+const { applyGroupedUpdates } = require('./batch-update');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -33,15 +34,15 @@ function isTransferCode(code) {
 // Transfers are always One-time by definition -- deterministic, not an AI judgment
 // call, and it skips the API call entirely for these rows.
 async function applyTransferDefault(rows) {
-  for (const row of rows) {
-    const { error } = await supabase
-      .from('transactions')
-      .update({ transaction_type: 'One-time' })
-      .eq('account_uid', row.account_uid)
-      .eq('entry_reference', row.entry_reference)
-      .is('transaction_type', null);
-    if (error) console.error(`Failed to update ${row.entry_reference}:`, error.message);
-  }
+  await applyGroupedUpdates(
+    supabase,
+    rows.map((r) => ({
+      account_uid: r.account_uid,
+      entry_reference: r.entry_reference,
+      update: { transaction_type: 'One-time' },
+      guardColumn: 'transaction_type',
+    })),
+  );
 }
 
 async function classifyBatch(rows) {
@@ -77,6 +78,7 @@ Return a JSON array of {"entry_reference": string, "transaction_type": string} f
 
 async function applyTypes(results, rows) {
   const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
+  const items = [];
   for (const { entry_reference, transaction_type } of results) {
     const account_uid = accountByRef.get(entry_reference);
     if (!account_uid) continue; // model echoed a reference we never sent
@@ -84,16 +86,9 @@ async function applyTypes(results, rows) {
       console.warn(`Skipping invalid type "${transaction_type}" for ${entry_reference}`);
       continue;
     }
-    // .is('transaction_type', null) guard: only ever fills in the type, never overwrites
-    // a value set by something else in the meantime.
-    const { error } = await supabase
-      .from('transactions')
-      .update({ transaction_type })
-      .eq('account_uid', account_uid)
-      .eq('entry_reference', entry_reference)
-      .is('transaction_type', null);
-    if (error) console.error(`Failed to update ${entry_reference}:`, error.message);
+    items.push({ account_uid, entry_reference, update: { transaction_type }, guardColumn: 'transaction_type' });
   }
+  await applyGroupedUpdates(supabase, items);
 }
 
 async function main() {

@@ -2,6 +2,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
 const { fetchBatchForOneUser } = require('./user-batch');
+const { applyGroupedUpdates } = require('./batch-update');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -99,6 +100,7 @@ Return a JSON array of {"entry_reference": string, "category": string} for every
 
 async function applyCategories(results, rows) {
   const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
+  const items = [];
   for (const { entry_reference, category } of results) {
     const account_uid = accountByRef.get(entry_reference);
     if (!account_uid) continue; // model echoed a reference we never sent
@@ -106,30 +108,20 @@ async function applyCategories(results, rows) {
       console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
       continue;
     }
-    // .is('category', null) guard: only ever fills in the category, never overwrites
-    // a value set by something else in the meantime.
-    const { error } = await supabase
-      .from('transactions')
-      .update({ category })
-      .eq('account_uid', account_uid)
-      .eq('entry_reference', entry_reference)
-      .is('category', null);
-    if (error) console.error(`Failed to update ${entry_reference}:`, error.message);
+    items.push({ account_uid, entry_reference, update: { category }, guardColumn: 'category' });
   }
+  await applyGroupedUpdates(supabase, items);
 }
 
 async function applyRuleMatches(matched) {
-  for (const { row, rule } of matched) {
-    const update = { category: rule.set_category };
-    if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
-    const { error } = await supabase
-      .from('transactions')
-      .update(update)
-      .eq('account_uid', row.account_uid)
-      .eq('entry_reference', row.entry_reference)
-      .is('category', null);
-    if (error) console.error(`Failed to apply rule to ${row.entry_reference}:`, error.message);
-  }
+  await applyGroupedUpdates(
+    supabase,
+    matched.map(({ row, rule }) => {
+      const update = { category: rule.set_category };
+      if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
+      return { account_uid: row.account_uid, entry_reference: row.entry_reference, update, guardColumn: 'category' };
+    }),
+  );
 }
 
 async function main() {
