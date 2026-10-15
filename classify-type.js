@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { classifyWithGemini } = require('./gemini-classify');
+const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
+const { fetchBatchForOneUser } = require('./user-batch');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -9,14 +10,12 @@ const BATCH_SIZE = 40;
 
 const TYPES = ['Subscription', 'One-time'];
 
-async function fetchUnclassified() {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('entry_reference, account_uid, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category, bank_transaction_code')
-    .is('transaction_type', null)
-    .limit(BATCH_SIZE);
-  if (error) throw error;
-  return data;
+function fetchUnclassified() {
+  return fetchBatchForOneUser(supabase, {
+    select: 'entry_reference, account_uid, creditor_name, remittance_info, amount, currency, credit_debit_indicator, category, bank_transaction_code',
+    nullColumn: 'transaction_type',
+    limit: BATCH_SIZE,
+  });
 }
 
 // A P2P/wire transfer is always One-time regardless of what category it landed in --
@@ -52,6 +51,8 @@ Rules:
 - "Subscription" = recurring billing: streaming (Netflix, Spotify), SaaS/software (Anthropic, Google One, iCloud), memberships, gyms, insurance, phone/internet plans, cloud hosting, subscription boxes — anything billed on a repeating schedule.
 - "One-time" = everything else: groceries, restaurants, one-off purchases, transfers, salary/income, fees, travel bookings, etc.
 - Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. If genuinely ambiguous, default to "One-time".
+
+${UNTRUSTED_TEXT_NOTE}
 
 Transactions (JSON array):
 ${JSON.stringify(rows.map((r) => ({
@@ -128,7 +129,6 @@ async function main() {
 
     totalClassified += rows.length;
 
-    if (rows.length < BATCH_SIZE) break; // fewer than a full page means we're caught up
   }
 
   console.log(`Done. Classified ${totalClassified} transaction(s).`);

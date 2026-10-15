@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { classifyWithGemini } = require('./gemini-classify');
+const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
+const { fetchBatchForOneUser } = require('./user-batch');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -12,14 +13,12 @@ const CATEGORIES = [
   'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Others',
 ];
 
-async function fetchUncategorized() {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('entry_reference, account_uid, user_id, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator')
-    .is('category', null)
-    .limit(BATCH_SIZE);
-  if (error) throw error;
-  return data;
+function fetchUncategorized() {
+  return fetchBatchForOneUser(supabase, {
+    select: 'entry_reference, account_uid, creditor_name, debtor_name, remittance_info, amount, currency, credit_debit_indicator',
+    nullColumn: 'category',
+    limit: BATCH_SIZE,
+  });
 }
 
 async function fetchRules() {
@@ -74,6 +73,8 @@ Category guide:
 - Others: only if nothing else plausibly fits.
 
 Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. This matters especially for P2P/bank transfers to a person: creditor_name alone (a person's name) tells you nothing, but remittance_info often does — e.g. a transfer to a friend with remittance_info mentioning "spotify" or "netflix" should be categorized by that actual purpose (Entertainment), not filed under Transfer just because the payment method was a person-to-person transfer. Only use Transfer when nothing in remittance_info indicates a real purpose.
+
+${UNTRUSTED_TEXT_NOTE}
 
 Transactions (JSON array):
 ${JSON.stringify(rows.map((r) => ({
@@ -165,7 +166,6 @@ async function main() {
     }
 
     totalCategorized += rows.length;
-    if (rows.length < BATCH_SIZE) break; // fewer than a full page means we're caught up
   }
 
   console.log(`Done. Categorized ${totalCategorized} transaction(s).`);
