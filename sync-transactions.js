@@ -5,6 +5,7 @@ const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
+const { buildRows } = require('./transaction-rows');
 
 const SYNC_STATE_FILE = 'last-sync.json';
 const FETCH_TIMEOUT_MS = 60000; // matches Actual Budget's Enable Banking timeout
@@ -53,24 +54,6 @@ async function getAllTransactions(token, uid, dateFrom) {
   return all;
 }
 
-function mapToRow(tx, accountUid, userId) {
-  return {
-    entry_reference: tx.entry_reference,
-    account_uid: accountUid,
-    amount: parseFloat(tx.transaction_amount.amount),
-    currency: tx.transaction_amount.currency,
-    credit_debit_indicator: tx.credit_debit_indicator,
-    creditor_name: tx.creditor?.name || null,
-    debtor_name: tx.debtor?.name || null,
-    remittance_info: (tx.remittance_information || []).join(' '),
-    booking_date: tx.booking_date,
-    value_date: tx.value_date,
-    bank_transaction_code: tx.bank_transaction_code?.code || null,
-    raw: tx,
-    user_id: userId,
-  };
-}
-
 async function main() {
   const token = getToken();
   const lastSync = loadLastSync();
@@ -98,7 +81,7 @@ async function main() {
 
       try {
         const transactions = await getAllTransactions(token, account.uid, dateFrom);
-        const rows = transactions.map(tx => mapToRow(tx, account.uid, userId));
+        const rows = buildRows(transactions, account.uid, userId);
 
         let upsertOk = true;
         if (rows.length > 0) {
