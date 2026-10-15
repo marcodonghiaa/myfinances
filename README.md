@@ -51,6 +51,8 @@ Link a bank from the dashboard's "Connect a bank" button on the Accounts page. R
 
 Run a sync by hand: `bash run-daily-sync.sh`
 
+Changed or added a category rule? Re-apply rules to transactions the AI or an earlier rule categorized with `node categorize.js --reapply-rules`. Categories you set by hand are never touched (tracked in `transactions.category_source`; categories that predate the column count as hand-set).
+
 ## Scheduling
 
 Docker runs everything on its own schedule (`scheduler.js`). Without Docker, use cron or launchd:

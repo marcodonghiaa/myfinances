@@ -12,7 +12,11 @@ function fakeSupabase({ failWhen } = {}) {
       const q = {
         update(u) { call.update = u; return q; },
         eq(col, val) { call.eq[col] = val; return q; },
-        in(col, vals) { call.in = { col, vals }; return q; },
+        in(col, vals) {
+          if (col === 'entry_reference') call.in = { col, vals };
+          else call.guardIn = { col, vals };
+          return q;
+        },
         is(col, val) { call.is = { col, val }; return q; },
         then(resolve) {
           calls.push(call);
@@ -82,4 +86,13 @@ test('does nothing for an empty list', async () => {
   const db = fakeSupabase();
   await applyGroupedUpdates(db, []);
   assert.strictEqual(db.calls.length, 0);
+});
+
+test('guardIn items are guarded by an in-list instead of is-null', async () => {
+  const db = fakeSupabase();
+  await applyGroupedUpdates(db, [
+    item('1', { update: { category: 'Health', category_source: 'rule' }, guardColumn: 'category_source', guardIn: ['ai', 'rule'] }),
+  ]);
+  assert.strictEqual(db.calls[0].is, null);
+  assert.deepStrictEqual(db.calls[0].guardIn, { col: 'category_source', vals: ['ai', 'rule'] });
 });

@@ -3,6 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
 const { fetchBatchForOneUser } = require('./user-batch');
 const { applyGroupedUpdates } = require('./batch-update');
+const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -30,30 +31,6 @@ async function fetchRules() {
     .order('priority', { ascending: true });
   if (error) throw error;
   return data;
-}
-
-function matchRule(row, rule) {
-  if (rule.user_id !== row.user_id) return false; // rules are per-user; the service role sees everyone's
-  if (!rule.match_text) return false; // no text to match -- skip, don't crash or match everything
-  const text = rule.match_text.toLowerCase();
-  const fields =
-    rule.match_field === 'any'
-      ? [row.creditor_name, row.remittance_info]
-      : [row[rule.match_field]];
-  return fields.some((f) => (f || '').toLowerCase().includes(text));
-}
-
-// Deterministic user-authored rules take priority over the AI -- cheaper, faster,
-// and exactly what the user asked for, not a guess.
-function applyRules(rows, rules) {
-  const matched = [];
-  const unmatched = [];
-  for (const row of rows) {
-    const rule = rules.find((r) => matchRule(row, r));
-    if (rule) matched.push({ row, rule });
-    else unmatched.push(row);
-  }
-  return { matched, unmatched };
 }
 
 async function classifyBatch(rows) {
@@ -108,7 +85,7 @@ async function applyCategories(results, rows) {
       console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
       continue;
     }
-    items.push({ account_uid, entry_reference, update: { category }, guardColumn: 'category' });
+    items.push({ account_uid, entry_reference, update: { category, category_source: 'ai' }, guardColumn: 'category' });
   }
   await applyGroupedUpdates(supabase, items);
 }
@@ -117,14 +94,46 @@ async function applyRuleMatches(matched) {
   await applyGroupedUpdates(
     supabase,
     matched.map(({ row, rule }) => {
-      const update = { category: rule.set_category };
+      const update = { category: rule.set_category, category_source: 'rule' };
       if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
       return { account_uid: row.account_uid, entry_reference: row.entry_reference, update, guardColumn: 'category' };
     }),
   );
 }
 
+
+const REAPPLY_PAGE_SIZE = 1000;
+
+// Re-runs the current rules over rows the AI or an earlier rule categorized. Rows a user
+// edited by hand (category_source 'manual') or that predate provenance ('legacy') are
+// never selected, and the update statement guards on the same column.
+async function reapplyRules() {
+  const rules = await fetchRules();
+  if (rules.length === 0) {
+    console.log('No categorization rules to apply.');
+    return;
+  }
+  let changed = 0;
+  for (let from = 0; ; from += REAPPLY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('user_id, account_uid, entry_reference, creditor_name, remittance_info, category, category_source')
+      .in('category_source', REAPPLY_SOURCES)
+      .order('account_uid')
+      .order('entry_reference')
+      .range(from, from + REAPPLY_PAGE_SIZE - 1);
+    if (error) throw error;
+    const items = planRuleReapply(data, rules);
+    await applyGroupedUpdates(supabase, items);
+    changed += items.length;
+    if (data.length < REAPPLY_PAGE_SIZE) break;
+  }
+  console.log(`Done. Re-applied rules to ${changed} transaction(s).`);
+}
+
 async function main() {
+  if (process.argv.includes('--reapply-rules')) return reapplyRules();
+
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
 
   const rules = await fetchRules();
