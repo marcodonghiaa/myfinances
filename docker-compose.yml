@@ -10,6 +10,8 @@ services:
   sync:
     build: .
     env_file: .env
+    volumes:
+      - sync-state:/data
     restart: unless-stopped
 
   web:
@@ -23,3 +25,6 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+
+volumes:
+  sync-state:

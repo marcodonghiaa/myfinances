@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const { fetchWithTimeout } = require('./http');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const CURRENCIES = ['USD', 'GBP', 'CHF']; // add more here as you add accounts in other currencies
@@ -7,7 +8,7 @@ const HISTORY_DAYS = 100; // transaction sync pulls 90 days; every view needs a 
 const daysAgo = (n) => new Date(Date.now() - n * 24 * 3600 * 1000).toISOString().slice(0, 10);
 
 async function fetchRates(path) {
-  const res = await fetch(`https://api.frankfurter.dev/v1/${path}?base=EUR&symbols=${CURRENCIES.join(',')}`);
+  const res = await fetchWithTimeout(`https://api.frankfurter.dev/v1/${path}?base=EUR&symbols=${CURRENCIES.join(',')}`);
   if (!res.ok) throw new Error(`Frankfurter API error ${res.status}: ${await res.text()}`);
   return res.json();
 }

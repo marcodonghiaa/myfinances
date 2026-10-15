@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const { fetchWithTimeout } = require('./http');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -16,7 +17,7 @@ async function fetchHoldings() {
 const ASSET_TYPE_MAP = { EQUITY: 'Stock', ETF: 'ETF', MUTUALFUND: 'Fund', BOND: 'Bond' };
 
 async function fetchQuote(symbol) {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
     { headers: { 'User-Agent': 'Mozilla/5.0' } }
   );
