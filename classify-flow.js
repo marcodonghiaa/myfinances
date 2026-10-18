@@ -39,7 +39,7 @@ async function fetchRefundCandidates() {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from('transactions')
-      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, debtor_name, booking_date')
+      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date')
       .in('flow_type', ['spend', 'income'])
       .is('deleted_at', null)
       .gte('booking_date', since)
