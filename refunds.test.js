@@ -22,9 +22,19 @@ test('pairs a credit with the earlier debit of same merchant, amount and currenc
   ]);
 });
 
-test('matches merchant via debtor_name, ignoring case and spacing', () => {
-  const pairs = matchRefunds([row(), refund({ creditor_name: null, debtor_name: ' TWITTER ' })]);
-  assert.strictEqual(pairs.length, 1);
+test('card refund: merchant comes from the "Refund from X" remittance, not the account holder', () => {
+  const credit = refund({
+    creditor_name: null,
+    debtor_name: "MARCO D'ONGHIA",
+    bank_transaction_code: 'CARD_REFUND',
+    remittance_info: 'Refund from  TWITTER ',
+  });
+  assert.strictEqual(matchRefunds([row(), credit]).length, 1);
+});
+
+test('a credit with no merchant name and no refund remittance is never paired', () => {
+  const credit = refund({ creditor_name: null, debtor_name: 'Twitter', remittance_info: 'salary' });
+  assert.strictEqual(matchRefunds([row(), credit]).length, 0);
 });
 
 test('no pair when amount, currency, account or merchant differ', () => {

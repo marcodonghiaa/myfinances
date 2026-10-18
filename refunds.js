@@ -5,7 +5,12 @@
 const WINDOW_DAYS = 90;
 const DAY_MS = 86_400_000;
 
-const merchantOf = (r) => (r.creditor_name || r.debtor_name || '').trim().toLowerCase();
+// debtor_name is the account holder on card refunds, so it never identifies the merchant.
+// Banks put the merchant in the remittance instead: "Refund from <merchant>".
+const REFUND_FROM = /^refund from\s+/i;
+const normalize = (name) => (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const merchantOf = (r) =>
+  normalize(r.creditor_name || (REFUND_FROM.test(r.remittance_info || '') ? r.remittance_info.trim().replace(REFUND_FROM, '') : ''));
 const dayOf = (r) => Date.parse(r.booking_date);
 const ref = (r) => ({ account_uid: r.account_uid, entry_reference: r.entry_reference });
 
