@@ -3,9 +3,9 @@
 // reference) influence how other users' rows are labelled, so each batch is scoped
 // to a single user.
 // excludeUserIds: users to skip (e.g. ones whose rows keep failing), so they can't block the rest.
-async function fetchBatchForOneUser(supabase, { select, nullColumn, limit, excludeUserIds = new Set() }) {
+async function fetchBatchForOneUser(supabase, { table = 'transactions', select, nullColumn, limit, excludeUserIds = new Set() }) {
   const pending = (cols) => {
-    const q = supabase.from('transactions').select(cols).is(nullColumn, null);
+    const q = supabase.from(table).select(cols).is(nullColumn, null);
     return excludeUserIds.size > 0 ? q.not('user_id', 'in', `(${[...excludeUserIds].join(',')})`) : q;
   };
 

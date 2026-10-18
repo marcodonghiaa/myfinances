@@ -15,6 +15,7 @@ const SYNC_STEPS = [
   "fx-sync.js",
   "categorize.js",
   "classify-type.js",
+  "categorize-splitwise.js",
   "classify-flow.js",
   "sync-portfolio-prices.js",
   "sync-crypto-coinbase.js",

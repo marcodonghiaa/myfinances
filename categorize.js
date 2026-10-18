@@ -4,17 +4,13 @@ const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify')
 const { fetchBatchForOneUser } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
+const { CATEGORIES, guideFor } = require('./categories');
 const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const BATCH_SIZE = 40;
-
-const CATEGORIES = [
-  'Shopping', 'Entertainment', 'Groceries', 'Dine Out', 'Services', 'Housing',
-  'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Others',
-];
 
 function fetchUncategorized(excludeUserIds) {
   return fetchBatchForOneUser(supabase, {
@@ -39,18 +35,7 @@ async function classifyBatch(rows) {
   const prompt = `You are categorizing personal bank transactions into exactly one of these categories: ${CATEGORIES.join(', ')}.
 
 Category guide:
-- Shopping: clothes, tech purchases (phones, laptops, electronics), Amazon, general retail.
-- Entertainment: video games, streaming (Netflix, Spotify), movies, hobbies.
-- Groceries: supermarkets, grocery delivery.
-- Dine Out: restaurants, cafes, bars, takeout, drinks out.
-- Services: mobile/phone plans, internet, insurance, professional services, non-entertainment software/cloud subscriptions (e.g. AI tools, cloud storage).
-- Housing: rent, mortgage, utilities (electricity, water, gas bill for the home).
-- Transports: bus, car/gas, trains, flights, commuting and transport of any kind.
-- Experiences: hotels, events, concerts, tickets, activities while traveling or out.
-- Income: incoming payments (credit_debit_indicator CRDT) that look like salary/earnings.
-- Health: pharmacy, doctor, gym, fitness, medical expenses.
-- Transfer: account-to-account or P2P transfers with no indicated purpose (e.g. splitting rent, paying someone back with no note).
-- Others: only if nothing else plausibly fits.
+${guideFor(CATEGORIES)}
 
 Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. This matters especially for P2P/bank transfers to a person: creditor_name alone (a person's name) tells you nothing, but remittance_info often does — e.g. a transfer to a friend with remittance_info mentioning "spotify" or "netflix" should be categorized by that actual purpose (Entertainment), not filed under Transfer just because the payment method was a person-to-person transfer. Only use Transfer when nothing in remittance_info indicates a real purpose.
 
