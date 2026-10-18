@@ -14,7 +14,7 @@
 // user id only comes from looking up and deleting that row here.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 
 
 const supabase = createClient(
@@ -22,7 +22,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-const APP_URL = Deno.env.get("FRONTEND_URL")!;
+const APP_URL = FRONTEND_ORIGIN;
 
 // Land back in the real app instead of a bare Edge Function page -- the app
 // reads bank_linked/bank_link_error off /accounts and shows a proper toast.

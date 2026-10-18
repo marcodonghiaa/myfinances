@@ -56,7 +56,7 @@ A sync runs **every 6 hours** (banks typically cap unattended access at about 4 
 3. `fx-sync.js` stores daily EUR rates.
 4. `categorize.js` applies your rules first, then Gemini.
 5. `classify-type.js` marks `Subscription` or `One-time`.
-6. `classify-flow.js` marks `spend`, `income` or `transfer`.
+6. `classify-flow.js` marks `spend`, `income` or `transfer`, then pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days; the merchant of a refund is read from its "Refund from <merchant>" remittance) and marks both `refunded` so neither counts as spend or income.
 7. `sync-portfolio-prices.js`, `sync-crypto-coinbase.js`, `sync-crypto-prices.js` price your holdings.
 
 `notify-worth-it.js` runs every 30 minutes. Portfolio, crypto and notification scripts are single-user (`USER_ID`); bank sync is multi-user.

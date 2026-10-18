@@ -4,8 +4,12 @@
 const ENABLE_BANKING_APP_ID = Deno.env.get("ENABLE_BANKING_APP_ID")!;
 const ENABLE_BANKING_PRIVATE_KEY = Deno.env.get("ENABLE_BANKING_PRIVATE_KEY")!;
 
+// Browsers compare the Origin header exactly, so a trailing slash in the secret ("https://x.app/")
+// would block every request. Strip it here instead of relying on whoever set the secret.
+export const FRONTEND_ORIGIN = Deno.env.get("FRONTEND_URL")!.replace(/\/+$/, "");
+
 export const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": Deno.env.get("FRONTEND_URL")!,
+  "Access-Control-Allow-Origin": FRONTEND_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
