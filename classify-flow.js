@@ -8,6 +8,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { applyGroupedUpdates } = require('./batch-update');
+const { matchRefunds, WINDOW_DAYS } = require('./refunds');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const BATCH_SIZE = 200;
@@ -27,6 +28,42 @@ async function fetchUnclassified() {
     .limit(BATCH_SIZE);
   if (error) throw error;
   return data;
+}
+
+const PAGE_SIZE = 1000; // PostgREST caps a response at 1000 rows
+
+// Rows still counted as spend/income, recent enough to hold either side of a refund pair.
+async function fetchRefundCandidates() {
+  const since = new Date(Date.now() - 2 * WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, debtor_name, booking_date')
+      .in('flow_type', ['spend', 'income'])
+      .is('deleted_at', null)
+      .gte('booking_date', since)
+      .order('entry_reference')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) return rows;
+  }
+}
+
+// Both sides of a pair become 'refunded' (excluded from spend and income); the
+// credit remembers which charge it reverses.
+async function markRefunds() {
+  const pairs = matchRefunds(await fetchRefundCandidates());
+  const guardIn = ['spend', 'income'];
+  await applyGroupedUpdates(
+    supabase,
+    pairs.flatMap(({ debit, credit }) => [
+      { ...debit, update: { flow_type: 'refunded' }, guardColumn: 'flow_type', guardIn },
+      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, guardColumn: 'flow_type', guardIn },
+    ]),
+  );
+  return pairs.length;
 }
 
 async function main() {
@@ -49,7 +86,8 @@ async function main() {
     if (rows.length < BATCH_SIZE) break;
   }
 
-  console.log(`Done. Classified ${totalClassified} transaction(s).`);
+  const refunded = await markRefunds();
+  console.log(`Done. Classified ${totalClassified} transaction(s), paired ${refunded} refund(s).`);
 }
 
 main().catch((err) => {
