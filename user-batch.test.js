@@ -65,3 +65,11 @@ test('returns an empty array when every pending user is excluded', async () => {
   const db = fakeSupabase([row('a', '1')]);
   assert.deepStrictEqual(await fetchBatchForOneUser(db, { ...opts, excludeUserIds: new Set(['a']) }), []);
 });
+
+test('reads from the table it is given, transactions by default', async () => {
+  const seen = [];
+  const db = { from(t) { seen.push(t); return fakeSupabase([]).from(); } };
+  await fetchBatchForOneUser(db, opts);
+  await fetchBatchForOneUser(db, { ...opts, table: 'splitwise_expenses' });
+  assert.deepStrictEqual(seen, ['transactions', 'splitwise_expenses']);
+});

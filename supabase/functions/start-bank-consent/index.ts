@@ -70,7 +70,9 @@ Deno.serve(async (req) => {
     });
     const data = await res.json();
     if (!res.ok || !data.url) {
-      return json({ error: "Enable Banking error", detail: data }, 502);
+      // Upstream error bodies stay in the function log, not the browser.
+      console.error("Enable Banking error:", JSON.stringify(data));
+      return json({ error: "Enable Banking error" }, 502);
     }
     return json({ url: data.url });
   } catch (err) {

@@ -35,3 +35,20 @@ test('duplicate entry_reference in one batch collapses to one row', () => {
   assert.strictEqual(rows.length, 1);
   assert.strictEqual(rows[0].remittance_info, 'later');
 });
+
+// protects=income shows who paid you, not your own name; fails_when=a credit keeps the account
+// holder as creditor_name, or a debit stops using the creditor
+test('names a credit after the payer and a debit after the payee', () => {
+  const credit = buildRows([tx({
+    credit_debit_indicator: 'CRDT', creditor: { name: 'Me' }, debtor: { name: 'GameBoost' },
+  })], 'acc', 'user')[0];
+  assert.strictEqual(credit.creditor_name, 'GameBoost');
+  assert.strictEqual(credit.debtor_name, 'GameBoost');
+  const debit = buildRows([tx({ creditor: { name: 'Spotify' }, debtor: { name: 'Me' } })], 'acc', 'user')[0];
+  assert.strictEqual(debit.creditor_name, 'Spotify');
+});
+
+test('a credit without a payer name keeps whatever name the bank gave', () => {
+  const [row] = buildRows([tx({ credit_debit_indicator: 'CRDT', creditor: { name: 'Me' } })], 'acc', 'user');
+  assert.strictEqual(row.creditor_name, 'Me');
+});
