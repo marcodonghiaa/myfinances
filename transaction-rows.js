@@ -24,7 +24,8 @@ function mapToRow(tx, accountUid, userId, entryReference) {
     amount: parseFloat(tx.transaction_amount.amount),
     currency: tx.transaction_amount.currency,
     credit_debit_indicator: tx.credit_debit_indicator,
-    creditor_name: tx.creditor?.name || null,
+    // The dashboard shows creditor_name as the row's name, so for money coming in it is the payer.
+    creditor_name: (tx.credit_debit_indicator === 'CRDT' && tx.debtor?.name) || tx.creditor?.name || null,
     debtor_name: tx.debtor?.name || null,
     remittance_info: (tx.remittance_information || []).join(' '),
     booking_date: tx.booking_date,
