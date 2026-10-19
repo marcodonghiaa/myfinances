@@ -46,6 +46,11 @@ Deno.serve(async (req) => {
   // own consent hand-edit state to a victim's id before hitting the
   // callback. Issue a single-use, unguessable token instead; the callback
   // looks up the real user id by it and deletes the row.
+  // Tokens older than the callback's 15 minute window can never be used; clear the caller's.
+  await supabase
+    .from("pending_bank_consents")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 15 * 60 * 1000).toISOString());
   const { data: pending, error: pendingError } = await supabase
     .from("pending_bank_consents")
     .insert({ user_id: userData.user.id })
