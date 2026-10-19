@@ -1,8 +1,9 @@
 const { CATEGORIES, guideFor } = require('./categories');
 const { UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
 
-// A Splitwise share is always spending, so salary and transfer buckets are not offered.
-const SPLITWISE_CATEGORIES = CATEGORIES.filter((c) => c !== 'Income' && c !== 'Transfer');
+// A Splitwise share is shared everyday spending, so income, transfer and tax buckets are not offered.
+const NOT_SHARED = new Set(['Income', 'Transfer', 'Taxes']);
+const SPLITWISE_CATEGORIES = CATEGORIES.filter((c) => !NOT_SHARED.has(c));
 
 // Friends write the descriptions, so only id and description leave the server: no amounts,
 // group name or user, and the model is told the text is untrusted.

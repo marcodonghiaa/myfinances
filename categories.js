@@ -1,7 +1,7 @@
 // The 12 spending categories and what each one means, shared by every categorizer.
 const CATEGORIES = [
   'Shopping', 'Entertainment', 'Groceries', 'Dine Out', 'Services', 'Housing',
-  'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Others',
+  'Transports', 'Experiences', 'Income', 'Health', 'Transfer', 'Taxes', 'Others',
 ];
 
 // One line per category, keyed by name so a caller can leave some out.
@@ -17,6 +17,7 @@ const CATEGORY_GUIDE = {
   Income: 'incoming payments (credit_debit_indicator CRDT) that look like salary/earnings.',
   Health: 'pharmacy, doctor, gym, fitness, medical expenses.',
   Transfer: 'account-to-account or P2P transfers with no indicated purpose (e.g. splitting rent, paying someone back with no note).',
+  Taxes: 'tax payments: F24, Agenzia delle Entrate, income tax and VAT (IVA) for a self-employed business, social contributions (INPS), tax on investments or capital gains, IRS/HMRC and other government tax bodies.',
   Others: 'only if nothing else plausibly fits.',
 };
 
