@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { fetchWithTimeout } = require('./http');
-const { parseQuote } = require('./yahoo-quote');
+const { parseQuote, nextAssetType } = require('./yahoo-quote');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -62,8 +62,9 @@ async function main() {
         value_eur: valueEur,
       });
 
-      if (assetType && assetType !== holding.asset_type) {
-        typeUpdates.push({ isin: holding.isin, asset_type: assetType });
+      const newType = assetType && nextAssetType(holding.asset_type, assetType);
+      if (newType && newType !== holding.asset_type) {
+        typeUpdates.push({ isin: holding.isin, asset_type: newType });
       }
 
       console.log(`${holding.name}: ${price} ${currency} x ${holding.shares} = ${valueEur.toFixed(2)} EUR`);

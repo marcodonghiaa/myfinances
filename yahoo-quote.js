@@ -10,4 +10,9 @@ function parseQuote(data, symbol) {
   return { price, currency, assetType: ASSET_TYPE_MAP[instrumentType] || 'Other' };
 }
 
-module.exports = { parseQuote };
+// Yahoo calls bond funds ETFs, so a holding marked Bond by hand keeps that label.
+function nextAssetType(current, fromYahoo) {
+  return current === 'Bond' ? 'Bond' : fromYahoo;
+}
+
+module.exports = { parseQuote, nextAssetType };
