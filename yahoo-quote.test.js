@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { parseQuote } = require('./yahoo-quote');
+const { parseQuote, nextAssetType } = require('./yahoo-quote');
 
 const chart = (meta) => ({ chart: { result: [{ meta }] } });
 
@@ -27,4 +27,14 @@ test('throws on a non-finite or non-numeric price', () => {
 
 test('throws when the response has no result', () => {
   assert.throws(() => parseQuote({ chart: { result: null, error: { code: 'Not Found' } } }, 'X'), /No quote data for X/);
+});
+
+test('a holding set to Bond by hand keeps that label even though Yahoo calls it an ETF', () => {
+  assert.strictEqual(nextAssetType('Bond', 'ETF'), 'Bond');
+});
+
+test('other labels follow what Yahoo reports', () => {
+  assert.strictEqual(nextAssetType('Stock', 'ETF'), 'ETF');
+  assert.strictEqual(nextAssetType(null, 'ETF'), 'ETF');
+  assert.strictEqual(nextAssetType('ETF', 'ETF'), 'ETF');
 });
