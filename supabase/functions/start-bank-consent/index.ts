@@ -12,6 +12,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { CORS_HEADERS, json, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { isBankName, isCountryCode, MAX_OPEN_CONSENTS } from "../_shared/validate.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,8 +38,8 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }
-  if (!body.bankName || !body.country) {
-    return json({ error: "bankName and country are required" }, 400);
+  if (!body || !isBankName(body.bankName) || !isCountryCode(body.country)) {
+    return json({ error: "A valid bankName and country are required" }, 400);
   }
 
   // Enable Banking treats `state` as an opaque pass-through it never
@@ -51,6 +52,16 @@ Deno.serve(async (req) => {
     .from("pending_bank_consents")
     .delete()
     .lt("created_at", new Date(Date.now() - 15 * 60 * 1000).toISOString());
+  // Every request costs an Enable Banking call; cap how many one user can have open at once.
+  const { count: openConsents, error: countError } = await supabase
+    .from("pending_bank_consents")
+    .select("id", { count: "exact", head: true });
+  if (countError) {
+    return json({ error: "Couldn't start consent" }, 500);
+  }
+  if ((openConsents ?? 0) >= MAX_OPEN_CONSENTS) {
+    return json({ error: "Too many bank connections in progress, try again in 15 minutes" }, 429);
+  }
   const { data: pending, error: pendingError } = await supabase
     .from("pending_bank_consents")
     .insert({ user_id: userData.user.id })
