@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Re-importing Splitwise keeps your edits
+- **Migration:** `20261031000000_splitwise_import_keeps_edits`. Apply with `supabase db push`.
+- **Why:** importing the same group and date range again deleted every row in the range and reinserted it from the file, so a description or category you had edited was lost.
+- **Effect:** rows already stored (matched by fingerprint) keep their edited description and category; an empty category is filled from the file. New rows are inserted and rows the file no longer has are deleted. An expense you change in Splitwise itself gets a new fingerprint, so edits on it are still lost.
+- **Roll back:** the matching file in `supabase/rollbacks/`.
+
 ### EUR views keep every row, net worth no longer dips
 - **Migrations:** `20261029000000_fx_eur_fallback`, `20261030000000_net_worth_carry_forward`. Apply with `supabase db push`.
 - **Why:** an EUR row dated before the first stored FX rate used to vanish from every euro view. A holding with no price on the latest day made that whole day's net worth dip.
@@ -26,5 +32,4 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Known limits
 - Portfolio, crypto and notification scripts are single-user (`USER_ID`). Bank sync is multi-user.
-- Importing the same Splitwise group and date range again deletes and reinserts those rows, so edits you made to them are lost.
 - Nothing trims old data. Daily net worth snapshots, FX rates and transactions are kept forever. The dashboard reads at most 1000 rows per query, which daily net worth would reach after about 2.6 years of daily snapshots.
