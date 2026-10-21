@@ -13,6 +13,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { CORS_HEADERS, json, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { isCountryCode } from "../_shared/validate.ts";
 
 interface Aspsp {
   name: string;
@@ -45,8 +46,8 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }
-  if (!body.country) {
-    return json({ error: "country is required" }, 400);
+  if (!body || !isCountryCode(body.country)) {
+    return json({ error: "A valid country is required" }, 400);
   }
 
   try {

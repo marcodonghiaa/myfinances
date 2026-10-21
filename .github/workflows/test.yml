@@ -17,3 +17,9 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm test
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      # The Edge Functions are TypeScript for Deno: check they compile and run their unit tests.
+      - run: deno check --no-lock --node-modules-dir=none supabase/functions/*/index.ts
+      - run: deno test --no-lock --node-modules-dir=none supabase/functions/_shared
