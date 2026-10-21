@@ -3,6 +3,9 @@
 # schema, deploys the bank-linking Edge Functions, and writes both apps'
 # .env files. Run once per self-hosted instance.
 #
+# It also creates your login (the app has no sign-up screen) and asks you to
+# switch off public sign-ups so nobody else can create an account on your instance.
+#
 # What it CANNOT automate: signing up for Enable Banking and creating your
 # PSD2 application there is a manual step on their site -- there's no API
 # for it. This script asks for the app ID + private key once you have them.
@@ -90,6 +93,16 @@ console.log(keys.find(k => k.api_key?.startsWith('sb_secret_'))?.api_key ?? '');
 SUPABASE_URL="https://${PROJECT_REF}.supabase.co"
 echo "Got URL and keys."
 
+step "Your login"
+echo "The app has no sign-up screen, so the login is created here. Re-running with the same email keeps the existing user."
+read -rp "Email: " LOGIN_EMAIL
+read -rsp "Password (6+ characters, not shown): " LOGIN_PASSWORD
+echo
+# Credentials go in as environment variables so they never appear in the process list.
+USER_ID=$(SETUP_URL="$SUPABASE_URL" SETUP_SECRET_KEY="$SECRET_KEY" SETUP_EMAIL="$LOGIN_EMAIL" SETUP_PASSWORD="$LOGIN_PASSWORD" node first-user.js) || die "Could not create your login (see message above)."
+unset LOGIN_PASSWORD
+echo "Login ready for $LOGIN_EMAIL."
+
 step "Enable Banking (manual signup required)"
 echo "If you haven't already: sign up at https://enablebanking.com/sign-in/,"
 echo "then in the Control Panel -> API applications -> Add a new application:"
@@ -146,7 +159,7 @@ SUPABASE_URL=$SUPABASE_URL
 SUPABASE_SECRET_KEY=$SECRET_KEY
 SESSION_VALID_UNTIL=90
 GEMINI_API_KEY=$GEMINI_API_KEY
-USER_ID=
+USER_ID=$USER_ID
 COINBASE_API_KEY_NAME=
 COINBASE_API_PRIVATE_KEY=
 VAPID_PUBLIC_KEY=$VAPID_PUBLIC
@@ -170,10 +183,20 @@ VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC
 EOF
 echo "Wrote .env and $FRONTEND_DIR/.env"
 
+step "Closing public sign-ups"
+echo "Supabase leaves sign-ups open by default: anyone who finds your project URL could create an account."
+echo "Your login already exists, so switch them off."
+signups_closed() {
+  [ "$(json_get "$(curl -fsS "$SUPABASE_URL/auth/v1/settings" -H "apikey: $PUBLISHABLE_KEY")" disable_signup)" = "true" ]
+}
+if ! signups_closed; then
+  echo "Open https://supabase.com/dashboard/project/${PROJECT_REF}/auth/providers"
+  echo "  -> User Signups -> turn OFF 'Allow new users to sign up' -> Save"
+  read -rp "Press Enter once saved: " _
+  signups_closed || echo "WARNING: sign-ups are still open. Switch them off before you share this instance's URL."
+fi
+
 step "Almost done"
 echo "1. Start the app:      docker compose up -d --build"
-echo "2. Open http://localhost:3000 and sign up (creates your Supabase Auth user)"
-echo "3. Find your user id:  Supabase Dashboard -> Authentication -> Users"
-echo "4. Put it in .env:     USER_ID=<that id>"
-echo "5. Restart the sync container so it picks it up:  docker compose restart sync"
-echo "6. In the app, click 'Connect a bank' on the Accounts page."
+echo "2. Open http://localhost:3000 and sign in as $LOGIN_EMAIL"
+echo "3. In the app, click 'Connect a bank' on the Accounts page."

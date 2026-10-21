@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Switch off public sign-ups (existing installs read this)
+- **No migration. One step in your Supabase dashboard.**
+- Supabase leaves sign-ups open on every new project. The app has no sign-up screen, but anyone who finds your project URL and its public key can still create an account through the Auth API. They could then call the bank functions and use up your Enable Banking quota.
+- **Do this:** Authentication -> Sign In / Providers -> User Signups -> turn off *Allow new users to sign up* -> Save. Your own login keeps working.
+- `setup.sh` now creates your login and `USER_ID` for you and walks you through this step. `start-bank-consent` and `list-banks` also validate their input, and `start-bank-consent` refuses a sixth open consent request per user (redeploy with `supabase functions deploy`).
+
 ### Re-importing Splitwise keeps your edits
 - **Migration:** `20261031000000_splitwise_import_keeps_edits`. Apply with `supabase db push`.
 - **Why:** importing the same group and date range again deleted every row in the range and reinserted it from the file, so a description or category you had edited was lost.

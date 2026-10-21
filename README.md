@@ -77,7 +77,7 @@ cd myfinances
 docker compose up -d --build
 ```
 
-The only manual step is Enable Banking's signup, which has no API. The wizard sends you there to create a free **Production** application and download a key.
+The wizard asks for your email and password and creates your login (the app has no sign-up screen), then asks you to switch off public sign-ups in the Supabase dashboard. The only other manual step is Enable Banking's signup, which has no API: the wizard sends you there to create a free **Production** application and download a key.
 
 <details>
 <summary><b>Manual setup</b></summary>
@@ -85,7 +85,9 @@ The only manual step is Enable Banking's signup, which has no API. The wizard se
 1. Create a Supabase project, then `supabase link --project-ref <ref>` and `supabase db push`.
 2. In Enable Banking, create a Production application with redirect URL `https://<ref>.supabase.co/functions/v1/bank-consent-callback` (must match exactly). Activate it by linking one of your own accounts in their panel.
 3. Deploy the functions and set `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY` and `FRONTEND_URL` as Edge Function secrets.
-4. `npm install`, then `cp .env.example .env` and fill it in.
+4. In the dashboard, **Authentication -> Users -> Add user** (tick auto-confirm) to create your login, and put its id in `.env` as `USER_ID`.
+5. **Authentication -> Sign In / Providers -> User Signups**: turn off *Allow new users to sign up*. Supabase leaves it on, which lets anyone who finds your project URL create an account.
+6. `npm install`, then `cp .env.example .env` and fill it in.
 
 </details>
 
