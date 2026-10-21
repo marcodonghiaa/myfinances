@@ -22,7 +22,7 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ### Schema files cleanup (existing installs read this)
 - Rollback files moved from `supabase/migrations/` to `supabase/rollbacks/`, so `supabase db push` no longer trips over them.
-- `merchant_aliases` (`20261027000000`) and `net_worth_daily_bonds` (`20261028000000`) were added to this repo. If you already created them by hand or from the frontend repo, `supabase db push` may fail with "already exists". Then mark them applied instead: `supabase migration repair --status applied 20261027000000 20261028000000`, and push again.
+- `merchant_aliases` (`20261027000000`) and `net_worth_daily_bonds` (`20261028000000`) were added to this repo. If you already created them by hand or from the frontend repo, `supabase db push` fails with `Found local migration files to be inserted before the last migration on remote database` and suggests `--include-all`. Do not use `--include-all`: it would re-run the `create table` and fail with "already exists". Mark them applied instead: `supabase migration repair --status applied 20261027000000 20261028000000`, then `supabase db push` again. (Tested on a local Supabase: after the repair, push reports the database is up to date.)
 
 ## Known limits
 - Portfolio, crypto and notification scripts are single-user (`USER_ID`). Bank sync is multi-user.
