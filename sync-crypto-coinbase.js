@@ -2,6 +2,7 @@ require('dotenv').config();
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { fetchWithTimeout } = require('./http');
+const { planHoldings } = require('./coinbase-holdings');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -28,18 +29,6 @@ function getPrivateKey() {
 
 const HOST = 'api.coinbase.com';
 const PATH = '/api/v3/brokerage/accounts';
-
-// Known Coinbase currency codes -> CoinGecko IDs. Extend this if new assets show up
-// (a symbol like "SOL" is ambiguous on CoinGecko, so this is a deliberate allowlist
-// rather than an automatic symbol search).
-const COINGECKO_ID_MAP = {
-  BTC: 'bitcoin',
-  ETH: 'ethereum',
-  USDT: 'tether',
-  USDC: 'usd-coin',
-  SD: 'stader',
-  ETHX: 'stader-ethx',
-};
 
 function base64url(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -82,33 +71,27 @@ async function main() {
   }
 
   const accounts = await fetchCoinbaseAccounts();
-  const rows = [];
-
-  for (const account of accounts) {
-    const symbol = account.currency;
-    const amount = parseFloat(account.available_balance?.value ?? '0');
-    if (!amount || amount === 0) continue; // skip empty/dust accounts
-
-    const coingeckoId = COINGECKO_ID_MAP[symbol];
-    if (!coingeckoId) {
-      console.warn(`Skipping ${symbol}: no CoinGecko ID mapped. Add it to COINGECKO_ID_MAP if this should be tracked.`);
-      continue;
-    }
-
-    rows.push({
-      user_id: USER_ID,
-      asset_symbol: symbol,
-      name: account.name || symbol,
-      amount,
-      source: 'Coinbase',
-      coingecko_id: coingeckoId,
-    });
+  const { rows, zeroed, unmapped } = planHoldings(accounts, USER_ID);
+  for (const symbol of unmapped) {
+    console.warn(`Skipping ${symbol}: no CoinGecko ID mapped. Add it to COINGECKO_ID_MAP if this should be tracked.`);
   }
 
   if (rows.length > 0) {
     const { error } = await supabase
       .from('crypto_holdings')
       .upsert(rows, { onConflict: 'user_id,asset_symbol,source' });
+    if (error) throw error;
+  }
+
+  // Sold down to zero: update existing holdings only, never insert empty ones.
+  if (zeroed.length > 0) {
+    const { error } = await supabase
+      .from('crypto_holdings')
+      .update({ amount: 0 })
+      .eq('user_id', USER_ID)
+      .eq('source', 'Coinbase')
+      .in('asset_symbol', zeroed)
+      .gt('amount', 0);
     if (error) throw error;
   }
 
