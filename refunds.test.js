@@ -66,3 +66,28 @@ test('each debit and credit is used once, nearest preceding debit wins', () => {
 test('rows without a merchant are never paired', () => {
   assert.strictEqual(matchRefunds([row({ creditor_name: null }), refund({ creditor_name: null })]).length, 0);
 });
+
+test('card refund whose creditor_name is the account holder still pairs by the "Refund from" merchant', () => {
+  const debit = row({ amount: 1750, currency: 'USD', creditor_name: 'International House', booking_date: '2026-04-30' });
+  const credit = refund({
+    amount: 1750,
+    currency: 'USD',
+    creditor_name: "MARCO D'ONGHIA",
+    debtor_name: "MARCO D'ONGHIA",
+    remittance_info: 'Refund from International House',
+    booking_date: '2026-06-09',
+  });
+  assert.strictEqual(matchRefunds([debit, credit]).length, 1);
+});
+
+test('card charge with no creditor_name pairs by the merchant in its remittance, ignoring the "*city" suffix', () => {
+  const debit = row({ amount: 51.97, creditor_name: null, remittance_info: 'Booking.com*AMSTERDAM', booking_date: '2026-06-15' });
+  const credit = refund({ amount: 51.97, creditor_name: null, remittance_info: 'Refund from Booking.com', booking_date: '2026-07-03' });
+  assert.strictEqual(matchRefunds([debit, credit]).length, 1);
+});
+
+test('a charge with a different remittance merchant is not paired', () => {
+  const debit = row({ amount: 51.97, creditor_name: null, remittance_info: 'Airbnb*DUBLIN', booking_date: '2026-06-15' });
+  const credit = refund({ amount: 51.97, creditor_name: null, remittance_info: 'Refund from Booking.com', booking_date: '2026-07-03' });
+  assert.strictEqual(matchRefunds([debit, credit]).length, 0);
+});

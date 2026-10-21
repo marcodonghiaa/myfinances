@@ -9,8 +9,14 @@ const DAY_MS = 86_400_000;
 // Banks put the merchant in the remittance instead: "Refund from <merchant>".
 const REFUND_FROM = /^refund from\s+/i;
 const normalize = (name) => (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
-const merchantOf = (r) =>
-  normalize(r.creditor_name || (REFUND_FROM.test(r.remittance_info || '') ? r.remittance_info.trim().replace(REFUND_FROM, '') : ''));
+// A refund names its merchant in the remittance; creditor_name can be the account holder there.
+// A card charge without a creditor_name carries "Merchant*CITY" in its remittance.
+const merchantOf = (r) => {
+  const remittance = (r.remittance_info || '').trim();
+  if (REFUND_FROM.test(remittance)) return normalize(remittance.replace(REFUND_FROM, ''));
+  if (r.creditor_name) return normalize(r.creditor_name);
+  return r.credit_debit_indicator === 'DBIT' ? normalize(remittance.split('*')[0]) : '';
+};
 const dayOf = (r) => Date.parse(r.booking_date);
 const ref = (r) => ({ account_uid: r.account_uid, entry_reference: r.entry_reference });
 
