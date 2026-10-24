@@ -30,4 +30,25 @@ function addedCursors(before, after) {
   return Object.keys(after).filter((uid) => !before[uid]);
 }
 
-module.exports = { loadSyncState, saveSyncState, freshUnsyncedAccounts, addedCursors };
+// Cursors live in public.sync_cursors, so a run on a fresh machine (GitHub Actions, a new
+// container) carries on where the last one stopped. The local file stays as a copy: an old
+// install's cursors are read from it once, and it keeps working if the table isn't there yet.
+async function loadCursors(supabase, file) {
+  const fromFile = loadSyncState(file);
+  const { data, error } = await supabase.from('sync_cursors').select('account_uid, last_synced');
+  if (error) {
+    console.warn(`Reading sync cursors from ${file} only: ${error.message}. Apply the latest migrations.`);
+    return fromFile;
+  }
+  return { ...fromFile, ...Object.fromEntries(data.map((r) => [r.account_uid, r.last_synced])) };
+}
+
+async function saveCursors(supabase, file, state) {
+  saveSyncState(file, state);
+  const rows = Object.entries(state).map(([account_uid, last_synced]) => ({ account_uid, last_synced }));
+  if (rows.length === 0) return;
+  const { error } = await supabase.from('sync_cursors').upsert(rows, { onConflict: 'account_uid' });
+  if (error) console.warn(`Sync cursors saved to ${file} only: ${error.message}`);
+}
+
+module.exports = { loadSyncState, saveSyncState, loadCursors, saveCursors, freshUnsyncedAccounts, addedCursors };

@@ -54,3 +54,45 @@ test('addedCursors lists only accounts that got their first cursor', () => {
   assert.deepStrictEqual(addedCursors({ a: '2026-10-22' }, { a: '2026-10-23', b: '2026-10-23' }), ['b']);
   assert.deepStrictEqual(addedCursors({ a: '2026-10-22' }, { a: '2026-10-23' }), []);
 });
+
+const { loadCursors, saveCursors } = require('./sync-state');
+
+// Minimal stand-in for the two calls the cursor table needs.
+function fakeDb({ rows = [], error = null } = {}) {
+  const upserts = [];
+  return {
+    upserts,
+    from: () => ({
+      select: async () => ({ data: error ? null : rows, error }),
+      upsert: async (r, opts) => {
+        upserts.push({ rows: r, opts });
+        return { error };
+      },
+    }),
+  };
+}
+
+test('cursors come from the database, which wins over an old local file', async () => {
+  const file = tmpFile();
+  saveSyncState(file, { a: '2026-10-01', b: '2026-10-02' });
+  const db = fakeDb({ rows: [{ account_uid: 'a', last_synced: '2026-10-20' }] });
+  assert.deepStrictEqual(await loadCursors(db, file), { a: '2026-10-20', b: '2026-10-02' });
+});
+
+test('saving writes every cursor to the database and keeps the local file as a copy', async () => {
+  const file = tmpFile();
+  const db = fakeDb();
+  await saveCursors(db, file, { a: '2026-10-20' });
+  assert.deepStrictEqual(db.upserts[0].rows, [{ account_uid: 'a', last_synced: '2026-10-20' }]);
+  assert.strictEqual(db.upserts[0].opts.onConflict, 'account_uid');
+  assert.deepStrictEqual(loadSyncState(file), { a: '2026-10-20' });
+});
+
+test('without the cursor table (migration not applied yet) the file still works', async () => {
+  const file = tmpFile();
+  saveSyncState(file, { a: '2026-10-01' });
+  const db = fakeDb({ error: { message: 'relation "sync_cursors" does not exist' } });
+  assert.deepStrictEqual(await loadCursors(db, file), { a: '2026-10-01' });
+  await saveCursors(db, file, { a: '2026-10-21' });
+  assert.deepStrictEqual(loadSyncState(file), { a: '2026-10-21' });
+});
