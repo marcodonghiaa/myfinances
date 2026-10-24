@@ -1,7 +1,7 @@
 async function getAccounts(supabase, userId) {
   const { data, error } = await supabase
     .from('accounts')
-    .select('uid, currency, label')
+    .select('uid, currency, label, created_at')
     .eq('user_id', userId);
 
   if (error) throw new Error(`Failed to load accounts: ${error.message}`);
