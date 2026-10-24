@@ -94,7 +94,7 @@ cd myfinances
 docker compose up -d --build
 ```
 
-It creates or links a Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups and writes both `.env` files.
+It first asks where the sync should run: **GitHub Actions** (free, no computer has to stay on; clone your fork and have the [GitHub CLI](https://cli.github.com) installed, no Docker needed) or **Docker** on your computer. Then it creates or links a Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups and writes both `.env` files. With GitHub Actions it also stores the keys as repository secrets and turns the sync on; skip `docker compose` in that case.
 
 Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`. Check your configuration with `node env-check.js`.
 

@@ -36,14 +36,36 @@ if [ "${1:-}" = "--reset-password" ]; then
   exit 0
 fi
 
+step "Where should the sync run?"
+echo "  1) GitHub Actions: free, no computer has to stay on. Needs your fork of this repo and the GitHub CLI (gh)."
+echo "  2) Docker on this computer: the sync runs only while it is on."
+PREVIOUS_SYNC_ON=$(existing SYNC_ON)
+if [ "$PREVIOUS_SYNC_ON" = "docker" ]; then DEFAULT_CHOICE=2; else DEFAULT_CHOICE=1; fi
+read -rp "Choose 1 or 2 [$DEFAULT_CHOICE]: " SYNC_CHOICE
+case "${SYNC_CHOICE:-$DEFAULT_CHOICE}" in
+  1) SYNC_ON=github ;;
+  2) SYNC_ON=docker ;;
+  *) die "Choose 1 or 2." ;;
+esac
+
 step "Checking prerequisites"
 command -v supabase >/dev/null || die "supabase CLI not found. Install: brew install supabase/tap/supabase"
 command -v node >/dev/null || die "node not found. Install Node 22: https://nodejs.org"
 command -v npx >/dev/null || die "npx not found (ships with Node)."
-command -v docker >/dev/null || die "docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop"
-docker compose version >/dev/null 2>&1 || die "docker compose (v2 plugin) not found. Update Docker Desktop, or install the compose plugin."
-[ -d "$FRONTEND_DIR" ] || die "Frontend repo not found at $FRONTEND_DIR. Clone it as a sibling directory, or set FRONTEND_DIR=/path/to/my-wealth-view."
-echo "OK: supabase CLI, node, docker, frontend repo at $FRONTEND_DIR"
+if [ "$SYNC_ON" = "docker" ]; then
+  command -v docker >/dev/null || die "docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop"
+  docker compose version >/dev/null 2>&1 || die "docker compose (v2 plugin) not found. Update Docker Desktop, or install the compose plugin."
+  [ -d "$FRONTEND_DIR" ] || die "Frontend repo not found at $FRONTEND_DIR. Clone it as a sibling directory, or set FRONTEND_DIR=/path/to/my-wealth-view."
+  echo "OK: supabase CLI, node, docker, frontend repo at $FRONTEND_DIR"
+else
+  command -v gh >/dev/null || die "GitHub CLI not found. Install: https://cli.github.com (or choose 2 for Docker)."
+  gh auth status >/dev/null 2>&1 || gh auth login
+  # Secrets go to the repo this folder was cloned from, which must be yours: a fork.
+  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "This folder is not a GitHub repository. Fork myfinances on GitHub, clone your fork and run setup there."
+  [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission)" = "ADMIN" ] \
+    || die "You can't set secrets on $REPO. Fork myfinances on GitHub, clone your fork and run setup there."
+  echo "OK: supabase CLI, node, GitHub CLI, your repo $REPO"
+fi
 
 json_get() {
   # json_get '<json>' 'key' -- tiny JSON field reader, avoids adding a jq dependency
@@ -198,6 +220,10 @@ fi
 step "Frontend URL (for bank-linking redirects)"
 PREVIOUS_FRONTEND_URL=$(existing FRONTEND_URL)
 PREVIOUS_FRONTEND_URL="${PREVIOUS_FRONTEND_URL:-http://localhost:3000}"
+if [ "$SYNC_ON" = "github" ]; then
+  echo "Where the dashboard lives, e.g. your Vercel address (https://<name>.vercel.app)."
+  echo "Not deployed yet? Keep the default for now and re-run ./setup.sh once you have the address."
+fi
 read -rp "Public URL the frontend will be served at [$PREVIOUS_FRONTEND_URL]: " FRONTEND_URL
 FRONTEND_URL="${FRONTEND_URL:-$PREVIOUS_FRONTEND_URL}"
 FRONTEND_URL="${FRONTEND_URL%/}" # strip trailing slash -- must exact-match the browser's Origin header for CORS
@@ -207,7 +233,7 @@ supabase secrets set --project-ref "$PROJECT_REF" \
   "ENABLE_BANKING_APP_ID=$EB_APP_ID" \
   "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY" \
   "FRONTEND_URL=$FRONTEND_URL"
-supabase functions deploy --project-ref "$PROJECT_REF"
+supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remotely: no Docker needed
 echo "Edge Functions live."
 
 step "Writing .env files"
@@ -240,8 +266,10 @@ VITE_SUPABASE_URL=$SUPABASE_URL
 VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC
 FRONTEND_URL=$FRONTEND_URL
 FRONTEND_DIR=$FRONTEND_DIR
+SYNC_ON=$SYNC_ON
 EOF
 
+if [ -d "$FRONTEND_DIR" ]; then
 write_env "$FRONTEND_DIR/.env" "$FRONTEND_DIR/.env.example" <<EOF
 SUPABASE_PROJECT_ID=$PROJECT_REF
 SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
@@ -251,7 +279,36 @@ VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 VITE_SUPABASE_URL=$SUPABASE_URL
 VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC
 EOF
+else
+  echo "No frontend checkout at $FRONTEND_DIR: skipped its .env (Vercel takes the values in its own settings)."
+fi
 echo "Wrote .env and $FRONTEND_DIR/.env"
+
+if [ "$SYNC_ON" = "github" ]; then
+  step "Turning on the sync on GitHub ($REPO)"
+  # Values go in on stdin, so they never show up in the process list. Empty ones are skipped.
+  gh_secret() {
+    [ -n "$2" ] || return 0
+    printf '%s' "$2" | gh secret set "$1" --repo "$REPO" >/dev/null || die "Could not set the GitHub secret $1."
+  }
+  gh_secret APP_ID "$EB_APP_ID"
+  gh_secret PRIVATE_KEY "$EB_PRIVATE_KEY"
+  gh_secret SUPABASE_URL "$SUPABASE_URL"
+  gh_secret SUPABASE_SECRET_KEY "$SECRET_KEY"
+  gh_secret USER_ID "$USER_ID"
+  gh_secret GEMINI_API_KEY "$GEMINI_API_KEY"
+  gh_secret VAPID_PUBLIC_KEY "$VAPID_PUBLIC"
+  gh_secret VAPID_PRIVATE_KEY "$VAPID_PRIVATE"
+  gh_secret VAPID_SUBJECT "$(existing VAPID_SUBJECT)"
+  gh_secret COINBASE_API_KEY_NAME "$(existing COINBASE_API_KEY_NAME)"
+  gh_secret COINBASE_API_PRIVATE_KEY "$(existing COINBASE_API_PRIVATE_KEY)"
+  gh variable set SYNC_ON_GITHUB --body true --repo "$REPO" >/dev/null
+  # Forks start with Actions off; switch them on, then the workflow itself.
+  gh api -X PUT "repos/$REPO/actions/permissions" -F enabled=true >/dev/null 2>&1 \
+    || echo "Could not switch Actions on: open https://github.com/$REPO/actions and enable them."
+  gh workflow enable sync.yml --repo "$REPO" >/dev/null 2>&1 || true
+  echo "Secrets and SYNC_ON_GITHUB set. Sync every 6 hours, prompts hourly, bank reminder daily."
+fi
 
 step "Closing public sign-ups"
 echo "Supabase leaves sign-ups open by default: anyone who finds your project URL could create an account."
@@ -279,6 +336,19 @@ else
 fi
 
 step "Almost done"
-echo "1. Start the app:      docker compose up -d --build"
-echo "2. Open http://localhost:3000 and sign in as $LOGIN_EMAIL"
-echo "3. In the app, click 'Connect a bank' on the Accounts page."
+SIGN_IN_AS="${LOGIN_EMAIL:-your login}"
+if [ "$SYNC_ON" = "github" ]; then
+  echo "1. Deploy the dashboard: the Deploy button in the my-wealth-view README (Vercel)."
+  echo "   Values to paste there: VITE_SUPABASE_URL=$SUPABASE_URL"
+  echo "                          VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
+  echo "                          VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC"
+  echo "   Then run ./setup.sh again with its address, so bank linking redirects there."
+  echo "2. Open the dashboard, sign in as $SIGN_IN_AS and click 'Connect a bank' on the Accounts page."
+  echo "3. Start a sync any time from https://github.com/$REPO/actions (Sync -> Run workflow)."
+else
+  echo "1. Start the app:      docker compose up -d --build"
+  echo "2. Open http://localhost:3000 and sign in as $SIGN_IN_AS"
+  echo "3. In the app, click 'Connect a bank' on the Accounts page."
+fi
+echo
+echo "If MyFinances is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"
