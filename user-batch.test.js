@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { fetchBatchForOneUser } = require('./user-batch');
+const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 
 // In-memory stand-in for the supabase query builder: honors .is(col, null),
 // .eq(col, val) and .limit(n) the way PostgREST does, so the test checks which
@@ -72,4 +72,53 @@ test('reads from the table it is given, transactions by default', async () => {
   await fetchBatchForOneUser(db, opts);
   await fetchBatchForOneUser(db, { ...opts, table: 'splitwise_expenses' });
   assert.deepStrictEqual(seen, ['transactions', 'splitwise_expenses']);
+});
+
+// Stand-in for the ordered, ranged query walkNullRows makes. Rows the handler fills in
+// leave the result set, the way an update to a non-null category does in Postgres.
+function rangedStore(rows) {
+  return {
+    rows,
+    from() {
+      let nullColumn;
+      let range = [0, Infinity];
+      const q = {
+        select() { return q; },
+        is(col) { nullColumn = col; return q; },
+        order() { return q; },
+        range(from, to) { range = [from, to]; return q; },
+        then(resolve) {
+          const pending = rows
+            .filter((r) => r[nullColumn] === null)
+            .sort((a, b) => a.entry_reference.localeCompare(b.entry_reference));
+          resolve({ data: pending.slice(range[0], range[1] + 1), error: null });
+        },
+      };
+      return q;
+    },
+  };
+}
+
+test('walkNullRows reaches every row even when filled rows drop out between pages', async () => {
+  const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  const rows = names.map((n, i) => ({ entry_reference: n, category: null, fill: i % 2 === 0 }));
+  const seen = [];
+  const filled = await walkNullRows(rangedStore(rows), {
+    select: '*',
+    nullColumn: 'category',
+    pageSize: 2,
+    handlePage: async (page) => {
+      seen.push(...page.map((r) => r.entry_reference));
+      const toFill = page.filter((r) => r.fill);
+      for (const r of toFill) rows.find((x) => x.entry_reference === r.entry_reference).category = 'X';
+      return toFill.length;
+    },
+  });
+  assert.strictEqual(filled, 4);
+  assert.deepStrictEqual(seen, names);
+});
+
+test('walkNullRows stops on an empty table', async () => {
+  const filled = await walkNullRows(rangedStore([]), { select: '*', nullColumn: 'category', handlePage: async () => 0 });
+  assert.strictEqual(filled, 0);
 });

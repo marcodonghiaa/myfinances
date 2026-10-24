@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
-const { fetchBatchForOneUser } = require('./user-batch');
+const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
 
@@ -93,9 +93,7 @@ async function applyTypes(results, rows) {
   await applyGroupedUpdates(supabase, items);
 }
 
-async function main() {
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
-
+async function classifyWithAi() {
   let totalClassified = 0;
   const stalls = createStallGuard();
   while (true) {
@@ -126,6 +124,35 @@ async function main() {
   }
 
   console.log(`Done. Classified ${totalClassified} transaction(s).`);
+}
+
+// Transfers only, over every unclassified row: used without a Gemini key, or after the
+// AI fails. The rest stays unclassified until the AI can run.
+async function applyTransferDefaultOnly() {
+  const filled = await walkNullRows(supabase, {
+    select: 'account_uid, entry_reference, bank_transaction_code',
+    nullColumn: 'transaction_type',
+    handlePage: async (rows) => {
+      const transfers = rows.filter((r) => isTransferCode(r.bank_transaction_code));
+      if (transfers.length > 0) await applyTransferDefault(transfers);
+      return transfers.length;
+    },
+  });
+  console.log(`Set ${filled} transfer(s) to One-time.`);
+}
+
+async function main() {
+  if (!GEMINI_API_KEY) {
+    console.warn('GEMINI_API_KEY is not set: only transfers are marked One-time. Add a key to .env to detect subscriptions.');
+    return applyTransferDefaultOnly();
+  }
+  try {
+    await classifyWithAi();
+  } catch (err) {
+    console.error('AI classification failed, marking transfers only:', err.message);
+    await applyTransferDefaultOnly();
+    process.exitCode = 1;
+  }
 }
 
 main().catch((err) => {

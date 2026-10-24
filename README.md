@@ -23,7 +23,7 @@ Your data lives in your own Supabase project. No SaaS, no subscription.
 | | |
 |---|---|
 | 🏦 **Bank sync** | PSD2 open banking via [Enable Banking](https://enablebanking.com): Revolut, Wise, Fineco and 2000+ other European banks. Multi-user. |
-| 🏷️ **Categorization** | Your own `category_rules` first, Gemini for the rest. Hand-set categories are never overwritten. |
+| 🏷️ **Categorization** | Your own `category_rules` first, Gemini for the rest. Hand-set categories are never overwritten. The Gemini key is recommended but optional: without it, or when Gemini fails, your rules still run. |
 | 🔁 **Subscription detection** | Every transaction is marked `Subscription` or `One-time`. |
 | 🔀 **Flow detection** | `spend`, `income` or `transfer`, so exchanges and top-ups don't count as income. |
 | 📈 **Portfolio and crypto** | Prices from Yahoo Finance, Coinbase (read-only key) and CoinGecko. |
@@ -58,6 +58,8 @@ A sync runs **every 6 hours** (banks typically cap unattended access at about 4 
 5. `classify-type.js` marks `Subscription` or `One-time`.
 6. `classify-flow.js` marks `spend`, `income` or `transfer`, then pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days; the merchant of a refund is read from its "Refund from <merchant>" remittance) and marks both `refunded` so neither counts as spend or income.
 7. `sync-portfolio-prices.js`, `sync-crypto-coinbase.js`, `sync-crypto-prices.js` price your holdings.
+
+A newly linked bank doesn't wait for the next run: in Docker, every 5 minutes the scheduler syncs banks linked in the last hour that have never synced, then categorizes what arrived. With cron or launchd, run `bash run-daily-sync.sh` once after linking.
 
 `notify-worth-it.js` runs every 30 minutes. Portfolio, crypto and notification scripts are single-user (`USER_ID`); bank sync is multi-user.
 

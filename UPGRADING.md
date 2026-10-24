@@ -10,6 +10,18 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - **Nothing to do on an existing install** if you already switched sign-ups off (see the next section).
 - `setup.sh` now turns them off with `supabase config push`, using a temporary config that declares only `enable_signup = false`, so no other project setting is changed. It checks the result and falls back to the dashboard instructions if the push fails.
 
+### Your rules no longer depend on Gemini
+- **No migration. Redeploy the sync jobs.**
+- Before, `categorize.js` and `classify-type.js` stopped before doing anything if `GEMINI_API_KEY` was missing, so your category rules didn't run either. A Gemini error (quota, outage) also stopped the run.
+- Now, without a key, `categorize.js` applies your rules to every uncategorized transaction and `classify-type.js` marks transfers One-time. If Gemini fails mid-run, the same fallback runs and the script still exits with an error so it shows in your logs. `categorize-splitwise.js` skips with a warning.
+- The key stays recommended: without it, transactions no rule matches stay uncategorized and subscriptions are not detected.
+
+### A newly linked bank shows its transactions within minutes
+- **No migration. Redeploy the sync jobs** (`docker compose up -d --build`).
+- Before, linking a bank stored its balance right away but its transactions only at the next 6-hour sync.
+- Now the Docker scheduler checks every 5 minutes for banks linked in the last hour that have never synced, pulls their last 90 days and categorizes them. Other accounts are not called, so the banks' daily call limits are unaffected. If that first sync keeps failing, it stops retrying after an hour and the regular sync takes over.
+- Cron and launchd installs are unchanged: run `bash run-daily-sync.sh` once after linking, or wait for the next run.
+
 ### Switch off public sign-ups (existing installs read this)
 - **No migration. One step in your Supabase dashboard.**
 - Supabase leaves sign-ups open on every new project. The app has no sign-up screen, but anyone who finds your project URL and its public key can still create an account through the Auth API. They could then call the bank functions and use up your Enable Banking quota.

@@ -6,10 +6,15 @@ const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
 const { buildRows } = require('./transaction-rows');
 const { fetchWithTimeout } = require('./http');
-const { loadSyncState, saveSyncState } = require('./sync-state');
+const { loadSyncState, saveSyncState, freshUnsyncedAccounts } = require('./sync-state');
 
 const SYNC_STATE_FILE = process.env.SYNC_STATE_FILE || 'last-sync.json';
 const OVERLAP_DAYS = 7;
+// --new-only: sync just the banks linked in the last hour that have never synced, so a new
+// user sees transactions minutes after linking instead of at the next 6-hour run.
+// scheduler.js runs it every few minutes; other accounts aren't touched (banks cap calls).
+const NEW_ONLY = process.argv.includes('--new-only');
+const NEW_ACCOUNT_WINDOW_MS = 60 * 60 * 1000;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
@@ -44,8 +49,9 @@ async function main() {
   for (const userId of userIds) {
     let accounts;
     try {
-      await checkSessionExpiry(supabase, userId);
+      if (!NEW_ONLY) await checkSessionExpiry(supabase, userId);
       accounts = await getAccounts(supabase, userId);
+      if (NEW_ONLY) accounts = freshUnsyncedAccounts(accounts, lastSync, Date.now(), NEW_ACCOUNT_WINDOW_MS);
     } catch (err) {
       // One user's failure shouldn't stop everyone after them from syncing.
       console.error(`Skipping user ${userId}:`, err.message);

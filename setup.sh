@@ -133,9 +133,11 @@ VAPID_PRIVATE=$(echo "$VAPID_OUT" | grep -A1 "Private Key" | tail -1 | tr -d '[:
 [ -n "$VAPID_PUBLIC" ] && [ -n "$VAPID_PRIVATE" ] || die "Could not parse VAPID keys from web-push output."
 echo "Generated."
 
-step "Gemini API key (for AI transaction categorization)"
+step "Gemini API key (recommended: AI sorts your transactions into categories)"
 echo "Get one free at https://aistudio.google.com/apikey"
-read -rp "GEMINI_API_KEY: " GEMINI_API_KEY
+echo "Leave empty to skip: only the rules you write in the app will categorize, and"
+echo "subscriptions won't be detected. You can add a key to .env later."
+read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
 
 step "Frontend URL (for bank-linking redirects)"
 read -rp "Public URL the frontend will be served at [http://localhost:3000]: " FRONTEND_URL
