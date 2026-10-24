@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Optional: run the sync on GitHub Actions
+- **No migration** (needs `20261102000000_sync_cursors` from the previous release). Nothing changes for Docker, cron or launchd installs.
+- New workflow `.github/workflows/sync.yml`, off until the repository variable `SYNC_ON_GITHUB` is `true`. See Scheduling in the README for the secrets it needs.
+- `node scheduler.js --once <sync|notify|consent>` runs one job and exits, non-zero if a step failed; the workflow uses it. The job lists moved to `jobs.js`, shared with the Docker scheduler.
+
 ### Sync progress is stored in the database
 - **Migration:** `20261102000000_sync_cursors`. Apply it, then redeploy the sync jobs.
 - Where each account's transaction sync got to used to live only in `last-sync.json` next to the scripts. It now lives in the `sync_cursors` table too, so the sync can run on a machine that keeps no files between runs (the GitHub Actions option coming next).

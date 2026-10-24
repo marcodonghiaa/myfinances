@@ -2,28 +2,18 @@
 // Replaces launchd/cron -- there's no host scheduler inside a container, so
 // this process stays alive as PID 1 and triggers the jobs itself.
 //
-// Not used outside Docker: local/launchd installs keep using
-// run-daily-sync.sh and run-notify.sh directly.
+// `node scheduler.js --once <sync|notify|consent>` runs one job and exits, non-zero if a
+// step failed: what the GitHub Actions workflow calls. Local launchd/cron installs keep
+// using run-daily-sync.sh and run-notify.sh.
 const { spawnSync } = require("node:child_process");
 const { createClient } = require("@supabase/supabase-js");
 const { loadCursors, addedCursors } = require("./sync-state");
 const { reportEnv } = require("./env-check");
+const { JOBS, runJob } = require("./jobs");
 
 // A script that hangs would otherwise block every later step and run forever.
 const SCRIPT_TIMEOUT_MS = 10 * 60 * 1000;
 
-const SYNC_STEPS = [
-  "sync-transactions.js",
-  "sync-networth.js",
-  "fx-sync.js",
-  "categorize.js",
-  "classify-type.js",
-  "categorize-splitwise.js",
-  "classify-flow.js",
-  "sync-portfolio-prices.js",
-  "sync-crypto-coinbase.js",
-  "sync-crypto-prices.js",
-];
 
 const SYNC_STATE_FILE = process.env.SYNC_STATE_FILE || "last-sync.json";
 
@@ -38,10 +28,11 @@ function run(script, args = [], { quiet = false } = {}) {
   } else if (result.status !== 0) {
     console.error(`[scheduler] ${script} exited with code ${result.status}`);
   }
+  return result.status === 0;
 }
 
 function runSync() {
-  for (const script of SYNC_STEPS) run(script);
+  runJob("sync", (script) => run(script));
 }
 
 // Every few minutes: sync banks linked since the last run, then classify what arrived.
@@ -57,16 +48,23 @@ async function runFirstSync() {
 }
 
 function runNotify() {
-  run("notify-worth-it.js");
+  runJob("notify", (script) => run(script));
 }
 
 // Once a day: push a reminder when a bank's access is 7, 1 or 0 days from expiring.
 function runConsentNotice() {
-  run("consent-notice.js");
+  runJob("consent", (script) => run(script));
 }
 
 // A broken .env is one clear message here, not an error from every script every 6 hours.
 if (!reportEnv()) process.exit(1);
+
+const onceAt = process.argv.indexOf("--once");
+if (onceAt !== -1) {
+  const failed = runJob(process.argv[onceAt + 1], (script) => run(script));
+  if (failed.length > 0) console.error(`[scheduler] failed: ${failed.join(", ")}`);
+  process.exit(failed.length > 0 ? 1 : 0);
+}
 
 runSync();
 runNotify();

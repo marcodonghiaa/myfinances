@@ -1,0 +1,62 @@
+# Runs the sync on GitHub instead of a computer that stays on. Off until you turn it on:
+# set the repository variable SYNC_ON_GITHUB to true (Settings -> Secrets and variables ->
+# Actions -> Variables) and add the secrets listed under `env` (setup.sh can do both).
+# Without the variable, scheduled runs are skipped, so the upstream repo and forks that sync
+# elsewhere never run it.
+name: Sync
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # bank sync, 4 a day: banks cap unattended access at about 4 calls a day
+    - cron: "42 * * * *" # "worth it?" prompts, hourly
+    - cron: "3 8 * * *" # bank-access expiry reminder, daily
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run now
+        type: choice
+        options: [sync, notify, consent]
+        default: sync
+
+permissions:
+  contents: read
+
+# One run at a time per job: a slow sync is never overlapped by the next one.
+concurrency:
+  group: sync-${{ github.event.schedule || inputs.job }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: vars.SYNC_ON_GITHUB == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_ID: ${{ secrets.APP_ID }}
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      USER_ID: ${{ secrets.USER_ID }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      COINBASE_API_KEY_NAME: ${{ secrets.COINBASE_API_KEY_NAME }}
+      COINBASE_API_PRIVATE_KEY: ${{ secrets.COINBASE_API_PRIVATE_KEY }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --omit=dev
+      - name: Pick the job
+        id: job
+        run: |
+          case "${{ github.event.schedule }}" in
+            "17 */6 * * *") echo "name=sync" >> "$GITHUB_OUTPUT" ;;
+            "42 * * * *") echo "name=notify" >> "$GITHUB_OUTPUT" ;;
+            "3 8 * * *") echo "name=consent" >> "$GITHUB_OUTPUT" ;;
+            *) echo "name=${{ inputs.job || 'sync' }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - run: node scheduler.js --once ${{ steps.job.outputs.name }}

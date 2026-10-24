@@ -130,6 +130,9 @@ Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a *
 
 ## ⏰ Scheduling
 
+**On GitHub, no computer needed:** in your fork, add the secrets `APP_ID`, `PRIVATE_KEY` (the whole `.pem`), `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `USER_ID` and, if you use them, `GEMINI_API_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `COINBASE_API_KEY_NAME`, `COINBASE_API_PRIVATE_KEY` (Settings -> Secrets and variables -> Actions). Then add the variable `SYNC_ON_GITHUB` = `true` and enable Actions on the fork. [`.github/workflows/sync.yml`](.github/workflows/sync.yml) then syncs every 6 hours, sends "worth it?" prompts hourly and the bank-access reminder daily; run any of them by hand from the Actions tab. Free for a public fork; a private one uses about 1,000 of its 2,000 monthly minutes. GitHub can start scheduled runs 10-30 minutes late.
+
+
 Docker runs everything on its own schedule (`scheduler.js`). Without Docker, use cron or launchd:
 
 ```cron
