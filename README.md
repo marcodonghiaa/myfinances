@@ -71,42 +71,66 @@ Bank linking from the dashboard runs as three Supabase Edge Functions, see [`sup
 
 Want to look first? Try the [live demo](https://myfinancess-view.vercel.app/demo): fake data, no sign-up.
 
-Self-hosting takes about **45 minutes** the first time, most of it waiting on Enable Banking.
+Your own copy takes about **30 minutes**, all in the browser: no computer has to stay on and nothing to install. Most of the time goes into Enable Banking's signup.
 
-### 1. Before you start (about 20 minutes)
+### 1. Create the accounts (about 15 minutes)
 
-| You need | Why | Cost |
+| Account | What it's for | Cost |
 |---|---|---|
-| [Docker Desktop](https://www.docker.com/products/docker-desktop), [Supabase CLI](https://supabase.com/docs/guides/cli), [Node 22](https://nodejs.org), git | to run the setup and the sync | free |
-| A [Supabase](https://supabase.com) account | your database and login | free tier is enough |
-| An [Enable Banking](https://enablebanking.com) account | the PSD2 connection to your banks | free for your own accounts |
-| A [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional but recommended |
+| [GitHub](https://github.com/signup) | runs the setup (Codespaces) and the sync (Actions) | free |
+| [Supabase](https://supabase.com/dashboard) | your database and login | free tier is enough |
+| [Enable Banking](https://enablebanking.com) | the PSD2 connection to your banks | free for your own accounts |
+| [Vercel](https://vercel.com/signup) (sign in with GitHub) | puts the dashboard online over HTTPS | free Hobby plan |
+| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended |
 
-Enable Banking is the slow part: create a **Production** application (not Sandbox), download its `.pem` key, then activate it by linking one of your own accounts in their panel. The wizard prints the exact redirect URL to use, so you can also do this while it waits for you.
+In Enable Banking, create a **Production** application (not Sandbox) and download its `.pem` key. The setup tells you the exact redirect URL to paste, and how to activate the application by linking one of your own accounts in their panel.
 
-### 2. Run the wizard (about 15 minutes)
+### 2. Run the setup (about 10 minutes)
 
-**Nothing to install:** [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/myfinances?quickstart=1) opens a terminal in your browser with Node, the GitHub CLI and the Supabase CLI ready. Run `./setup.sh` there and pick GitHub Actions: it forks the repo to your account, stores your keys as its secrets and turns the sync on. Upload the Enable Banking `.pem` by dragging it onto the file list, and delete the Codespace when you're done (free accounts get 60 hours a month; setup takes about 15 minutes).
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/myfinances?quickstart=1)
 
-**Or on your computer:**
+This opens a terminal in your browser with everything ready. Run:
+
+```bash
+./setup.sh
+```
+
+Choose **1, GitHub Actions**. Setup forks this repo to your account, creates or links your Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups, stores your keys as secrets of your fork and turns the sync on. When it asks for the `.pem`, drag it from your Downloads onto the file list on the left.
+
+At the end it prints three values for the next step. Keep the Codespace open for now.
+
+### 3. Put the dashboard online (about 5 minutes)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmy-wealth-view&project-name=my-finances&repository-name=my-finances&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+at+the+end+of+the+backend%27s+setup.sh&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmyfinances%23-getting-started)
+
+Paste the three values setup printed and deploy. Copy the address Vercel gives you (`https://<name>.vercel.app`), go back to the Codespace and run `./setup.sh` once more: give that address when asked where the dashboard lives, and press Enter for everything else (it remembers your answers). That way bank linking sends you back to your dashboard.
+
+Then delete the Codespace, since it holds your keys: [github.com/codespaces](https://github.com/codespaces), the `...` menu, Delete. Everything you set up stays in Supabase, GitHub and Vercel. Free accounts get 60 Codespaces hours a month.
+
+### 4. Link a bank and add your investments
+
+Sign in on your dashboard. On **Accounts**, use **Connect a bank**: balances show at once, and the transactions arrive with the next sync (every 6 hours; to get them now, open your fork's **Actions** tab, **Sync**, **Run workflow**). On **Portfolio**, **Add an investment** finds yours by name, ticker or ISIN; on **Crypto**, **Add a coin**. A checklist on the dashboard shows what's left.
+
+Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and you get a push notification 7 days, 1 day and on the day it expires.
+
+Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`.
+
+<details>
+<summary><b>On your own computer or server instead (Docker)</b></summary>
+
+Needs [Docker](https://www.docker.com/products/docker-desktop), the [Supabase CLI](https://supabase.com/docs/guides/cli) and [Node 22](https://nodejs.org). The sync runs only while that machine is on.
 
 ```bash
 git clone https://github.com/marcodonghiaa/myfinances.git
 git clone https://github.com/marcodonghiaa/my-wealth-view.git
 cd myfinances
-./setup.sh
+./setup.sh          # choose 2, Docker
 docker compose up -d --build
 ```
 
-It first asks where the sync should run: **GitHub Actions** (free, no computer has to stay on; clone your fork and have the [GitHub CLI](https://cli.github.com) installed, no Docker needed) or **Docker** on your computer. Then it creates or links a Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups and writes both `.env` files. With GitHub Actions it also stores the keys as repository secrets and turns the sync on; skip `docker compose` in that case.
+Open http://localhost:3000. With Docker, a newly linked bank's last 90 days of transactions arrive within about 5 minutes. Check your configuration any time with `node env-check.js`.
 
-Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`. Check your configuration with `node env-check.js`.
-
-### 3. Link a bank (about 5 minutes)
-
-Open http://localhost:3000, sign in, and use **Connect a bank** on the Accounts page. Balances show at once; with Docker, the last 90 days of transactions arrive within about 5 minutes and are categorized.
-
-Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and `consent-notice.js` (daily) sends a push 7 days, 1 day and on the day it expires.
+</details>
 
 <details>
 <summary><b>Manual setup</b></summary>
