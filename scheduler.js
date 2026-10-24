@@ -6,6 +6,7 @@
 // run-daily-sync.sh and run-notify.sh directly.
 const { spawnSync } = require("node:child_process");
 const { loadSyncState, addedCursors } = require("./sync-state");
+const { reportEnv } = require("./env-check");
 
 // A script that hangs would otherwise block every later step and run forever.
 const SCRIPT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -56,6 +57,9 @@ function runFirstSync() {
 function runNotify() {
   run("notify-worth-it.js");
 }
+
+// A broken .env is one clear message here, not an error from every script every 6 hours.
+if (!reportEnv()) process.exit(1);
 
 runSync();
 runNotify();

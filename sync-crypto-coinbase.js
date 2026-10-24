@@ -66,8 +66,10 @@ async function fetchCoinbaseAccounts() {
 
 async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
+  // Coinbase is optional: without both keys there is nothing to sync, not an error.
   if (!KEY_NAME || !process.env.COINBASE_API_PRIVATE_KEY) {
-    throw new Error('COINBASE_API_KEY_NAME / COINBASE_API_PRIVATE_KEY missing from .env');
+    console.log('Coinbase is not configured, skipping.');
+    return;
   }
 
   const accounts = await fetchCoinbaseAccounts();
