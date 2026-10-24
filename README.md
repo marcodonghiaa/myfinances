@@ -102,6 +102,7 @@ Then link a bank from the dashboard's **Connect a bank** button on the Accounts 
 | Run a full sync by hand | `bash run-daily-sync.sh` |
 | Send "worth it?" prompts now | `bash run-notify.sh` |
 | Re-apply changed category rules | `node categorize.js --reapply-rules` |
+| Check your `.env` | `node env-check.js` |
 | Run the tests | `npm test` |
 
 `--reapply-rules` recategorizes rows the AI or an earlier rule set. Categories you set by hand are never touched (tracked in `transactions.category_source`; categories that predate the column count as hand-set).

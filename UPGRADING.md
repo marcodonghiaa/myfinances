@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### .env is checked before the sync starts
+- **No migration. Redeploy the sync jobs.**
+- The Docker scheduler and `run-daily-sync.sh` now run `env-check.js` first. A missing or wrong value (no secret key, the publishable key pasted as the secret one, an unreadable `.pem`, no `USER_ID`) stops the sync with one line naming the variable, instead of every script failing on its own. Optional features that are off (Gemini, push notifications, a half-set Coinbase key) are listed as warnings.
+- Check by hand any time: `node env-check.js`.
+- `sync-crypto-coinbase.js` no longer fails when Coinbase isn't configured; it skips.
+
 ### Setup switches off public sign-ups by itself
 - **Nothing to do on an existing install** if you already switched sign-ups off (see the next section).
 - `setup.sh` now turns them off with `supabase config push`, using a temporary config that declares only `enable_signup = false`, so no other project setting is changed. It checks the result and falls back to the dashboard instructions if the push fails.

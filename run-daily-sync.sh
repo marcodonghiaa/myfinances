@@ -6,6 +6,7 @@ trap 'rmdir /tmp/run-daily-sync.lock.d' EXIT
 LOG_FILE="sync-log-$(date +%Y-%m-%d).txt"
 
 echo "=== Sync started at $(date) ===" >> "$LOG_FILE"
+/opt/homebrew/bin/node env-check.js >> "$LOG_FILE" 2>&1 || { echo "=== Sync skipped: fix .env (see above) ===" >> "$LOG_FILE"; exit 1; }
 /opt/homebrew/bin/node sync-transactions.js >> "$LOG_FILE" 2>&1
 /opt/homebrew/bin/node sync-networth.js >> "$LOG_FILE" 2>&1
 /opt/homebrew/bin/node fx-sync.js >> "$LOG_FILE" 2>&1
