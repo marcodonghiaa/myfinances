@@ -6,8 +6,8 @@ project_id = "finance_app"
 major_version = 17
 
 [auth]
-site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
 # The app has no sign-up screen; setup.sh creates the one login. Keep the Auth API closed too.
 enable_signup = false
 

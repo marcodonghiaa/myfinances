@@ -38,7 +38,7 @@ fi
 
 step "Checking prerequisites"
 command -v supabase >/dev/null || die "supabase CLI not found. Install: brew install supabase/tap/supabase"
-command -v node >/dev/null || die "node not found. Install Node 18+."
+command -v node >/dev/null || die "node not found. Install Node 22: https://nodejs.org"
 command -v npx >/dev/null || die "npx not found (ships with Node)."
 command -v docker >/dev/null || die "docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop"
 docker compose version >/dev/null 2>&1 || die "docker compose (v2 plugin) not found. Update Docker Desktop, or install the compose plugin."
@@ -90,7 +90,9 @@ else
   CREATE_JSON=$(supabase projects create "$PROJECT_NAME" --org-id "$ORG_ID" --db-password "$DB_PASSWORD" --region "$REGION" --output json)
   PROJECT_REF=$(node -e "const p=JSON.parse(process.argv[1]); console.log(p.id ?? p.ref ?? '')" "$CREATE_JSON")
   [ -n "$PROJECT_REF" ] || die "Project creation did not return a ref. Response was: $CREATE_JSON"
-  echo "Created project $PROJECT_REF -- DB password: $DB_PASSWORD (save this, it's shown once)"
+  # Nothing here needs the database password again, so it is not printed (it would stay in
+  # the terminal history). Reset it in the dashboard (Project Settings -> Database) if needed.
+  echo "Created project $PROJECT_REF."
 fi
 fi
 

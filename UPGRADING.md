@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Small setup fixes
+- **No migration. Nothing to do.**
+- `run-daily-sync.sh` and `run-notify.sh` use the `node` on your PATH, falling back to Homebrew's `/opt/homebrew/bin/node` (cron and launchd start with a bare PATH). Set `NODE=/path/to/node` to pick one. Before, the Homebrew path was hard-coded, so Linux and Intel Macs failed.
+- `SESSION_VALID_UNTIL` is gone from `.env.example`: no script read it (bank access is always requested for 180 days). An old line in your `.env` is harmless.
+- `setup.sh` no longer prints the new database password: nothing needs it later, and it stayed in the terminal history.
+
 ### setup.sh can be run again, and resets your password
 - **No migration.**
 - Re-running `./setup.sh` used to overwrite both `.env` files and ask for everything again (Coinbase keys and hand edits were lost). Now it reads `.env` first, keeps the project, login, Enable Banking key, VAPID keys and Gemini key it finds, and merges what it writes, so keys it doesn't manage stay. It still pushes new migrations and redeploys the functions, so a re-run is also an easy upgrade.
