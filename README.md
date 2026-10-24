@@ -86,6 +86,10 @@ Enable Banking is the slow part: create a **Production** application (not Sandbo
 
 ### 2. Run the wizard (about 15 minutes)
 
+**Nothing to install:** [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/myfinances?quickstart=1) opens a terminal in your browser with Node, the GitHub CLI and the Supabase CLI ready. Run `./setup.sh` there and pick GitHub Actions: it forks the repo to your account, stores your keys as its secrets and turns the sync on. Upload the Enable Banking `.pem` by dragging it onto the file list, and delete the Codespace when you're done (free accounts get 60 hours a month; setup takes about 15 minutes).
+
+**Or on your computer:**
+
 ```bash
 git clone https://github.com/marcodonghiaa/myfinances.git
 git clone https://github.com/marcodonghiaa/my-wealth-view.git

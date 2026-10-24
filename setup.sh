@@ -59,11 +59,25 @@ if [ "$SYNC_ON" = "docker" ]; then
   echo "OK: supabase CLI, node, docker, frontend repo at $FRONTEND_DIR"
 else
   command -v gh >/dev/null || die "GitHub CLI not found. Install: https://cli.github.com (or choose 2 for Docker)."
-  gh auth status >/dev/null 2>&1 || gh auth login
-  # Secrets go to the repo this folder was cloned from, which must be yours: a fork.
-  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "This folder is not a GitHub repository. Fork myfinances on GitHub, clone your fork and run setup there."
-  [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission)" = "ADMIN" ] \
-    || die "You can't set secrets on $REPO. Fork myfinances on GitHub, clone your fork and run setup there."
+  if [ "${CODESPACES:-}" = "true" ]; then
+    # A Codespace's built-in token can't write repository secrets: sign gh in as you instead.
+    unset GITHUB_TOKEN
+    gh auth status >/dev/null 2>&1 || gh auth login --hostname github.com --git-protocol https --web --scopes repo,workflow
+  else
+    gh auth status >/dev/null 2>&1 || gh auth login
+  fi
+  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "This folder is not a GitHub repository. Clone myfinances (or open it in Codespaces) and run setup there."
+  # The sync runs in a repo you own. Opened from someone else's repo (e.g. Codespaces on the
+  # original), fork it to your account and use the fork.
+  if [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission)" != "ADMIN" ]; then
+    echo "$REPO isn't yours: the sync will run in your own fork of it."
+    read -rp "Fork it to your GitHub account now? [Y/n] " DO_FORK
+    [[ "$DO_FORK" =~ ^[Nn]$ ]] && die "Fork $REPO on GitHub, then run setup from your fork."
+    gh repo fork "$REPO" --clone=false --default-branch-only >/dev/null 2>&1 || true # fine if it exists
+    REPO="$(gh api user --jq .login)/${REPO#*/}"
+    [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission 2>/dev/null)" = "ADMIN" ] \
+      || die "Could not find your fork $REPO. Fork it on GitHub, then run setup again."
+  fi
   echo "OK: supabase CLI, node, GitHub CLI, your repo $REPO"
 fi
 
@@ -180,6 +194,9 @@ echo "app for free Restricted Production use. It does NOT connect that account"
 echo "to this app yet; you'll do that separately from this app's own dashboard"
 echo "once setup finishes."
 read -rp "Enable Banking APP_ID: " EB_APP_ID
+if [ "${CODESPACES:-}" = "true" ]; then
+  echo "In Codespaces: drag the .pem from your Downloads onto the file list on the left, then type its name."
+fi
 read -rp "Path to the downloaded .pem private key: " EB_PEM_PATH
 [ -f "$EB_PEM_PATH" ] || die "No file at $EB_PEM_PATH"
 EB_PRIVATE_KEY=$(cat "$EB_PEM_PATH")
@@ -349,6 +366,11 @@ else
   echo "1. Start the app:      docker compose up -d --build"
   echo "2. Open http://localhost:3000 and sign in as $SIGN_IN_AS"
   echo "3. In the app, click 'Connect a bank' on the Accounts page."
+fi
+if [ "${CODESPACES:-}" = "true" ]; then
+  echo
+  echo "This Codespace now holds your keys (.env and the .pem). Once you're done, delete it:"
+  echo "https://github.com/codespaces -> ... next to this one -> Delete. Your setup lives on in Supabase and GitHub."
 fi
 echo
 echo "If MyFinances is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"

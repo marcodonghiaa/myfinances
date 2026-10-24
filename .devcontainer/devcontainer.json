@@ -1,0 +1,17 @@
+// Opens a ready terminal in the browser (GitHub Codespaces) with everything setup.sh needs:
+// Node 22, the GitHub CLI and the Supabase CLI. Nothing to install on your computer.
+{
+  "name": "myfinances setup",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/supabase-cli:1": {}
+  },
+  "postCreateCommand": "npm ci --omit=dev",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  },
+  "postAttachCommand": "echo; echo 'Run ./setup.sh to set up your own MyFinances.'; echo"
+}
