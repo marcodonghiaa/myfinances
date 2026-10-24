@@ -41,7 +41,10 @@ async function applyPlan(plan) {
 }
 
 async function main() {
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
+  if (!GEMINI_API_KEY) {
+    console.warn('GEMINI_API_KEY is not set: Splitwise shares without a category stay uncategorized.');
+    return;
+  }
 
   let total = 0;
   const stalls = createStallGuard();

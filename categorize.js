@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
-const { fetchBatchForOneUser } = require('./user-batch');
+const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
 const { CATEGORIES, guideFor } = require('./categories');
@@ -118,14 +118,23 @@ async function reapplyRules() {
   console.log(`Done. Re-applied rules to ${changed} transaction(s).`);
 }
 
-async function main() {
-  if (process.argv.includes('--reapply-rules')) return reapplyRules();
+// Rules alone, over every uncategorized row: used without a Gemini key, or after the AI
+// fails, so your rules never depend on the AI being available.
+async function applyRulesOnly(rules) {
+  if (rules.length === 0) return;
+  const filled = await walkNullRows(supabase, {
+    select: 'user_id, account_uid, entry_reference, creditor_name, remittance_info',
+    nullColumn: 'category',
+    handlePage: async (rows) => {
+      const { matched } = applyRules(rows, rules);
+      if (matched.length > 0) await applyRuleMatches(matched);
+      return matched.length;
+    },
+  });
+  console.log(`Applied rules to ${filled} transaction(s).`);
+}
 
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY missing from .env');
-
-  const rules = await fetchRules();
-  if (rules.length > 0) console.log(`Loaded ${rules.length} categorization rule(s).`);
-
+async function categorizeWithAi(rules) {
   let totalCategorized = 0;
   const stalls = createStallGuard();
   while (true) {
@@ -154,6 +163,25 @@ async function main() {
   }
 
   console.log(`Done. Categorized ${totalCategorized} transaction(s).`);
+}
+
+async function main() {
+  if (process.argv.includes('--reapply-rules')) return reapplyRules();
+
+  const rules = await fetchRules();
+  if (rules.length > 0) console.log(`Loaded ${rules.length} categorization rule(s).`);
+
+  if (!GEMINI_API_KEY) {
+    console.warn('GEMINI_API_KEY is not set: applying your rules only. Add a key to .env to categorize the rest with AI.');
+    return applyRulesOnly(rules);
+  }
+  try {
+    await categorizeWithAi(rules);
+  } catch (err) {
+    console.error('AI categorization failed, applying your rules only:', err.message);
+    await applyRulesOnly(rules);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((err) => {
