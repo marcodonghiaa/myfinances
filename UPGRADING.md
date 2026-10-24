@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### setup.sh can turn on the GitHub Actions sync
+- **No migration.**
+- `setup.sh` now asks where the sync runs. With GitHub Actions it needs the GitHub CLI and your fork (it checks you are an admin of the repo), writes every secret the workflow reads, sets `SYNC_ON_GITHUB=true` and enables Actions. Docker is then not needed: the functions deploy with `--use-api`.
+- The choice is saved as `SYNC_ON` in `.env` and offered as the default on the next run. The frontend `.env` is skipped when there is no local frontend checkout (Vercel keeps its own settings).
+- Fixed: a re-run with an existing login crashed on its last line (`LOGIN_EMAIL: unbound variable`).
+
 ### Optional: run the sync on GitHub Actions
 - **No migration** (needs `20261102000000_sync_cursors` from the previous release). Nothing changes for Docker, cron or launchd installs.
 - New workflow `.github/workflows/sync.yml`, off until the repository variable `SYNC_ON_GITHUB` is `true`. See Scheduling in the README for the secrets it needs.
