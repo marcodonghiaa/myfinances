@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### A newly linked bank shows its transactions within minutes
+- **No migration. Redeploy the sync jobs** (`docker compose up -d --build`).
+- Before, linking a bank stored its balance right away but its transactions only at the next 6-hour sync.
+- Now the Docker scheduler checks every 5 minutes for banks linked in the last hour that have never synced, pulls their last 90 days and categorizes them. Other accounts are not called, so the banks' daily call limits are unaffected. If that first sync keeps failing, it stops retrying after an hour and the regular sync takes over.
+- Cron and launchd installs are unchanged: run `bash run-daily-sync.sh` once after linking, or wait for the next run.
+
 ### Switch off public sign-ups (existing installs read this)
 - **No migration. One step in your Supabase dashboard.**
 - Supabase leaves sign-ups open on every new project. The app has no sign-up screen, but anyone who finds your project URL and its public key can still create an account through the Auth API. They could then call the bank functions and use up your Enable Banking quota.
