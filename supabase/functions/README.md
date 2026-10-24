@@ -11,6 +11,10 @@ plain deploy from this repo reproduces the same gating described below.
   user back to after consent. Exchanges the code, saves the discovered
   accounts. `verify_jwt: false` (it's a bank's plain browser redirect, no
   Authorization header).
+- **add-holding** — searches Yahoo Finance (stocks, ETFs, funds) or CoinGecko
+  (crypto) by name, ticker or ISIN, and adds the chosen holding with today's
+  price so it shows at once. Writes the holding as the user (RLS), the price
+  with the service role. `verify_jwt: true`.
 - **list-banks** — read-only lookup of Enable Banking's supported banks for
   a country, powers the bank picker. `verify_jwt: true`.
 

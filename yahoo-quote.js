@@ -7,7 +7,10 @@ function parseQuote(data, symbol) {
   if (!result) throw new Error(`No quote data for ${symbol}: ${JSON.stringify(data.chart?.error)}`);
   const { regularMarketPrice: price, currency, instrumentType } = result.meta;
   if (typeof price !== 'number' || !Number.isFinite(price)) throw new Error(`No valid price for ${symbol}`);
-  return { price, currency, assetType: ASSET_TYPE_MAP[instrumentType] || 'Other' };
+  const assetType = ASSET_TYPE_MAP[instrumentType] || 'Other';
+  // London listings are quoted in pence; fx_rates has GBP, not GBp.
+  if (currency === 'GBp') return { price: price / 100, currency: 'GBP', assetType };
+  return { price, currency, assetType };
 }
 
 // Yahoo calls bond funds ETFs, so a holding marked Bond by hand keeps that label.
