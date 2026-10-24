@@ -18,4 +18,16 @@ function saveSyncState(file, state) {
   fs.renameSync(tmp, file);
 }
 
-module.exports = { loadSyncState, saveSyncState };
+// A bank linked in the last `windowMs` that has no cursor yet. The first-sync watcher
+// only retries inside the window, so an account whose first sync keeps failing doesn't
+// hit the bank every few minutes forever; the regular 6-hour sync still covers it.
+function freshUnsyncedAccounts(accounts, state, now, windowMs) {
+  return accounts.filter((a) => !state[a.uid] && now - Date.parse(a.created_at) <= windowMs);
+}
+
+// Accounts that got their first cursor between two reads of the state file.
+function addedCursors(before, after) {
+  return Object.keys(after).filter((uid) => !before[uid]);
+}
+
+module.exports = { loadSyncState, saveSyncState, freshUnsyncedAccounts, addedCursors };
