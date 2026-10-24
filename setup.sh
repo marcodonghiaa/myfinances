@@ -3,8 +3,8 @@
 # schema, deploys the bank-linking Edge Functions, and writes both apps'
 # .env files. Run once per self-hosted instance.
 #
-# It also creates your login (the app has no sign-up screen) and asks you to
-# switch off public sign-ups so nobody else can create an account on your instance.
+# It also creates your login (the app has no sign-up screen) and switches off
+# public sign-ups so nobody else can create an account on your instance.
 #
 # What it CANNOT automate: signing up for Enable Banking and creating your
 # PSD2 application there is a manual step on their site -- there's no API
@@ -185,11 +185,23 @@ echo "Wrote .env and $FRONTEND_DIR/.env"
 
 step "Closing public sign-ups"
 echo "Supabase leaves sign-ups open by default: anyone who finds your project URL could create an account."
-echo "Your login already exists, so switch them off."
+echo "Your login already exists, so this switches them off."
 signups_closed() {
   [ "$(json_get "$(curl -fsS "$SUPABASE_URL/auth/v1/settings" -H "apikey: $PUBLISHABLE_KEY")" disable_signup)" = "true" ]
 }
+# Push only this one setting: a config.toml that declares nothing else leaves every other
+# remote setting as it is (checked with `supabase config diff`).
 if ! signups_closed; then
+  SIGNUP_DIR=$(mktemp -d)
+  mkdir "$SIGNUP_DIR/supabase"
+  printf 'project_id = "myfinances-setup"\n\n[auth]\nenable_signup = false\n' > "$SIGNUP_DIR/supabase/config.toml"
+  supabase config push --workdir "$SIGNUP_DIR" --project-ref "$PROJECT_REF" --yes || echo "Could not switch them off automatically."
+  rm -rf "$SIGNUP_DIR"
+  for _ in 1 2 3 4 5; do signups_closed && break; sleep 2; done # the setting takes a moment to apply
+fi
+if signups_closed; then
+  echo "Sign-ups are off."
+else
   echo "Open https://supabase.com/dashboard/project/${PROJECT_REF}/auth/providers"
   echo "  -> User Signups -> turn OFF 'Allow new users to sign up' -> Save"
   read -rp "Press Enter once saved: " _

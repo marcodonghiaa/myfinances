@@ -6,6 +6,10 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Setup switches off public sign-ups by itself
+- **Nothing to do on an existing install** if you already switched sign-ups off (see the next section).
+- `setup.sh` now turns them off with `supabase config push`, using a temporary config that declares only `enable_signup = false`, so no other project setting is changed. It checks the result and falls back to the dashboard instructions if the push fails.
+
 ### Switch off public sign-ups (existing installs read this)
 - **No migration. One step in your Supabase dashboard.**
 - Supabase leaves sign-ups open on every new project. The app has no sign-up screen, but anyone who finds your project URL and its public key can still create an account through the Auth API. They could then call the bank functions and use up your Enable Banking quota.

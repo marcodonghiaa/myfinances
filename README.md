@@ -77,7 +77,7 @@ cd myfinances
 docker compose up -d --build
 ```
 
-The wizard asks for your email and password and creates your login (the app has no sign-up screen), then asks you to switch off public sign-ups in the Supabase dashboard. The only other manual step is Enable Banking's signup, which has no API: the wizard sends you there to create a free **Production** application and download a key.
+The wizard asks for your email and password, creates your login (the app has no sign-up screen) and switches off public sign-ups. The only other manual step is Enable Banking's signup, which has no API: the wizard sends you there to create a free **Production** application and download a key.
 
 <details>
 <summary><b>Manual setup</b></summary>
