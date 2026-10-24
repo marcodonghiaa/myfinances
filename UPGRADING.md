@@ -6,6 +6,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### setup.sh can be run again, and resets your password
+- **No migration.**
+- Re-running `./setup.sh` used to overwrite both `.env` files and ask for everything again (Coinbase keys and hand edits were lost). Now it reads `.env` first, keeps the project, login, Enable Banking key, VAPID keys and Gemini key it finds, and merges what it writes, so keys it doesn't manage stay. It still pushes new migrations and redeploys the functions, so a re-run is also an easy upgrade.
+- `./setup.sh --reset-password` sets a new password for your login (the app has no "forgot password" screen).
+- **Docker installs:** `.env` now gets `VITE_VAPID_PUBLIC_KEY`, which `docker-compose.yml` passes to the dashboard build. Before, setup never wrote it, so push notifications could not subscribe on a Docker install. Add it by hand (same value as `VAPID_PUBLIC_KEY`) or re-run `./setup.sh`, then `docker compose up -d --build`.
+- `.env` also gets `FRONTEND_URL`, offered as the default on the next run.
+
 ### Reminder before a bank's access expires
 - **No migration. Redeploy the sync jobs.** Cron and launchd installs: add a daily `node consent-notice.js` (see Scheduling in the README).
 - Bank access (PSD2 consent) lasts 180 days, then the bank silently stops syncing. `consent-notice.js` now sends a push notification 7 days, 1 day and on the day a bank's access ends; the dashboard's Accounts page shows a banner from 14 days before (frontend change).

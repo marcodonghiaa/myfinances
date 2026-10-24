@@ -79,7 +79,9 @@ cd myfinances
 docker compose up -d --build
 ```
 
-The wizard asks for your email and password, creates your login (the app has no sign-up screen) and switches off public sign-ups. The only other manual step is Enable Banking's signup, which has no API: the wizard sends you there to create a free **Production** application and download a key.
+The wizard asks for your email and password, creates your login (the app has no sign-up screen) and switches off public sign-ups. Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`.
+
+The only other manual step is Enable Banking's signup, which has no API: the wizard sends you there to create a free **Production** application and download a key.
 
 <details>
 <summary><b>Manual setup</b></summary>

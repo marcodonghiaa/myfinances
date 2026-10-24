@@ -1,7 +1,10 @@
 #!/bin/bash
 # Guided self-host setup: creates (or links) a Supabase project, applies the
 # schema, deploys the bank-linking Edge Functions, and writes both apps'
-# .env files. Run once per self-hosted instance.
+# .env files. Safe to run again: it reuses the values already in .env, only
+# asks for what's missing, and applies any new migrations and functions.
+#
+# Forgot your password? ./setup.sh --reset-password
 #
 # It also creates your login (the app has no sign-up screen) and switches off
 # public sign-ups so nobody else can create an account on your instance.
@@ -17,6 +20,21 @@ FRONTEND_DIR="${FRONTEND_DIR:-../my-wealth-view}"
 bold() { printf '\033[1m%s\033[0m\n' "$1"; }
 step() { echo; bold "==> $1"; }
 die() { echo "Error: $1" >&2; exit 1; }
+# Value already in this install's .env ('' when missing), so a re-run doesn't ask again.
+existing() { node env-file.js get .env "$1"; }
+
+if [ "${1:-}" = "--reset-password" ]; then
+  SUPABASE_URL=$(existing SUPABASE_URL)
+  SECRET_KEY=$(existing SUPABASE_SECRET_KEY)
+  [ -n "$SUPABASE_URL" ] && [ -n "$SECRET_KEY" ] || die "No SUPABASE_URL / SUPABASE_SECRET_KEY in .env. Run ./setup.sh first."
+  read -rp "Email of your login: " LOGIN_EMAIL
+  read -rsp "New password (6+ characters, not shown): " LOGIN_PASSWORD
+  echo
+  SETUP_URL="$SUPABASE_URL" SETUP_SECRET_KEY="$SECRET_KEY" SETUP_EMAIL="$LOGIN_EMAIL" SETUP_PASSWORD="$LOGIN_PASSWORD" node first-user.js --reset >/dev/null \
+    || die "Could not reset the password (see message above)."
+  echo "Password changed for $LOGIN_EMAIL."
+  exit 0
+fi
 
 step "Checking prerequisites"
 command -v supabase >/dev/null || die "supabase CLI not found. Install: brew install supabase/tap/supabase"
@@ -39,6 +57,16 @@ if ! supabase projects list >/dev/null 2>&1; then
 fi
 
 step "Supabase project"
+PREVIOUS_URL=$(existing SUPABASE_URL)
+PROJECT_REF=""
+if [ -n "$PREVIOUS_URL" ]; then
+  PREVIOUS_REF=$(echo "$PREVIOUS_URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co/?#\1#')
+  read -rp "Keep using project $PREVIOUS_REF from .env? [Y/n] " KEEP_PROJECT
+  [[ "$KEEP_PROJECT" =~ ^[Nn]$ ]] || PROJECT_REF="$PREVIOUS_REF"
+fi
+if [ -n "$PROJECT_REF" ]; then
+  echo "Using project $PROJECT_REF."
+else
 read -rp "Use an existing Supabase project? [y/N] " USE_EXISTING
 if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
   read -rp "Project ref (20-char id from the dashboard URL): " PROJECT_REF
@@ -63,6 +91,7 @@ else
   PROJECT_REF=$(node -e "const p=JSON.parse(process.argv[1]); console.log(p.id ?? p.ref ?? '')" "$CREATE_JSON")
   [ -n "$PROJECT_REF" ] || die "Project creation did not return a ref. Response was: $CREATE_JSON"
   echo "Created project $PROJECT_REF -- DB password: $DB_PASSWORD (save this, it's shown once)"
+fi
 fi
 
 step "Linking and applying schema"
@@ -94,6 +123,10 @@ SUPABASE_URL="https://${PROJECT_REF}.supabase.co"
 echo "Got URL and keys."
 
 step "Your login"
+USER_ID=$(existing USER_ID)
+if [ -n "$USER_ID" ] && [ "$PROJECT_REF" = "${PREVIOUS_REF:-}" ]; then
+  echo "Login already set up (USER_ID in .env). To change its password: ./setup.sh --reset-password"
+else
 echo "The app has no sign-up screen, so the login is created here. Re-running with the same email keeps the existing user."
 read -rp "Email: " LOGIN_EMAIL
 read -rsp "Password (6+ characters, not shown): " LOGIN_PASSWORD
@@ -102,8 +135,16 @@ echo
 USER_ID=$(SETUP_URL="$SUPABASE_URL" SETUP_SECRET_KEY="$SECRET_KEY" SETUP_EMAIL="$LOGIN_EMAIL" SETUP_PASSWORD="$LOGIN_PASSWORD" node first-user.js) || die "Could not create your login (see message above)."
 unset LOGIN_PASSWORD
 echo "Login ready for $LOGIN_EMAIL."
+fi
 
 step "Enable Banking (manual signup required)"
+EB_APP_ID=$(existing APP_ID)
+EB_PRIVATE_KEY_ENV=$(existing PRIVATE_KEY)
+EB_PEM_PATH=$(existing PRIVATE_KEY_FILE)
+if [ -n "$EB_APP_ID" ] && [ -n "$EB_PRIVATE_KEY_ENV" ]; then
+  echo "Using the Enable Banking app from .env ($EB_APP_ID)."
+  EB_PRIVATE_KEY=$(node -e 'process.stdout.write(process.argv[1].replace(/\\n/g, "\n"))' -- "$EB_PRIVATE_KEY_ENV")
+else
 echo "If you haven't already: sign up at https://enablebanking.com/sign-in/,"
 echo "then in the Control Panel -> API applications -> Add a new application:"
 echo "  - Choose Production (not Sandbox)"
@@ -125,23 +166,38 @@ EB_PRIVATE_KEY=$(cat "$EB_PEM_PATH")
 # Firebase/GCP service-account keys in .env files); sync-transactions.js and
 # sync-networth.js unescape it back to real newlines when they read it.
 EB_PRIVATE_KEY_ENV=$(awk '{printf "%s\\n", $0}' "$EB_PEM_PATH")
+fi
 
-step "Generating VAPID keys for push notifications"
+step "VAPID keys for push notifications"
+VAPID_PUBLIC=$(existing VAPID_PUBLIC_KEY)
+VAPID_PRIVATE=$(existing VAPID_PRIVATE_KEY)
+# Keep existing keys: new ones would silently break every phone already subscribed.
+if [ -n "$VAPID_PUBLIC" ] && [ -n "$VAPID_PRIVATE" ]; then
+  echo "Using the keys from .env."
+else
 VAPID_OUT=$(npx --yes web-push generate-vapid-keys 2>&1)
 VAPID_PUBLIC=$(echo "$VAPID_OUT" | grep -A1 "Public Key" | tail -1 | tr -d '[:space:]')
 VAPID_PRIVATE=$(echo "$VAPID_OUT" | grep -A1 "Private Key" | tail -1 | tr -d '[:space:]')
 [ -n "$VAPID_PUBLIC" ] && [ -n "$VAPID_PRIVATE" ] || die "Could not parse VAPID keys from web-push output."
 echo "Generated."
+fi
 
 step "Gemini API key (recommended: AI sorts your transactions into categories)"
 echo "Get one free at https://aistudio.google.com/apikey"
 echo "Leave empty to skip: only the rules you write in the app will categorize, and"
 echo "subscriptions won't be detected. You can add a key to .env later."
-read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
+GEMINI_API_KEY=$(existing GEMINI_API_KEY)
+if [ -n "$GEMINI_API_KEY" ]; then
+  echo "Using the key from .env."
+else
+  read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
+fi
 
 step "Frontend URL (for bank-linking redirects)"
-read -rp "Public URL the frontend will be served at [http://localhost:3000]: " FRONTEND_URL
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
+PREVIOUS_FRONTEND_URL=$(existing FRONTEND_URL)
+PREVIOUS_FRONTEND_URL="${PREVIOUS_FRONTEND_URL:-http://localhost:3000}"
+read -rp "Public URL the frontend will be served at [$PREVIOUS_FRONTEND_URL]: " FRONTEND_URL
+FRONTEND_URL="${FRONTEND_URL:-$PREVIOUS_FRONTEND_URL}"
 FRONTEND_URL="${FRONTEND_URL%/}" # strip trailing slash -- must exact-match the browser's Origin header for CORS
 
 step "Deploying Edge Functions and secrets"
@@ -153,28 +209,38 @@ supabase functions deploy --project-ref "$PROJECT_REF"
 echo "Edge Functions live."
 
 step "Writing .env files"
-cat > .env <<EOF
+# Merge into the existing files (or the .env.example templates on a first run), so values
+# setup doesn't manage -- Coinbase keys, GEMINI_MODEL, your own edits -- are kept.
+write_env() { # write_env <target> <template>; KEY=value lines on stdin
+  local updates
+  updates=$(mktemp)
+  chmod 600 "$updates"
+  cat > "$updates"
+  [ -f "$1" ] || cp "$2" "$1"
+  node env-file.js merge "$1" "$updates"
+  rm -f "$updates"
+  chmod 600 "$1"
+}
+
+write_env .env .env.example <<EOF
 APP_ID=$EB_APP_ID
 PRIVATE_KEY_FILE=$EB_PEM_PATH
 PRIVATE_KEY=$EB_PRIVATE_KEY_ENV
 SUPABASE_URL=$SUPABASE_URL
 SUPABASE_SECRET_KEY=$SECRET_KEY
-SESSION_VALID_UNTIL=90
 GEMINI_API_KEY=$GEMINI_API_KEY
 USER_ID=$USER_ID
-COINBASE_API_KEY_NAME=
-COINBASE_API_PRIVATE_KEY=
 VAPID_PUBLIC_KEY=$VAPID_PUBLIC
 VAPID_PRIVATE_KEY=$VAPID_PRIVATE
-VAPID_SUBJECT=mailto:you@example.com
 VITE_SUPABASE_PROJECT_ID=$PROJECT_REF
 VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 VITE_SUPABASE_URL=$SUPABASE_URL
+VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC
+FRONTEND_URL=$FRONTEND_URL
 FRONTEND_DIR=$FRONTEND_DIR
 EOF
-chmod 600 .env
 
-cat > "$FRONTEND_DIR/.env" <<EOF
+write_env "$FRONTEND_DIR/.env" "$FRONTEND_DIR/.env.example" <<EOF
 SUPABASE_PROJECT_ID=$PROJECT_REF
 SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 SUPABASE_URL=$SUPABASE_URL

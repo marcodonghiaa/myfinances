@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { ensureUser } = require('./first-user');
+const { ensureUser, resetPassword } = require('./first-user');
 
 const args = { url: 'https://x.supabase.co', secretKey: 'sb_secret_k', email: 'Me@Example.com', password: 'pw123456' };
 const reply = (status, body) => ({ ok: status < 300, status, json: async () => body });
@@ -55,5 +55,32 @@ test('a non-JSON error body still gives a readable error', async () => {
   await assert.rejects(
     ensureUser(args, async () => ({ ok: false, status: 502, json: async () => { throw new Error('not json'); } })),
     /HTTP 502.*unknown error/,
+  );
+});
+
+test('resetPassword sets a new password on the user with that email', async () => {
+  const calls = [];
+  const id = await resetPassword(args, async (url, init = {}) => {
+    calls.push({ url, init });
+    return url.includes('per_page')
+      ? reply(200, { users: [{ id: 'u2', email: 'me@example.com' }] })
+      : reply(200, { id: 'u2' });
+  });
+  assert.strictEqual(id, 'u2');
+  assert.strictEqual(calls[1].url, 'https://x.supabase.co/auth/v1/admin/users/u2');
+  assert.strictEqual(calls[1].init.method, 'PUT');
+  assert.deepStrictEqual(JSON.parse(calls[1].init.body), { password: 'pw123456' });
+});
+
+test('resetPassword fails clearly when no user has that email, or the update is refused', async () => {
+  await assert.rejects(
+    resetPassword(args, async () => reply(200, { users: [] })),
+    /No login with the email Me@Example.com/,
+  );
+  await assert.rejects(
+    resetPassword(args, async (url) =>
+      url.includes('per_page') ? reply(200, { users: [{ id: 'u2', email: 'me@example.com' }] }) : reply(422, { msg: 'weak password' }),
+    ),
+    /HTTP 422.*weak password/,
   );
 });
