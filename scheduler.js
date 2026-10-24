@@ -58,12 +58,19 @@ function runNotify() {
   run("notify-worth-it.js");
 }
 
+// Once a day: push a reminder when a bank's access is 7, 1 or 0 days from expiring.
+function runConsentNotice() {
+  run("consent-notice.js");
+}
+
 // A broken .env is one clear message here, not an error from every script every 6 hours.
 if (!reportEnv()) process.exit(1);
 
 runSync();
 runNotify();
+runConsentNotice();
 // Every 6h = 4 runs/day: banks typically cap unattended (PSD2) account access around 4 calls/day.
 setInterval(runSync, 6 * 60 * 60 * 1000);
 setInterval(runNotify, 30 * 60 * 1000); // every 30 min
+setInterval(runConsentNotice, 24 * 60 * 60 * 1000); // daily
 setInterval(runFirstSync, 5 * 60 * 1000); // every 5 min, only touches newly linked banks

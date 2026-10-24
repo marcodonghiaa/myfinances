@@ -1,6 +1,6 @@
 require('dotenv').config();
-const webpush = require('web-push');
 const { createClient } = require('@supabase/supabase-js');
+const { fetchSubscriptions, sendToAllSubscriptions } = require('./push');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -11,12 +11,6 @@ const DISCRETIONARY_CATEGORIES = ['Shopping', 'Entertainment', 'Dine Out', 'Expe
 const MIN_AMOUNT = 15; // native currency, no cross-currency threshold — small MVP gap
 const MIN_AGE_HOURS = 3;
 const MAX_AGE_HOURS = 24; // don't blast stale transactions if the job was down
-
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY,
-);
 
 async function fetchEligibleTransactions() {
   const { data, error } = await supabase
@@ -32,40 +26,6 @@ async function fetchEligibleTransactions() {
     .gte('created_at', new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000).toISOString());
   if (error) throw error;
   return data;
-}
-
-async function fetchSubscriptions() {
-  const { data, error } = await supabase
-    .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
-    .eq('user_id', USER_ID);
-  if (error) throw error;
-  return data;
-}
-
-// Returns true if at least one subscription actually received the push --
-// callers use this to decide whether it's safe to mark transactions as
-// prompted (a transient failure on every subscription should retry next run,
-// not get silently swallowed by worth_it_prompted_at).
-async function sendToAllSubscriptions(subscriptions, payload) {
-  let delivered = false;
-  for (const sub of subscriptions) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload),
-      );
-      delivered = true;
-    } catch (err) {
-      if (err.statusCode === 404 || err.statusCode === 410) {
-        // subscription dead (uninstalled, permission revoked) — stop trying it
-        await supabase.from('push_subscriptions').delete().eq('id', sub.id);
-      } else {
-        console.error(`Push failed for subscription ${sub.id}:`, err.message);
-      }
-    }
-  }
-  return delivered;
 }
 
 // One transaction: the specific deep-link prompt. Several at once (e.g. an hour
@@ -100,13 +60,13 @@ async function main() {
     return;
   }
 
-  const subscriptions = await fetchSubscriptions();
+  const subscriptions = await fetchSubscriptions(supabase, USER_ID);
   if (subscriptions.length === 0) {
     console.log(`${transactions.length} eligible transaction(s) but no push subscription on file.`);
     return;
   }
 
-  const delivered = await sendToAllSubscriptions(subscriptions, buildPayload(transactions));
+  const delivered = await sendToAllSubscriptions(supabase, subscriptions, buildPayload(transactions));
   if (!delivered) {
     console.error('Push delivery failed for every subscription -- not marking prompted, will retry next run.');
     return;

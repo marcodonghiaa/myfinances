@@ -93,7 +93,7 @@ The wizard asks for your email and password, creates your login (the app has no 
 
 </details>
 
-Then link a bank from the dashboard's **Connect a bank** button on the Accounts page. Re-link it when its consent expires (`session-check.js` warns beforehand).
+Then link a bank from the dashboard's **Connect a bank** button on the Accounts page. Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and `consent-notice.js` (daily) sends a push 7 days, 1 day and on the day it expires.
 
 ## 🛠️ Everyday commands
 
@@ -114,6 +114,7 @@ Docker runs everything on its own schedule (`scheduler.js`). Without Docker, use
 ```cron
 0 */6 * * *    cd /path/to/myfinances && bash run-daily-sync.sh
 */30 * * * *   cd /path/to/myfinances && bash run-notify.sh
+0 9 * * *      cd /path/to/myfinances && node consent-notice.js
 ```
 
 ## 🗄️ Data model

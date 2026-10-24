@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Reminder before a bank's access expires
+- **No migration. Redeploy the sync jobs.** Cron and launchd installs: add a daily `node consent-notice.js` (see Scheduling in the README).
+- Bank access (PSD2 consent) lasts 180 days, then the bank silently stops syncing. `consent-notice.js` now sends a push notification 7 days, 1 day and on the day a bank's access ends; the dashboard's Accounts page shows a banner from 14 days before (frontend change).
+- The Docker scheduler runs it at start and then daily, so restarting the container on a reminder day sends that day's reminder again.
+- `notify-worth-it.js` now shares its push code with it (`push.js`); behavior is unchanged.
+
 ### .env is checked before the sync starts
 - **No migration. Redeploy the sync jobs.**
 - The Docker scheduler and `run-daily-sync.sh` now run `env-check.js` first. A missing or wrong value (no secret key, the publishable key pasted as the secret one, an unreadable `.pem`, no `USER_ID`) stops the sync with one line naming the variable, instead of every script failing on its own. Optional features that are off (Gemini, push notifications, a half-set Coinbase key) are listed as warnings.
