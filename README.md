@@ -11,7 +11,7 @@ Your data lives in your own Supabase project. No SaaS, no subscription.
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)
 ![PSD2](https://img.shields.io/badge/PSD2-2000%2B%20EU%20banks-blue)
 
-![Dashboard](https://raw.githubusercontent.com/marcodonghiaa/my-wealth-view/main/public/og-image.png)
+![Dashboard](https://raw.githubusercontent.com/marcodonghiaa/my-wealth-view/main/docs/screenshots/net-worth.png)
 
 </div>
 
@@ -67,9 +67,24 @@ Bank linking from the dashboard runs as three Supabase Edge Functions, see [`sup
 
 **Built to keep running:** every outbound call has a 60 s timeout, each scheduled script a 10 minute limit, sync cursors are written atomically (and kept on a volume in Docker), and one user's failing rows can't block anyone else's classification.
 
-## 🚀 Quick start
+## 🚀 Getting started
 
-Clone both repos side by side and run the wizard. It creates or links a Supabase project, applies the schema, deploys the functions and writes both `.env` files.
+Want to look first? Try the [live demo](https://myfinancess-view.vercel.app/demo): fake data, no sign-up.
+
+Self-hosting takes about **45 minutes** the first time, most of it waiting on Enable Banking.
+
+### 1. Before you start (about 20 minutes)
+
+| You need | Why | Cost |
+|---|---|---|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop), [Supabase CLI](https://supabase.com/docs/guides/cli), [Node 22](https://nodejs.org), git | to run the setup and the sync | free |
+| A [Supabase](https://supabase.com) account | your database and login | free tier is enough |
+| An [Enable Banking](https://enablebanking.com) account | the PSD2 connection to your banks | free for your own accounts |
+| A [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional but recommended |
+
+Enable Banking is the slow part: create a **Production** application (not Sandbox), download its `.pem` key, then activate it by linking one of your own accounts in their panel. The wizard prints the exact redirect URL to use, so you can also do this while it waits for you.
+
+### 2. Run the wizard (about 15 minutes)
 
 ```bash
 git clone https://github.com/marcodonghiaa/myfinances.git
@@ -79,9 +94,15 @@ cd myfinances
 docker compose up -d --build
 ```
 
-The wizard asks for your email and password, creates your login (the app has no sign-up screen) and switches off public sign-ups. Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`.
+It creates or links a Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups and writes both `.env` files.
 
-The only other manual step is Enable Banking's signup, which has no API: the wizard sends you there to create a free **Production** application and download a key.
+Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`. Check your configuration with `node env-check.js`.
+
+### 3. Link a bank (about 5 minutes)
+
+Open http://localhost:3000, sign in, and use **Connect a bank** on the Accounts page. Balances show at once; with Docker, the last 90 days of transactions arrive within about 5 minutes and are categorized.
+
+Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and `consent-notice.js` (daily) sends a push 7 days, 1 day and on the day it expires.
 
 <details>
 <summary><b>Manual setup</b></summary>
@@ -94,8 +115,6 @@ The only other manual step is Enable Banking's signup, which has no API: the wiz
 6. `npm install`, then `cp .env.example .env` and fill it in.
 
 </details>
-
-Then link a bank from the dashboard's **Connect a bank** button on the Accounts page. Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and `consent-notice.js` (daily) sends a push 7 days, 1 day and on the day it expires.
 
 ## 🛠️ Everyday commands
 
