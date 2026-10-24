@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Your rules no longer depend on Gemini
+- **No migration. Redeploy the sync jobs.**
+- Before, `categorize.js` and `classify-type.js` stopped before doing anything if `GEMINI_API_KEY` was missing, so your category rules didn't run either. A Gemini error (quota, outage) also stopped the run.
+- Now, without a key, `categorize.js` applies your rules to every uncategorized transaction and `classify-type.js` marks transfers One-time. If Gemini fails mid-run, the same fallback runs and the script still exits with an error so it shows in your logs. `categorize-splitwise.js` skips with a warning.
+- The key stays recommended: without it, transactions no rule matches stay uncategorized and subscriptions are not detected.
+
 ### A newly linked bank shows its transactions within minutes
 - **No migration. Redeploy the sync jobs** (`docker compose up -d --build`).
 - Before, linking a bank stored its balance right away but its transactions only at the next 6-hour sync.

@@ -23,7 +23,7 @@ Your data lives in your own Supabase project. No SaaS, no subscription.
 | | |
 |---|---|
 | 🏦 **Bank sync** | PSD2 open banking via [Enable Banking](https://enablebanking.com): Revolut, Wise, Fineco and 2000+ other European banks. Multi-user. |
-| 🏷️ **Categorization** | Your own `category_rules` first, Gemini for the rest. Hand-set categories are never overwritten. |
+| 🏷️ **Categorization** | Your own `category_rules` first, Gemini for the rest. Hand-set categories are never overwritten. The Gemini key is recommended but optional: without it, or when Gemini fails, your rules still run. |
 | 🔁 **Subscription detection** | Every transaction is marked `Subscription` or `One-time`. |
 | 🔀 **Flow detection** | `spend`, `income` or `transfer`, so exchanges and top-ups don't count as income. |
 | 📈 **Portfolio and crypto** | Prices from Yahoo Finance, Coinbase (read-only key) and CoinGecko. |

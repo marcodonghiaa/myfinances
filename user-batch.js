@@ -18,4 +18,28 @@ async function fetchBatchForOneUser(supabase, { table = 'transactions', select, 
   return data;
 }
 
-module.exports = { fetchBatchForOneUser };
+// Walks every transaction whose `nullColumn` is still null, for deterministic work that
+// sends nothing to an LLM (rules, transfer defaults), so it can span users. `handlePage`
+// returns how many rows it filled in: those leave the result set, so the next page starts
+// that much earlier. A row whose update failed is retried on the next run.
+async function walkNullRows(supabase, { select, nullColumn, pageSize = 1000, handlePage }) {
+  let offset = 0;
+  let total = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select(select)
+      .is(nullColumn, null)
+      .order('account_uid')
+      .order('entry_reference')
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    if (data.length === 0) return total;
+    const filled = await handlePage(data);
+    total += filled;
+    offset += data.length - filled;
+    if (data.length < pageSize) return total;
+  }
+}
+
+module.exports = { fetchBatchForOneUser, walkNullRows };
