@@ -6,6 +6,10 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Setup switches off public sign-ups by itself
+- **Nothing to do on an existing install** if you already switched sign-ups off (see the next section).
+- `setup.sh` now turns them off with `supabase config push`, using a temporary config that declares only `enable_signup = false`, so no other project setting is changed. It checks the result and falls back to the dashboard instructions if the push fails.
+
 ### Your rules no longer depend on Gemini
 - **No migration. Redeploy the sync jobs.**
 - Before, `categorize.js` and `classify-type.js` stopped before doing anything if `GEMINI_API_KEY` was missing, so your category rules didn't run either. A Gemini error (quota, outage) also stopped the run.
