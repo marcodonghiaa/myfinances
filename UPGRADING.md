@@ -6,6 +6,14 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Add investments and crypto from the dashboard
+- **Migration:** `20261101000000_holdings_self_service`. Apply with `supabase db push`. **Deploy the new function:** `supabase functions deploy add-holding`.
+- Before, `portfolio_holdings` and `crypto_holdings` could only be filled in SQL. The migration lets a signed-in user add, edit and delete their own rows (prices stay read-only), allows `Manual` as a crypto source, and removes the `Trade Republic` default broker.
+- The new `add-holding` Edge Function searches Yahoo Finance and CoinGecko and saves a holding with today's price. The dashboard screen that uses it ships in my-wealth-view.
+- A holding added by name or ticker has no ISIN; its Yahoo symbol is stored in the `isin` column instead.
+- Holdings quoted in pence (`GBp`, London listings) are now priced in GBP. Before, they failed every day with "No fx_rates row for currency GBp".
+- **Roll back:** `supabase/rollbacks/20261101000000_holdings_self_service.down.sql` (fails while a `Manual` crypto row exists).
+
 ### Small setup fixes
 - **No migration. Nothing to do.**
 - `run-daily-sync.sh` and `run-notify.sh` use the `node` on your PATH, falling back to Homebrew's `/opt/homebrew/bin/node` (cron and launchd start with a bare PATH). Set `NODE=/path/to/node` to pick one. Before, the Homebrew path was hard-coded, so Linux and Intel Macs failed.

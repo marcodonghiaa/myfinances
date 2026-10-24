@@ -38,3 +38,8 @@ test('other labels follow what Yahoo reports', () => {
   assert.strictEqual(nextAssetType(null, 'ETF'), 'ETF');
   assert.strictEqual(nextAssetType('ETF', 'ETF'), 'ETF');
 });
+
+test('London quotes in pence (GBp) are stored in pounds', () => {
+  const data = { chart: { result: [{ meta: { regularMarketPrice: 1234, currency: 'GBp', instrumentType: 'EQUITY' } }] } };
+  assert.deepStrictEqual(parseQuote(data, 'VOD.L'), { price: 12.34, currency: 'GBP', assetType: 'Stock' });
+});
