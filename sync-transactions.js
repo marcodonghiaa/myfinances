@@ -6,7 +6,7 @@ const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
 const { buildRows } = require('./transaction-rows');
 const { fetchWithTimeout } = require('./http');
-const { loadSyncState, saveSyncState, freshUnsyncedAccounts } = require('./sync-state');
+const { loadCursors, saveCursors, freshUnsyncedAccounts } = require('./sync-state');
 
 const SYNC_STATE_FILE = process.env.SYNC_STATE_FILE || 'last-sync.json';
 const OVERLAP_DAYS = 7;
@@ -42,7 +42,7 @@ async function getAllTransactions(token, uid, dateFrom) {
 
 async function main() {
   const token = getToken();
-  const lastSync = loadSyncState(SYNC_STATE_FILE);
+  const lastSync = await loadCursors(supabase, SYNC_STATE_FILE);
   const today = new Date().toISOString().slice(0, 10);
   const userIds = await getAllUserIds(supabase);
 
@@ -94,7 +94,7 @@ async function main() {
     }
   }
 
-  saveSyncState(SYNC_STATE_FILE, lastSync);
+  await saveCursors(supabase, SYNC_STATE_FILE, lastSync);
 }
 
 main();

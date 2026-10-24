@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Sync progress is stored in the database
+- **Migration:** `20261102000000_sync_cursors`. Apply it, then redeploy the sync jobs.
+- Where each account's transaction sync got to used to live only in `last-sync.json` next to the scripts. It now lives in the `sync_cursors` table too, so the sync can run on a machine that keeps no files between runs (the GitHub Actions option coming next).
+- Nothing to move by hand: the next sync reads your existing `last-sync.json` and copies it into the table. The file is still written as a local copy, and the sync keeps working from it if the migration isn't applied yet (with a warning in the log).
+
 ### Add investments and crypto from the dashboard
 - **Migration:** `20261101000000_holdings_self_service`. Apply with `supabase db push`. **Deploy the new function:** `supabase functions deploy add-holding`.
 - Before, `portfolio_holdings` and `crypto_holdings` could only be filled in SQL. The migration lets a signed-in user add, edit and delete their own rows (prices stay read-only), allows `Manual` as a crypto source, and removes the `Trade Republic` default broker.
