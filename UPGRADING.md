@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Set up from the browser with GitHub Codespaces
+- **No migration. Nothing to do on an existing install.**
+- `.devcontainer/devcontainer.json`: Node 22, GitHub CLI and Supabase CLI, ready in a Codespace. README has an "Open in GitHub Codespaces" button.
+- In a Codespace, `setup.sh` signs `gh` in as you (the Codespace's own token can't write secrets). Run from a repo you don't own, it offers to fork it to your account and sets the sync up on the fork. It also says how to upload the `.pem`, and reminds you to delete the Codespace afterwards since it holds your keys.
+
 ### setup.sh can turn on the GitHub Actions sync
 - **No migration.**
 - `setup.sh` now asks where the sync runs. With GitHub Actions it needs the GitHub CLI and your fork (it checks you are an admin of the repo), writes every secret the workflow reads, sets `SYNC_ON_GITHUB=true` and enables Actions. Docker is then not needed: the functions deploy with `--use-api`.
