@@ -8,7 +8,7 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ### Accounts show the bank's name and logo
 - **Migration:** `20261105000000_account_bank`. Apply it with `supabase db push` BEFORE redeploying `bank-consent-callback` (`supabase functions deploy bank-consent-callback`), then update the dashboard. A callback deployed before the migration fails every bank link, because it writes columns that don't exist yet.
-- `accounts` gains `bank_name`, `bank_country` and `bank_logo`, and `v_bank_accounts_latest` exposes `bank_name` and `bank_logo`. Before, an account was named after the holder name Enable Banking returns.
+- `accounts` gains `bank_name`, `bank_country` and `bank_logo`, and `v_bank_accounts_latest` exposes `bank_name`, `bank_logo` and `bank_country`. Before, an account was named after the holder name Enable Banking returns.
 - Banks you already connected keep their current name until their next Renew access, which fills in the bank.
 - **Roll back:** revert the code first, then `supabase/rollbacks/20261105000000_account_bank.down.sql`.
 
