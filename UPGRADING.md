@@ -6,6 +6,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Banks keep syncing after Renew access
+- **Migration:** `20261104000000_account_eb_uid`. Apply it with `supabase db push`, then redeploy `bank-consent-callback` (`supabase functions deploy bank-consent-callback`). Until the migration is applied the sync logs a warning and keeps using the old ids, so a renewed bank still stops when its old consent ends.
+- Enable Banking gives an account a new id when you renew access. The old id stops working when the old consent ends, so a renewed bank silently stopped updating. The new id is now stored in `accounts.eb_account_uid` and the sync uses it; history stays on the same account.
+- The balance sync fills in a missing bank id (`identification_hash`) once per older account, so a later renewal finds it instead of adding a duplicate account.
+- The sync log ends with `EB refused N account(s)` when the bank rejects an account id.
+- **Roll back:** revert the code first, then `supabase/rollbacks/20261104000000_account_eb_uid.down.sql`.
+
 ### Set up from the browser with GitHub Codespaces
 - **No migration. Nothing to do on an existing install.**
 - `.devcontainer/devcontainer.json`: Node 22, GitHub CLI and Supabase CLI, ready in a Codespace. README has an "Open in GitHub Codespaces" button.

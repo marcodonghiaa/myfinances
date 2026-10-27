@@ -13,3 +13,21 @@ export function matchAccount(existing: StoredAccount[], incoming: IncomingAccoun
   const byIban = iban ? existing.find((s) => s.iban === iban && s.currency === currency) : undefined;
   return byIban?.uid ?? null;
 }
+
+// Update for a matched row. eb_account_uid follows the current session (EB ids
+// die with their session); iban, hash and label only overwrite when the bank sends them.
+export function matchPatch(
+  incoming: IncomingAccount & { label: string | null },
+  ebUid: string,
+  consentValidUntil: string | null,
+): Record<string, unknown> {
+  const { iban, currency, identification_hash, label } = incoming;
+  return {
+    eb_account_uid: ebUid,
+    consent_valid_until: consentValidUntil,
+    currency,
+    ...(iban !== null && { iban }),
+    ...(identification_hash !== null && { identification_hash }),
+    ...(label !== null && { label }),
+  };
+}
