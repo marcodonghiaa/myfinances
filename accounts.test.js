@@ -37,7 +37,7 @@ test('getAccounts selects the id columns', async () => {
     }),
   };
   await getAccounts(supabase, 'user');
-  for (const col of ['eb_account_uid', 'identification_hash', 'iban']) assert.ok(selected.includes(col), col);
+  for (const col of ['eb_account_uid', 'identification_hash', 'iban', 'consent_valid_until']) assert.ok(selected.includes(col), col);
 });
 
 test('getAccounts reads without eb_account_uid when the column is missing', async () => {
