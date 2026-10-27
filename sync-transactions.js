@@ -6,6 +6,7 @@ const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
 const { buildRows } = require('./transaction-rows');
 const { fetchWithTimeout } = require('./http');
+const { errorTag } = require('./log-safe');
 const { loadCursors, saveCursors, freshUnsyncedAccounts } = require('./sync-state');
 
 const SYNC_STATE_FILE = process.env.SYNC_STATE_FILE || 'last-sync.json';
@@ -25,7 +26,7 @@ async function getTransactionsPage(token, uid, dateFrom, continuationKey) {
   const res = await fetchWithTimeout(`https://api.enablebanking.com/accounts/${uid}/transactions?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw Object.assign(new Error(`API error ${res.status}`), { status: res.status });
   return res.json();
 }
 
@@ -46,7 +47,7 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10);
   const userIds = await getAllUserIds(supabase);
 
-  for (const userId of userIds) {
+  for (const [u, userId] of userIds.entries()) {
     let accounts;
     try {
       if (!NEW_ONLY) await checkSessionExpiry(supabase, userId);
@@ -54,17 +55,17 @@ async function main() {
       if (NEW_ONLY) accounts = freshUnsyncedAccounts(accounts, lastSync, Date.now(), NEW_ACCOUNT_WINDOW_MS);
     } catch (err) {
       // One user's failure shouldn't stop everyone after them from syncing.
-      console.error(`Skipping user ${userId}:`, err.message);
+      console.error(`Skipping user ${u + 1}/${userIds.length}: ${errorTag(err)}`);
       continue;
     }
 
-    for (const account of accounts) {
+    for (const [i, account] of accounts.entries()) {
       // Re-fetch an overlap before the cursor: banks post transactions days after their
       // booking_date, so a cursor of "today" would skip them forever. Upsert dedupes.
       const dateFrom = lastSync[account.uid]
         ? new Date(Date.parse(lastSync[account.uid]) - OVERLAP_DAYS * 24 * 3600 * 1000).toISOString().slice(0, 10)
         : new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-      console.log(`\n=== ${account.label ?? account.currency} — syncing since ${dateFrom} ===`);
+      console.log(`\n=== Account ${i + 1}/${accounts.length} — syncing since ${dateFrom} ===`);
 
       try {
         const transactions = await getAllTransactions(token, account.uid, dateFrom);
@@ -78,7 +79,7 @@ async function main() {
 
           if (error) {
             upsertOk = false;
-            console.error(`Supabase insert error for ${account.label ?? account.currency}:`, error.message);
+            console.error(`Supabase insert error: ${errorTag(error)}`);
           } else {
             console.log(`Upserted ${rows.length} transactions.`);
           }
@@ -89,7 +90,7 @@ async function main() {
         if (upsertOk) lastSync[account.uid] = today;
       } catch (err) {
         // One bank's consent expiring or API hiccup shouldn't stop the others from syncing.
-        console.error(`Failed to sync ${account.label ?? account.currency}:`, err.message);
+        console.error(`Failed to sync: ${errorTag(err)}`);
       }
     }
   }
@@ -97,4 +98,7 @@ async function main() {
   await saveCursors(supabase, SYNC_STATE_FILE, lastSync);
 }
 
-main();
+main().catch((err) => {
+  console.error(`Failed: ${errorTag(err)}`);
+  process.exit(1);
+});

@@ -1,3 +1,5 @@
+const { errorTag } = require('./log-safe');
+
 const CHUNK_SIZE = 50; // keeps the `in (...)` request URL well under proxy limits
 
 // One UPDATE per (account, update payload) group instead of one per row. Every statement
@@ -20,7 +22,7 @@ async function applyGroupedUpdates(supabase, items) {
         .eq('account_uid', account_uid)
         .in('entry_reference', refs.slice(i, i + CHUNK_SIZE));
       const { error } = await (guardIn ? query.in(guardColumn, guardIn) : query.is(guardColumn, null));
-      if (error) console.error(`Failed to update ${guardColumn} for ${account_uid}:`, error.message);
+      if (error) console.error(`Failed to update ${guardColumn} for one account: ${errorTag(error)}`);
     }
   }
 }

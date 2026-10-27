@@ -4,6 +4,7 @@ const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify')
 const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -81,15 +82,17 @@ Return a JSON array of {"entry_reference": string, "transaction_type": string} f
 async function applyTypes(results, rows) {
   const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
   const items = [];
+  let invalid = 0;
   for (const { entry_reference, transaction_type } of results) {
     const account_uid = accountByRef.get(entry_reference);
     if (!account_uid) continue; // model echoed a reference we never sent
     if (!TYPES.includes(transaction_type)) {
-      console.warn(`Skipping invalid type "${transaction_type}" for ${entry_reference}`);
+      invalid++;
       continue;
     }
     items.push({ account_uid, entry_reference, update: { transaction_type }, guardColumn: 'transaction_type' });
   }
+  if (invalid > 0) console.warn(`Skipping ${invalid} invalid type result(s).`);
   await applyGroupedUpdates(supabase, items);
 }
 
@@ -101,7 +104,7 @@ async function classifyWithAi() {
     if (rows.length === 0) break;
 
     if (stalls.isStalled(rows)) {
-      console.warn(`No progress for user ${rows[0].user_id}, skipping them for this run.`);
+      console.warn('No progress for one user, skipping them for this run.');
       continue;
     }
 
@@ -149,13 +152,13 @@ async function main() {
   try {
     await classifyWithAi();
   } catch (err) {
-    console.error('AI classification failed, marking transfers only:', err.message);
+    console.error(`AI classification failed, marking transfers only: ${errorTag(err)}`);
     await applyTransferDefaultOnly();
     process.exitCode = 1;
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

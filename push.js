@@ -1,4 +1,5 @@
 const webpush = require('web-push');
+const { errorTag } = require('./log-safe');
 
 // Web Push shared by every notification script.
 webpush.setVapidDetails(
@@ -21,7 +22,7 @@ async function fetchSubscriptions(supabase, userId) {
 // (a transient failure on every subscription should retry next run).
 async function sendToAllSubscriptions(supabase, subscriptions, payload) {
   let delivered = false;
-  for (const sub of subscriptions) {
+  for (const [i, sub] of subscriptions.entries()) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -33,7 +34,7 @@ async function sendToAllSubscriptions(supabase, subscriptions, payload) {
         // subscription dead (uninstalled, permission revoked) — stop trying it
         await supabase.from('push_subscriptions').delete().eq('id', sub.id);
       } else {
-        console.error(`Push failed for subscription ${sub.id}:`, err.message);
+        console.error(`Push failed for subscription ${i + 1}/${subscriptions.length}: ${errorTag(err)}`);
       }
     }
   }

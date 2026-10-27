@@ -6,6 +6,7 @@ const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
 const { CATEGORIES, guideFor } = require('./categories');
 const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -65,15 +66,17 @@ Return a JSON array of {"entry_reference": string, "category": string} for every
 async function applyCategories(results, rows) {
   const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
   const items = [];
+  let invalid = 0;
   for (const { entry_reference, category } of results) {
     const account_uid = accountByRef.get(entry_reference);
     if (!account_uid) continue; // model echoed a reference we never sent
     if (!CATEGORIES.includes(category)) {
-      console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
+      invalid++;
       continue;
     }
     items.push({ account_uid, entry_reference, update: { category, category_source: 'ai' }, guardColumn: 'category' });
   }
+  if (invalid > 0) console.warn(`Skipping ${invalid} invalid category result(s).`);
   await applyGroupedUpdates(supabase, items);
 }
 
@@ -142,7 +145,7 @@ async function categorizeWithAi(rules) {
     if (rows.length === 0) break;
 
     if (stalls.isStalled(rows)) {
-      console.warn(`No progress for user ${rows[0].user_id}, skipping them for this run.`);
+      console.warn('No progress for one user, skipping them for this run.');
       continue;
     }
 
@@ -178,13 +181,13 @@ async function main() {
   try {
     await categorizeWithAi(rules);
   } catch (err) {
-    console.error('AI categorization failed, applying your rules only:', err.message);
+    console.error(`AI categorization failed, applying your rules only: ${errorTag(err)}`);
     await applyRulesOnly(rules);
     process.exitCode = 1;
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

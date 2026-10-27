@@ -28,16 +28,18 @@ function planUpdates(results, rows) {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const seen = new Set();
   const plan = [];
+  let invalid = 0;
   for (const { entry_reference, category } of results) {
     const row = byId.get(entry_reference);
     if (!row || seen.has(entry_reference)) continue;
     if (!SPLITWISE_CATEGORIES.includes(category)) {
-      console.warn(`Skipping invalid category "${category}" for ${entry_reference}`);
+      invalid++;
       continue;
     }
     seen.add(entry_reference);
     plan.push({ id: row.id, user_id: row.user_id, category });
   }
+  if (invalid > 0) console.warn(`Skipping ${invalid} invalid category result(s).`);
   return plan;
 }
 

@@ -5,6 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds } = require('./accounts');
 const { getToken } = require('./eb-token');
 const { fetchWithTimeout } = require('./http');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
@@ -13,7 +14,7 @@ async function getBalances(token, uid) {
   const res = await fetchWithTimeout(`https://api.enablebanking.com/accounts/${uid}/balances`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw Object.assign(new Error(`API error ${res.status}`), { status: res.status });
   return res.json();
 }
 
@@ -23,19 +24,19 @@ async function main() {
   const userIds = await getAllUserIds(supabase);
   const rows = [];
 
-  for (const userId of userIds) {
+  for (const [u, userId] of userIds.entries()) {
     let accounts;
     try {
       await checkSessionExpiry(supabase, userId);
       accounts = await getAccounts(supabase, userId);
     } catch (err) {
       // One user's failure shouldn't stop everyone after them from syncing.
-      console.error(`Skipping user ${userId}:`, err.message);
+      console.error(`Skipping user ${u + 1}/${userIds.length}: ${errorTag(err)}`);
       continue;
     }
 
-    for (const account of accounts) {
-      console.log(`\n=== ${account.label ?? account.currency} ===`);
+    for (const [i, account] of accounts.entries()) {
+      console.log(`\n=== Account ${i + 1}/${accounts.length} ===`);
       try {
         const data = await getBalances(token, account.uid);
         const balance = data.balances?.[0];
@@ -46,7 +47,6 @@ async function main() {
         }
 
         const amount = parseFloat(balance.balance_amount.amount);
-        console.log(`Balance: ${amount} ${balance.balance_amount.currency}`);
 
         rows.push({
           account_uid: account.uid,
@@ -56,7 +56,7 @@ async function main() {
           user_id: userId,
         });
       } catch (err) {
-        console.error(`Failed to fetch balance for ${account.label ?? account.currency}:`, err.message);
+        console.error(`Failed to fetch balance: ${errorTag(err)}`);
       }
     }
   }
@@ -68,11 +68,14 @@ async function main() {
       .upsert(rows, { onConflict: 'account_uid,snapshot_date' });
 
     if (error) {
-      console.error('Supabase insert error:', error.message);
+      console.error(`Supabase insert error: ${errorTag(error)}`);
     } else {
       console.log(`\nSaved ${rows.length} snapshot(s) for ${today}.`);
     }
   }
 }
 
-main();
+main().catch((err) => {
+  console.error(`Failed: ${errorTag(err)}`);
+  process.exit(1);
+});

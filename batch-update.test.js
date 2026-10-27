@@ -20,7 +20,7 @@ function fakeSupabase({ failWhen } = {}) {
         is(col, val) { call.is = { col, val }; return q; },
         then(resolve) {
           calls.push(call);
-          resolve({ error: failWhen && failWhen(call) ? { message: 'boom' } : null });
+          resolve({ error: failWhen && failWhen(call) ? { code: '42501', message: 'boom' } : null });
         },
       };
       return q;
@@ -68,7 +68,7 @@ test('large groups are chunked so the request URL stays short', async () => {
   assert.deepStrictEqual(db.calls.map((c) => c.in.vals.length), [50, 50, 20]);
 });
 
-test('a failed statement is logged and the others still run', async () => {
+test('a failed statement is logged by code, never by message, and the others still run', async () => {
   const db = fakeSupabase({ failWhen: (c) => c.update.category === 'Health' });
   const logged = [];
   const original = console.error;
@@ -79,7 +79,8 @@ test('a failed statement is logged and the others still run', async () => {
     console.error = original;
   }
   assert.strictEqual(db.calls.length, 2);
-  assert.ok(logged.some((l) => l.includes('boom')));
+  assert.ok(logged.some((l) => l.includes('42501')));
+  assert.ok(!logged.some((l) => l.includes('boom')));
 });
 
 test('does nothing for an empty list', async () => {

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { fetchWithTimeout } = require('./http');
 const { planHoldings } = require('./coinbase-holdings');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -74,8 +75,8 @@ async function main() {
 
   const accounts = await fetchCoinbaseAccounts();
   const { rows, zeroed, unmapped } = planHoldings(accounts, USER_ID);
-  for (const symbol of unmapped) {
-    console.warn(`Skipping ${symbol}: no CoinGecko ID mapped. Add it to COINGECKO_ID_MAP if this should be tracked.`);
+  if (unmapped.length > 0) {
+    console.warn(`Skipping ${unmapped.length} asset(s): no CoinGecko ID mapped. Add them to COINGECKO_ID_MAP if they should be tracked.`);
   }
 
   if (rows.length > 0) {
@@ -97,11 +98,10 @@ async function main() {
     if (error) throw error;
   }
 
-  console.log(`Synced ${rows.length} Coinbase holding(s):`);
-  for (const row of rows) console.log(`  ${row.name}: ${row.amount} ${row.asset_symbol}`);
+  console.log(`Synced ${rows.length} Coinbase holding(s).`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

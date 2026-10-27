@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { fetchSubscriptions, sendToAllSubscriptions } = require('./push');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -73,18 +74,20 @@ async function main() {
   }
 
   const now = new Date().toISOString();
+  let failed = 0;
   for (const tx of transactions) {
     const { error } = await supabase
       .from('transactions')
       .update({ worth_it_prompted_at: now })
       .eq('account_uid', tx.account_uid)
       .eq('entry_reference', tx.entry_reference);
-    if (error) console.error(`Failed to mark ${tx.entry_reference} prompted:`, error.message);
-    console.log(`Prompted: ${tx.creditor_name} (${tx.amount} ${tx.currency})`);
+    if (error) failed++;
   }
+  if (failed > 0) console.error(`Failed to mark ${failed} transaction(s) prompted.`);
+  console.log(`Prompted ${transactions.length} transaction(s).`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });
