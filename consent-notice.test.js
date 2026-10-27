@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const { consentNotices, buildConsentPayload } = require('./consent-notice');
 
 const TODAY = new Date('2026-10-23T09:00:00Z');
-const acc = (user_id, label, consent_valid_until) => ({ user_id, label, consent_valid_until });
+const acc = (user_id, label, consent_valid_until, bank_name) => ({ user_id, label, consent_valid_until, bank_name });
 
 test('a bank is announced on the days a daily run should warn: 14, 7, 1 and 0 days left', () => {
   const notices = consentNotices(
@@ -29,6 +29,17 @@ test("a bank's accounts share one consent: the soonest decides, announced once",
     TODAY,
   );
   assert.deepStrictEqual(notices, [{ user_id: 'u1', banks: [{ bank: 'Revolut', daysLeft: 7 }] }]);
+});
+
+test('the stored bank name groups accounts whose holder labels differ', () => {
+  const notices = consentNotices(
+    [
+      acc('u1', "Marco D'Onghia", '2026-10-30T00:00:00Z', 'Revolut'), // 7
+      acc('u1', "D'ONGHIA MARCO", '2026-10-24T00:00:00Z', 'Revolut'), // 1
+    ],
+    TODAY,
+  );
+  assert.deepStrictEqual(notices, [{ user_id: 'u1', banks: [{ bank: 'Revolut', daysLeft: 1 }] }]);
 });
 
 test('accounts without a consent date are ignored', () => {
