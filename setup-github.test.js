@@ -18,3 +18,13 @@ test('setup.sh turns the workflow on with the variable it checks', () => {
   assert.match(workflow, /vars\.SYNC_ON_GITHUB == 'true'/);
   assert.match(setup, /gh variable set SYNC_ON_GITHUB --body true/);
 });
+
+test('setup.sh finishes in one run and every failure says what to do next', () => {
+  const setup = fs.readFileSync('setup.sh', 'utf8');
+  assert.ok(setup.includes('db push --linked --yes'));
+  assert.ok(setup.includes('Fix that, then run ./setup.sh again: answers already saved in .env are reused.'));
+  assert.ok(setup.includes('artifact-and-log-retention'));
+  assert.ok(setup.includes('--dashboard-url'));
+  assert.doesNotMatch(setup, /^\s*(VITE_)?SUPABASE_PROJECT_ID=/m);
+  assert.match(fs.readFileSync('.gitignore', 'utf8'), /^dashboard-values\.txt$/m);
+});
