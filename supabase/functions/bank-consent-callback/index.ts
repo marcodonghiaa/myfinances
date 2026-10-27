@@ -17,6 +17,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { EB_NO_ACCOUNTS, FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { matchAccount, matchPatch, type StoredAccount } from "../_shared/account-match.ts";
 import { bankLogo, type BankInfo } from "../_shared/bank-info.ts";
+import { linkedParams } from "../_shared/linked-summary.ts";
 
 
 const supabase = createClient(
@@ -220,7 +221,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return redirectToApp({ bank_linked: String(savedRows.length) });
+    return redirectToApp(linkedParams(savedRows.length, bank.bank_name, savedRows.map((r) => r.currency)));
   } catch (err) {
     return failLink((err as Error).message);
   }
