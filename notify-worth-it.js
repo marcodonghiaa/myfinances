@@ -1,10 +1,4 @@
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
-const { fetchSubscriptions, sendToAllSubscriptions } = require('./push');
 const { errorTag } = require('./log-safe');
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-const USER_ID = process.env.USER_ID;
 
 // ponytail: hardcoded allowlist, add a per-user setting if this ever needs
 // to be user-configurable instead of a personal tuning knob.
@@ -12,19 +6,22 @@ const DISCRETIONARY_CATEGORIES = ['Shopping', 'Entertainment', 'Dine Out', 'Expe
 const MIN_AMOUNT = 15; // native currency, no cross-currency threshold — small MVP gap
 const MIN_AGE_HOURS = 3;
 const MAX_AGE_HOURS = 24; // don't blast stale transactions if the job was down
+const MAX_BOOKING_AGE_DAYS = 7; // = sync overlap: a late-posted purchase still counts
 
-async function fetchEligibleTransactions() {
+async function fetchEligibleTransactions(supabase, userId, now) {
+  const bookingFloor = new Date(now.getTime() - MAX_BOOKING_AGE_DAYS * 86400 * 1000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from('transactions')
     .select('entry_reference, account_uid, creditor_name, amount, currency, category')
-    .eq('user_id', USER_ID)
+    .eq('user_id', userId)
     .eq('credit_debit_indicator', 'DBIT')
     .in('category', DISCRETIONARY_CATEGORIES)
     .is('worth_it', null) // not "already pushed" -- "not yet answered" (in-app or via push)
     .is('worth_it_prompted_at', null)
     .gte('amount', MIN_AMOUNT)
-    .lte('created_at', new Date(Date.now() - MIN_AGE_HOURS * 3600 * 1000).toISOString())
-    .gte('created_at', new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000).toISOString());
+    .lte('created_at', new Date(now.getTime() - MIN_AGE_HOURS * 3600 * 1000).toISOString())
+    .gte('created_at', new Date(now.getTime() - MAX_AGE_HOURS * 3600 * 1000).toISOString())
+    .or(`booking_date.gte.${bookingFloor},booking_date.is.null`);
   if (error) throw error;
   return data;
 }
@@ -52,10 +49,15 @@ function buildPayload(transactions) {
 }
 
 async function main() {
+  require('dotenv').config();
+  const USER_ID = process.env.USER_ID;
   if (!USER_ID) throw new Error('USER_ID missing from .env');
   if (!process.env.VAPID_PRIVATE_KEY) throw new Error('VAPID_PRIVATE_KEY missing from .env');
+  const { createClient } = require('@supabase/supabase-js');
+  const { fetchSubscriptions, sendToAllSubscriptions } = require('./push');
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 
-  const transactions = await fetchEligibleTransactions();
+  const transactions = await fetchEligibleTransactions(supabase, USER_ID, new Date());
   if (transactions.length === 0) {
     console.log('No eligible transactions to prompt.');
     return;
@@ -87,7 +89,11 @@ async function main() {
   console.log(`Prompted ${transactions.length} transaction(s).`);
 }
 
-main().catch((err) => {
-  console.error(`Failed: ${errorTag(err)}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`Failed: ${errorTag(err)}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { fetchEligibleTransactions, buildPayload };

@@ -3,7 +3,7 @@
 // Meant to run once a day: each threshold day is hit by one run, so no "already sent" state.
 const { errorTag } = require('./log-safe');
 
-const NOTICE_DAYS = [7, 1, 0];
+const NOTICE_DAYS = [14, 7, 1, 0];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // "Revolut EUR" -> "Revolut": a bank's accounts share one consent (same rule as the dashboard).
