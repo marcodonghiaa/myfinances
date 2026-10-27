@@ -21,6 +21,18 @@ export function json(body: unknown, status = 200): Response {
   });
 }
 
+export const EB_KEY_INVALID = "The Enable Banking key is invalid: run ./setup.sh again with the .pem.";
+export const EB_NO_ACCOUNTS =
+  "Enable Banking didn't share any accounts. Link this bank once on enablebanking.com → API applications → your app → Link accounts, then try again.";
+
+// 401/403 from Enable Banking means the app itself was refused (left Inactive, or wrong key id).
+export function ebErrorMessage(status: number): string {
+  if (status === 401 || status === 403) {
+    return "Your Enable Banking app was rejected: activate it (link one of your accounts on enablebanking.com → API applications), and check the key setup gave it.";
+  }
+  return "Enable Banking error, please try again";
+}
+
 function base64url(bytes: ArrayBuffer | Uint8Array): string {
   const bin = String.fromCharCode(...new Uint8Array(bytes));
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

@@ -12,7 +12,13 @@
 // the one that's actually reproducible from a plain `supabase functions deploy`.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { CORS_HEADERS, json, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import {
+  CORS_HEADERS,
+  EB_KEY_INVALID,
+  ebErrorMessage,
+  json,
+  signEnableBankingJwt,
+} from "../_shared/enable-banking.ts";
 import { isCountryCode } from "../_shared/validate.ts";
 
 interface Aspsp {
@@ -50,18 +56,19 @@ Deno.serve(async (req) => {
     return json({ error: "A valid country is required" }, 400);
   }
 
+  const token = await signEnableBankingJwt().catch(() => null);
+  if (!token) return json({ error: EB_KEY_INVALID }, 500);
+
   try {
-    const token = await signEnableBankingJwt();
     const res = await fetch(
       `https://api.enablebanking.com/aspsps?country=${encodeURIComponent(body.country)}`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    const data = await res.json();
     if (!res.ok) {
-      // Upstream error bodies stay in the function log, not the browser.
-      console.error("Enable Banking error:", JSON.stringify(data));
-      return json({ error: "Enable Banking error" }, 502);
+      console.error("Enable Banking error:", res.status);
+      return json({ error: ebErrorMessage(res.status) }, 502);
     }
+    const data = await res.json();
 
     const banks = ((data.aspsps ?? []) as Array<Aspsp>)
       .filter((a) => !a.beta)
@@ -69,7 +76,7 @@ Deno.serve(async (req) => {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return json({ banks });
-  } catch (err) {
-    return json({ error: (err as Error).message }, 500);
+  } catch {
+    return json({ error: "Something went wrong, please try again" }, 500);
   }
 });
