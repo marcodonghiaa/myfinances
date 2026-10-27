@@ -9,10 +9,10 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: npm ci
@@ -23,3 +23,21 @@ jobs:
       # The Edge Functions are TypeScript for Deno: check they compile and run their unit tests.
       - run: deno check --no-lock --node-modules-dir=none supabase/functions/*/index.ts
       - run: deno test --no-lock --node-modules-dir=none supabase/functions/_shared
+  devcontainer:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            devcontainer:
+              - '.devcontainer/**'
+      - if: steps.changes.outputs.devcontainer == 'true'
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: supabase --version && node --version
+          push: never

@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: Job to run now
+        description: "Job to run: sync = fetch bank data, notify = send 'worth it?' prompts, consent = bank-access expiry reminder"
         type: choice
         options: [sync, notify, consent]
         default: sync
@@ -29,7 +29,7 @@ concurrency:
 jobs:
   run:
     if: vars.SYNC_ON_GITHUB == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       APP_ID: ${{ secrets.APP_ID }}
@@ -44,8 +44,8 @@ jobs:
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
