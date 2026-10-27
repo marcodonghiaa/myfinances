@@ -289,6 +289,11 @@ EB_PRIVATE_KEY=$(cat "$EB_PEM_PATH")
 # sync-networth.js unescape it back to real newlines when they read it.
 EB_PRIVATE_KEY_ENV=$(awk '{printf "%s\\n", $0}' "$EB_PEM_PATH")
 fi
+# eb-check.js exits 1 for an Inactive app (fixed in EB's panel, so check again), 2 for a wrong APP_ID/.pem.
+until APP_ID="$EB_APP_ID" PRIVATE_KEY="$EB_PRIVATE_KEY_ENV" node eb-check.js; do
+  [ $? -eq 1 ] || die "Re-run ./setup.sh with the right APP_ID and .pem (if they came from .env, delete its APP_ID, PRIVATE_KEY and PRIVATE_KEY_FILE lines first)."
+  read -rp "Fix it, then press Enter to check again (Ctrl-C to stop): " _
+done
 
 step "VAPID keys for push notifications"
 VAPID_PUBLIC=$(existing VAPID_PUBLIC_KEY)
