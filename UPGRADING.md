@@ -6,6 +6,9 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Bank access push also when the banner appears
+- **No migration. No action.** The push now also fires 14 days before access ends, the day the Accounts banner appears.
+
 ### Banks keep syncing after Renew access
 - **Migration:** `20261104000000_account_eb_uid`. Apply it with `supabase db push`, then redeploy `bank-consent-callback` (`supabase functions deploy bank-consent-callback`). Until the migration is applied the sync logs a warning and keeps using the old ids, so a renewed bank still stops when its old consent ends.
 - Enable Banking gives an account a new id when you renew access. The old id stops working when the old consent ends, so a renewed bank silently stopped updating. The new id is now stored in `accounts.eb_account_uid` and the sync uses it; history stays on the same account.

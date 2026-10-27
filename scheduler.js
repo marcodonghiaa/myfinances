@@ -52,7 +52,7 @@ function runNotify() {
   runJob("notify", (script) => run(script));
 }
 
-// Once a day: push a reminder when a bank's access is 7, 1 or 0 days from expiring.
+// Once a day: push a reminder when a bank's access is 14, 7, 1 or 0 days from expiring.
 function runConsentNotice() {
   runJob("consent", (script) => run(script));
 }

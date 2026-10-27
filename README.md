@@ -115,7 +115,7 @@ Then delete the Codespace, since it holds your keys: [github.com/codespaces](htt
 
 Sign in on your dashboard. On **Accounts**, use **Connect a bank**: balances show at once, and the transactions arrive with the next sync (every 6 hours; to get them now, open your fork's **Actions** tab, **Sync**, **Run workflow**). On **Portfolio**, **Add an investment** finds yours by name, ticker or ISIN; on **Crypto**, **Add a coin**. A checklist on the dashboard shows what's left.
 
-Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and you get a push notification 7 days, 1 day and on the day it expires.
+Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and you get a push notification the day the banner appears, then 7 days, 1 day and on the day it expires.
 
 Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`.
 
