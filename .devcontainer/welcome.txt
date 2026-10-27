@@ -1,0 +1,3 @@
+
+Run ./setup.sh to set up your own MyFinances.
+
