@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Accounts show the bank's name and logo
+- **Migration:** `20261105000000_account_bank`. Apply it with `supabase db push` BEFORE redeploying `bank-consent-callback` (`supabase functions deploy bank-consent-callback`), then update the dashboard. A callback deployed before the migration fails every bank link, because it writes columns that don't exist yet.
+- `accounts` gains `bank_name`, `bank_country` and `bank_logo`, and `v_bank_accounts_latest` exposes `bank_name` and `bank_logo`. Before, an account was named after the holder name Enable Banking returns.
+- Banks you already connected keep their current name until their next Renew access, which fills in the bank.
+- **Roll back:** revert the code first, then `supabase/rollbacks/20261105000000_account_bank.down.sql`.
+
 ### A bank that closes access early shows Renew
 - **No migration. Nothing to do** beyond redeploying the sync.
 - When a bank ends its consent before the date it gave (Enable Banking answers `EXPIRED_SESSION`), the balance sync sets that account's consent end to today, so the Renew banner shows at once and the daily consent push fires. A later date is never set, and other 401/403 errors (a bad key, an inactive app) change nothing.
