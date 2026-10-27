@@ -83,13 +83,17 @@ Your own copy takes about **30 minutes**, all in the browser: no computer has to
 | [Vercel](https://vercel.com/signup) (sign in with GitHub) | puts the dashboard online over HTTPS | free Hobby plan |
 | [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended |
 
-In Enable Banking, create a **Production** application (not Sandbox) and download its `.pem` key. The setup tells you the exact redirect URL to paste, and how to activate the application by linking one of your own accounts in their panel.
+In Enable Banking, sign up only; setup tells you when to create the app and gives the exact redirect URL.
 
 ### 2. Run the setup (about 10 minutes)
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/myfinances?quickstart=1)
 
-This opens a terminal in your browser with everything ready. Run:
+This opens a terminal in your browser.
+
+Free: 60 hours a month on a personal account, no card needed. First open takes 2-3 minutes. Codespaces has Node 22, the Supabase CLI and gh ready.
+
+Run:
 
 ```bash
 ./setup.sh
@@ -97,15 +101,15 @@ This opens a terminal in your browser with everything ready. Run:
 
 Choose **1, GitHub Actions**. Setup forks this repo to your account, creates or links your Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups, stores your keys as secrets of your fork and turns the sync on. When it asks for the `.pem`, drag it from your Downloads onto the file list on the left.
 
-At the end it prints three values for the next step. Keep the Codespace open for now.
+When it asks where the dashboard lives, it prints three values for the next step (also saved in `dashboard-values.txt`); press Enter to skip that question for now. Keep the Codespace open.
 
 ### 3. Put the dashboard online (about 5 minutes)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmy-wealth-view&project-name=my-finances&repository-name=my-finances&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+at+the+end+of+the+backend%27s+setup.sh&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmyfinances%23-getting-started)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmy-wealth-view&project-name=my-finances&repository-name=my-finances&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+by+setup.sh%2C+also+in+dashboard-values.txt&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmyfinances%23-getting-started)
 
-Paste the three values setup printed and deploy. Copy the address Vercel gives you (`https://<name>.vercel.app`), go back to the Codespace and run `./setup.sh` once more: give that address when asked where the dashboard lives, and press Enter for everything else (it remembers your answers). That way bank linking sends you back to your dashboard.
+Click **GitHub** first, then **Install Vercel** (All repositories is fine). Paste the three values setup printed and deploy. Copy the address under **Domains** on the project page, not the deployment URL. Go back to the Codespace and run `./setup.sh --dashboard-url https://<name>.vercel.app` with your address (keep `https://` in front). That way bank linking sends you back to your dashboard.
 
-Then delete the Codespace, since it holds your keys: [github.com/codespaces](https://github.com/codespaces), the `...` menu, Delete. Everything you set up stays in Supabase, GitHub and Vercel. Free accounts get 60 Codespaces hours a month.
+Then delete the Codespace, since it holds your keys: [github.com/codespaces](https://github.com/codespaces), the `...` menu, Delete. GitHub warns about unsaved changes: that's expected, delete anyway. Everything you set up stays in Supabase, GitHub and Vercel.
 
 ### 4. Link a bank and add your investments
 
