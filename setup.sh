@@ -5,6 +5,7 @@
 # asks for what's missing, and applies any new migrations and functions.
 #
 # Forgot your password? ./setup.sh --reset-password
+# Deployed the dashboard? ./setup.sh --dashboard-url https://<its address>
 #
 # It also creates your login (the app has no sign-up screen) and switches off
 # public sign-ups so nobody else can create an account on your instance.
@@ -20,8 +21,22 @@ FRONTEND_DIR="${FRONTEND_DIR:-../my-wealth-view}"
 bold() { printf '\033[1m%s\033[0m\n' "$1"; }
 step() { echo; bold "==> $1"; }
 die() { echo "Error: $1" >&2; exit 1; }
+# Any failing exit (die, or a command that stops the script under set -e) ends with the next step.
+trap '[ $? -eq 0 ] || echo "Fix that, then run ./setup.sh again: answers already saved in .env are reused." >&2' EXIT
 # Value already in this install's .env ('' when missing), so a re-run doesn't ask again.
 existing() { node env-file.js get .env "$1"; }
+# Merge into the existing files (or the .env.example templates on a first run), so values
+# setup doesn't manage -- Coinbase keys, GEMINI_MODEL, your own edits -- are kept.
+write_env() { # write_env <target> <template>; KEY=value lines on stdin
+  local updates
+  updates=$(mktemp)
+  chmod 600 "$updates"
+  cat > "$updates"
+  [ -f "$1" ] || cp "$2" "$1"
+  node env-file.js merge "$1" "$updates"
+  rm -f "$updates"
+  chmod 600 "$1"
+}
 
 if [ "${1:-}" = "--reset-password" ]; then
   SUPABASE_URL=$(existing SUPABASE_URL)
@@ -36,11 +51,42 @@ if [ "${1:-}" = "--reset-password" ]; then
   exit 0
 fi
 
+# Point bank linking at the deployed dashboard without re-running the whole setup.
+if [ "${1:-}" = "--dashboard-url" ]; then
+  SUPABASE_URL=$(existing SUPABASE_URL)
+  [ -n "$SUPABASE_URL" ] || die "No SUPABASE_URL in .env. Run ./setup.sh first."
+  REF=${SUPABASE_URL#https://}; REF=${REF%%.*}
+  # It prints why on stderr. Exit 3 is only a warning: the address was typed deliberately, so use it.
+  ORIGIN=$(node frontend-url.js "${2:-}") || [ $? -eq 3 ] || exit 1
+  supabase secrets set --project-ref "$REF" "FRONTEND_URL=$ORIGIN" >/dev/null \
+    || die "Could not save FRONTEND_URL in Supabase (not logged in? run: supabase login)."
+  supabase functions deploy --project-ref "$REF" --use-api || die "Could not redeploy the Edge Functions."
+  write_env .env .env.example <<EOF
+FRONTEND_URL=$ORIGIN
+EOF
+  echo "Done! Open $ORIGIN"
+  exit 0
+fi
+
+bold "MyFinances setup. Steps:"
+echo "  1. Where the sync runs"
+echo "  2. GitHub login (GitHub option only)"
+echo "  3. Supabase login"
+echo "  4. Supabase project"
+echo "  5. Your login for the app"
+echo "  6. Enable Banking"
+echo "  7. Gemini API key (optional)"
+echo "  8. Dashboard address"
+
 step "Where should the sync run?"
 echo "  1) GitHub Actions: free, no computer has to stay on. Needs your fork of this repo and the GitHub CLI (gh)."
 echo "  2) Docker on this computer: the sync runs only while it is on."
 PREVIOUS_SYNC_ON=$(existing SYNC_ON)
-if [ "$PREVIOUS_SYNC_ON" = "docker" ]; then DEFAULT_CHOICE=2; else DEFAULT_CHOICE=1; fi
+if [ "$PREVIOUS_SYNC_ON" = "docker" ]; then
+  DEFAULT_CHOICE=2; echo "Press Enter: keeps Docker, your choice last time."
+else
+  DEFAULT_CHOICE=1; echo "New here? Press Enter: GitHub Actions, nothing to keep running."
+fi
 read -rp "Choose 1 or 2 [$DEFAULT_CHOICE]: " SYNC_CHOICE
 case "${SYNC_CHOICE:-$DEFAULT_CHOICE}" in
   1) SYNC_ON=github ;;
@@ -71,12 +117,18 @@ else
   # original), fork it to your account and use the fork.
   if [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission)" != "ADMIN" ]; then
     echo "$REPO isn't yours: the sync will run in your own fork of it."
+    echo "Press Enter: forks it (recommended)."
     read -rp "Fork it to your GitHub account now? [Y/n] " DO_FORK
     [[ "$DO_FORK" =~ ^[Nn]$ ]] && die "Fork $REPO on GitHub, then run setup from your fork."
     gh repo fork "$REPO" --clone=false --default-branch-only >/dev/null 2>&1 || true # fine if it exists
     REPO="$(gh api user --jq .login)/${REPO#*/}"
     [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission 2>/dev/null)" = "ADMIN" ] \
       || die "Could not find your fork $REPO. Fork it on GitHub, then run setup again."
+  fi
+  if [ "$REPO" = "marcodonghiaa/myfinances" ]; then
+    echo "This is the original public repo: the sync would run here and its logs are public."
+    read -rp "Continue anyway? [y/N] " UPSTREAM_OK
+    [[ "$UPSTREAM_OK" =~ ^[Yy]$ ]] || die "Run setup from your own fork of $REPO."
   fi
   echo "OK: supabase CLI, node, GitHub CLI, your repo $REPO"
 fi
@@ -97,12 +149,14 @@ PREVIOUS_URL=$(existing SUPABASE_URL)
 PROJECT_REF=""
 if [ -n "$PREVIOUS_URL" ]; then
   PREVIOUS_REF=$(echo "$PREVIOUS_URL" | sed -E 's#https://([a-z0-9]+)\.supabase\.co/?#\1#')
+  echo "Press Enter: keeps the project and everything already in it."
   read -rp "Keep using project $PREVIOUS_REF from .env? [Y/n] " KEEP_PROJECT
   [[ "$KEEP_PROJECT" =~ ^[Nn]$ ]] || PROJECT_REF="$PREVIOUS_REF"
 fi
 if [ -n "$PROJECT_REF" ]; then
   echo "Using project $PROJECT_REF."
 else
+echo "New here? Press Enter: creates a fresh free project."
 read -rp "Use an existing Supabase project? [y/N] " USE_EXISTING
 if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
   read -rp "Project ref (20-char id from the dashboard URL): " PROJECT_REF
@@ -113,17 +167,39 @@ if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
   " "$PROJECTS_JSON" "$PROJECT_REF" || die "No project with ref '$PROJECT_REF' found in your Supabase account. Check the ref (from the dashboard URL, e.g. supabase.com/dashboard/project/<ref>) and try again."
 else
   ORGS_JSON=$(supabase orgs list --output json)
-  ORG_ID=$(json_get "$ORGS_JSON" "0.id")
-  ORG_NAME=$(json_get "$ORGS_JSON" "0.name")
+  ORG_COUNT=$(json_get "$ORGS_JSON" length)
+  if [ "$ORG_COUNT" = "0" ]; then
+    # A brand-new Supabase account has no organization yet, and projects live in one.
+    ORG_NAME="$(gh api user --jq .login 2>/dev/null || whoami)'s org"
+    echo "No Supabase organization yet: creating \"$ORG_NAME\"."
+    ORG_JSON=$(supabase orgs create "$ORG_NAME" --output json) \
+      || die "Could not create a Supabase organization (see message above). Create one at supabase.com/dashboard."
+    ORG_ID=$(json_get "$ORG_JSON" id)
+  else
+    ORG_PICK=1
+    if [ "$ORG_COUNT" -gt 1 ] 2>/dev/null; then
+      node -e "JSON.parse(process.argv[1]).forEach((o, i) => console.log('  ' + (i + 1) + ') ' + o.name))" "$ORGS_JSON"
+      echo "Press Enter: uses the first one."
+      read -rp "Organization [1]: " ORG_PICK
+      ORG_PICK="${ORG_PICK:-1}"
+      [[ "$ORG_PICK" =~ ^[0-9]+$ ]] && [ "$ORG_PICK" -ge 1 ] && [ "$ORG_PICK" -le "$ORG_COUNT" ] \
+        || die "Choose a number from 1 to $ORG_COUNT."
+    fi
+    ORG_ID=$(json_get "$ORGS_JSON" "$((ORG_PICK - 1)).id")
+    ORG_NAME=$(json_get "$ORGS_JSON" "$((ORG_PICK - 1)).name")
+  fi
   [ -n "$ORG_ID" ] || die "No Supabase organization found. Create one at supabase.com/dashboard first."
   echo "Using organization: $ORG_NAME ($ORG_ID)"
+  echo "Press Enter: any name works, only you see it."
   read -rp "New project name [finance-app]: " PROJECT_NAME
   PROJECT_NAME="${PROJECT_NAME:-finance-app}"
   DB_PASSWORD=$(node -e "console.log(require('crypto').randomBytes(18).toString('base64url'))")
+  echo "Press Enter for Europe; elsewhere pick the closest, e.g. us-east-1 or ap-southeast-1."
   read -rp "Region [eu-central-1]: " REGION
   REGION="${REGION:-eu-central-1}"
   echo "Creating project (this takes a minute)..."
-  CREATE_JSON=$(supabase projects create "$PROJECT_NAME" --org-id "$ORG_ID" --db-password "$DB_PASSWORD" --region "$REGION" --output json)
+  CREATE_JSON=$(supabase projects create "$PROJECT_NAME" --org-id "$ORG_ID" --db-password "$DB_PASSWORD" --region "$REGION" --output json) \
+    || die "Could not create the project (see message above). Free plans allow 2 active projects per organization: pause or delete one at supabase.com/dashboard, or pick another organization."
   PROJECT_REF=$(node -e "const p=JSON.parse(process.argv[1]); console.log(p.id ?? p.ref ?? '')" "$CREATE_JSON")
   [ -n "$PROJECT_REF" ] || die "Project creation did not return a ref. Response was: $CREATE_JSON"
   # Nothing here needs the database password again, so it is not printed (it would stay in
@@ -141,7 +217,7 @@ for i in $(seq 1 20); do
   [ "$i" -eq 20 ] && { cat /tmp/setup-link-err >&2; die "Project never became ready after ~10 minutes."; }
   sleep 30
 done
-supabase db push --yes
+supabase db push --linked --yes
 echo "Migrations applied."
 
 step "Fetching API keys"
@@ -173,6 +249,11 @@ echo
 USER_ID=$(SETUP_URL="$SUPABASE_URL" SETUP_SECRET_KEY="$SECRET_KEY" SETUP_EMAIL="$LOGIN_EMAIL" SETUP_PASSWORD="$LOGIN_PASSWORD" node first-user.js) || die "Could not create your login (see message above)."
 unset LOGIN_PASSWORD
 echo "Login ready for $LOGIN_EMAIL."
+fi
+# Push services use this contact address; the .env.example placeholder would be rejected by some.
+VAPID_SUBJECT=$(existing VAPID_SUBJECT)
+if { [ -z "$VAPID_SUBJECT" ] || [ "$VAPID_SUBJECT" = "mailto:you@example.com" ]; } && [ -n "${LOGIN_EMAIL:-}" ]; then
+  VAPID_SUBJECT="mailto:$LOGIN_EMAIL"
 fi
 
 step "Enable Banking (manual signup required)"
@@ -234,16 +315,30 @@ else
   read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
 fi
 
-step "Frontend URL (for bank-linking redirects)"
+step "Dashboard address (for bank-linking redirects)"
 PREVIOUS_FRONTEND_URL=$(existing FRONTEND_URL)
 PREVIOUS_FRONTEND_URL="${PREVIOUS_FRONTEND_URL:-http://localhost:3000}"
 if [ "$SYNC_ON" = "github" ]; then
-  echo "Where the dashboard lives, e.g. your Vercel address (https://<name>.vercel.app)."
-  echo "Not deployed yet? Keep the default for now and re-run ./setup.sh once you have the address."
+  echo "Deploy the dashboard with the Deploy button in the my-wealth-view README (Vercel)."
+  echo "Values to paste there (also saved in dashboard-values.txt):"
+  # Public values only: the publishable key and VAPID public key are meant for browsers.
+  printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\nVITE_VAPID_PUBLIC_KEY=%s\n' \
+    "$SUPABASE_URL" "$PUBLISHABLE_KEY" "$VAPID_PUBLIC" | tee dashboard-values.txt
+  echo "Then enter its address (https://<name>.vercel.app). Not deployed yet? Press Enter to skip."
 fi
-read -rp "Public URL the frontend will be served at [$PREVIOUS_FRONTEND_URL]: " FRONTEND_URL
-FRONTEND_URL="${FRONTEND_URL:-$PREVIOUS_FRONTEND_URL}"
-FRONTEND_URL="${FRONTEND_URL%/}" # strip trailing slash -- must exact-match the browser's Origin header for CORS
+# frontend-url.js keeps only the origin (must exact-match the browser's Origin header for CORS)
+# and prints why it refused (exit 1) or warned about (exit 3) an address, so ask again.
+while true; do
+  read -rp "Dashboard address (Enter to skip; later: ./setup.sh --dashboard-url https://...) [$PREVIOUS_FRONTEND_URL]: " DASHBOARD_INPUT
+  if [ -z "$DASHBOARD_INPUT" ]; then FRONTEND_URL="$PREVIOUS_FRONTEND_URL"; break; fi
+  URL_STATUS=0
+  FRONTEND_URL=$(node frontend-url.js "$DASHBOARD_INPUT") || URL_STATUS=$?
+  [ "$URL_STATUS" -eq 0 ] && break
+  if [ "$URL_STATUS" -eq 3 ]; then
+    read -rp "Use this address anyway? [y/N] " USE_ANYWAY
+    [[ "$USE_ANYWAY" =~ ^[Yy]$ ]] && break
+  fi
+done
 
 step "Deploying Edge Functions and secrets"
 supabase secrets set --project-ref "$PROJECT_REF" \
@@ -254,19 +349,6 @@ supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remot
 echo "Edge Functions live."
 
 step "Writing .env files"
-# Merge into the existing files (or the .env.example templates on a first run), so values
-# setup doesn't manage -- Coinbase keys, GEMINI_MODEL, your own edits -- are kept.
-write_env() { # write_env <target> <template>; KEY=value lines on stdin
-  local updates
-  updates=$(mktemp)
-  chmod 600 "$updates"
-  cat > "$updates"
-  [ -f "$1" ] || cp "$2" "$1"
-  node env-file.js merge "$1" "$updates"
-  rm -f "$updates"
-  chmod 600 "$1"
-}
-
 write_env .env .env.example <<EOF
 APP_ID=$EB_APP_ID
 PRIVATE_KEY_FILE=$EB_PEM_PATH
@@ -277,7 +359,7 @@ GEMINI_API_KEY=$GEMINI_API_KEY
 USER_ID=$USER_ID
 VAPID_PUBLIC_KEY=$VAPID_PUBLIC
 VAPID_PRIVATE_KEY=$VAPID_PRIVATE
-VITE_SUPABASE_PROJECT_ID=$PROJECT_REF
+VAPID_SUBJECT=$VAPID_SUBJECT
 VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 VITE_SUPABASE_URL=$SUPABASE_URL
 VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC
@@ -288,10 +370,6 @@ EOF
 
 if [ -d "$FRONTEND_DIR" ]; then
 write_env "$FRONTEND_DIR/.env" "$FRONTEND_DIR/.env.example" <<EOF
-SUPABASE_PROJECT_ID=$PROJECT_REF
-SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
-SUPABASE_URL=$SUPABASE_URL
-VITE_SUPABASE_PROJECT_ID=$PROJECT_REF
 VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
 VITE_SUPABASE_URL=$SUPABASE_URL
 VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC
@@ -316,7 +394,7 @@ if [ "$SYNC_ON" = "github" ]; then
   gh_secret GEMINI_API_KEY "$GEMINI_API_KEY"
   gh_secret VAPID_PUBLIC_KEY "$VAPID_PUBLIC"
   gh_secret VAPID_PRIVATE_KEY "$VAPID_PRIVATE"
-  gh_secret VAPID_SUBJECT "$(existing VAPID_SUBJECT)"
+  gh_secret VAPID_SUBJECT "$VAPID_SUBJECT"
   gh_secret COINBASE_API_KEY_NAME "$(existing COINBASE_API_KEY_NAME)"
   gh_secret COINBASE_API_PRIVATE_KEY "$(existing COINBASE_API_PRIVATE_KEY)"
   gh variable set SYNC_ON_GITHUB --body true --repo "$REPO" >/dev/null
@@ -324,6 +402,9 @@ if [ "$SYNC_ON" = "github" ]; then
   gh api -X PUT "repos/$REPO/actions/permissions" -F enabled=true >/dev/null 2>&1 \
     || echo "Could not switch Actions on: open https://github.com/$REPO/actions and enable them."
   gh workflow enable sync.yml --repo "$REPO" >/dev/null 2>&1 || true
+  # Your fork is public, and so are its Actions logs: keep them 1 day instead of GitHub's 90.
+  gh api -X PUT "repos/$REPO/actions/permissions/artifact-and-log-retention" -F days=1 >/dev/null 2>&1 \
+    || echo "WARNING: set Artifact and log retention to 1 day at https://github.com/$REPO/settings/actions"
   echo "Secrets and SYNC_ON_GITHUB set. Sync every 6 hours, prompts hourly, bank reminder daily."
 fi
 
@@ -354,12 +435,15 @@ fi
 
 step "Almost done"
 SIGN_IN_AS="${LOGIN_EMAIL:-your login}"
-if [ "$SYNC_ON" = "github" ]; then
+DASHBOARD_LIVE=""
+[ "$SYNC_ON" = "github" ] && [[ "$FRONTEND_URL" != http://localhost* ]] && DASHBOARD_LIVE=1
+if [ -n "$DASHBOARD_LIVE" ]; then
+  echo "1. In the dashboard, click 'Connect a bank' on the Accounts page."
+  echo "2. Start a sync any time from https://github.com/$REPO/actions (Sync -> Run workflow)."
+elif [ "$SYNC_ON" = "github" ]; then
   echo "1. Deploy the dashboard: the Deploy button in the my-wealth-view README (Vercel)."
-  echo "   Values to paste there: VITE_SUPABASE_URL=$SUPABASE_URL"
-  echo "                          VITE_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
-  echo "                          VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC"
-  echo "   Then run ./setup.sh again with its address, so bank linking redirects there."
+  echo "   Values to paste there: in dashboard-values.txt (printed above)."
+  echo "   Then run ./setup.sh --dashboard-url https://<its address>, so bank linking redirects there."
   echo "2. Open the dashboard, sign in as $SIGN_IN_AS and click 'Connect a bank' on the Accounts page."
   echo "3. Start a sync any time from https://github.com/$REPO/actions (Sync -> Run workflow)."
 else
@@ -374,3 +458,4 @@ if [ "${CODESPACES:-}" = "true" ]; then
 fi
 echo
 echo "If MyFinances is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"
+[ -z "$DASHBOARD_LIVE" ] || echo "Done! Open $FRONTEND_URL and sign in as $SIGN_IN_AS"
