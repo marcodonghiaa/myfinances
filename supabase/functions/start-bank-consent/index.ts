@@ -11,7 +11,13 @@
 // never leaves the browser at all ("Failed to send a request").
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { CORS_HEADERS, json, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import {
+  CORS_HEADERS,
+  EB_KEY_INVALID,
+  ebErrorMessage,
+  json,
+  signEnableBankingJwt,
+} from "../_shared/enable-banking.ts";
 import { isBankName, isCountryCode, MAX_OPEN_CONSENTS } from "../_shared/validate.ts";
 
 Deno.serve(async (req) => {
@@ -41,6 +47,10 @@ Deno.serve(async (req) => {
   if (!body || !isBankName(body.bankName) || !isCountryCode(body.country)) {
     return json({ error: "A valid bankName and country are required" }, 400);
   }
+
+  // Sign first: a bad key must not leave a pending row that counts toward MAX_OPEN_CONSENTS.
+  const token = await signEnableBankingJwt().catch(() => null);
+  if (!token) return json({ error: EB_KEY_INVALID }, 500);
 
   // Enable Banking treats `state` as an opaque pass-through it never
   // validates -- a bare user id there would let anyone who completes their
@@ -72,7 +82,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const token = await signEnableBankingJwt();
     const res = await fetch("https://api.enablebanking.com/auth", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -84,14 +93,17 @@ Deno.serve(async (req) => {
         psu_type: "personal",
       }),
     });
+    if (!res.ok) {
+      console.error("Enable Banking error:", res.status);
+      return json({ error: ebErrorMessage(res.status) }, 502);
+    }
     const data = await res.json();
-    if (!res.ok || !data.url) {
-      // Upstream error bodies stay in the function log, not the browser.
-      console.error("Enable Banking error:", JSON.stringify(data));
-      return json({ error: "Enable Banking error" }, 502);
+    if (!data.url) {
+      console.error("Enable Banking error: no consent url");
+      return json({ error: "Enable Banking error, please try again" }, 502);
     }
     return json({ url: data.url });
-  } catch (err) {
-    return json({ error: (err as Error).message }, 500);
+  } catch {
+    return json({ error: "Something went wrong, please try again" }, 500);
   }
 });

@@ -14,7 +14,7 @@
 // user id only comes from looking up and deleting that row here.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { EB_NO_ACCOUNTS, FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { matchAccount, type StoredAccount } from "../_shared/account-match.ts";
 
 
@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
     }
 
     const accounts = (data.accounts ?? []) as Array<EnableBankingAccount>;
+    if (accounts.length === 0) return redirectToApp({ bank_link_error: EB_NO_ACCOUNTS });
     const consentValidUntil = data.access?.valid_until ?? null;
     const savedRows: Array<{ uid: string; label: string | null; currency: string }> = [];
 

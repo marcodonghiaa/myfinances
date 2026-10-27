@@ -22,7 +22,7 @@ jobs:
           deno-version: v2.x
       # The Edge Functions are TypeScript for Deno: check they compile and run their unit tests.
       - run: deno check --no-lock --node-modules-dir=none supabase/functions/*/index.ts
-      - run: deno test --no-lock --node-modules-dir=none supabase/functions/_shared
+      - run: deno test --no-lock --node-modules-dir=none --allow-env supabase/functions/_shared
   devcontainer:
     runs-on: ubuntu-24.04
     permissions:
