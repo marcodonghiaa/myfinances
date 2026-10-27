@@ -16,6 +16,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { EB_NO_ACCOUNTS, FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { matchAccount, matchPatch, type StoredAccount } from "../_shared/account-match.ts";
+import { bankLogo, type BankInfo } from "../_shared/bank-info.ts";
 
 
 const supabase = createClient(
@@ -96,6 +97,25 @@ Deno.serve(async (req) => {
     const accounts = (data.accounts ?? []) as Array<EnableBankingAccount>;
     if (accounts.length === 0) return redirectToApp({ bank_link_error: EB_NO_ACCOUNTS });
     const consentValidUntil = data.access?.valid_until ?? null;
+
+    // The bank itself (name, country), not the holder name EB returns as the account name.
+    // Logo comes from /aspsps; best-effort, a failed lookup only leaves the logo null.
+    const aspsp = (data.aspsp ?? null) as { name?: string | null; country?: string | null } | null;
+    const bankName = aspsp?.name ?? null;
+    const bankCountry = aspsp?.country ?? null;
+    let logo: string | null = null;
+    if (bankName && bankCountry) {
+      try {
+        const aspspRes = await fetch(
+          `https://api.enablebanking.com/aspsps?country=${encodeURIComponent(bankCountry)}`,
+          { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(3000) },
+        );
+        if (aspspRes.ok) logo = bankLogo((await aspspRes.json()).aspsps ?? null, bankName);
+      } catch {
+        // best-effort, logo stays null
+      }
+    }
+    const bank: BankInfo = { bank_name: bankName, bank_country: bankCountry, bank_logo: logo };
     const savedRows: Array<{ uid: string; ebUid: string; label: string | null; currency: string }> = [];
 
     // uid is the PK (transactions, snapshots and sync_cursors reference it), so an existing row's uid
@@ -126,6 +146,7 @@ Deno.serve(async (req) => {
           identification_hash: identificationHash,
           user_id: userId,
           consent_valid_until: consentValidUntil,
+          ...bank,
         });
         if (!error) {
           stored = [...stored, { uid: a.uid, iban, currency: a.currency, identification_hash: identificationHash }];
@@ -150,6 +171,7 @@ Deno.serve(async (req) => {
         { iban, currency: a.currency, identification_hash: identificationHash, label },
         a.uid,
         consentValidUntil,
+        bank,
       );
       const { error } = await supabase
         .from("accounts")
