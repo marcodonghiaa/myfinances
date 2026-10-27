@@ -15,7 +15,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { EB_NO_ACCOUNTS, FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
-import { matchAccount, type StoredAccount } from "../_shared/account-match.ts";
+import { matchAccount, matchPatch, type StoredAccount } from "../_shared/account-match.ts";
 
 
 const supabase = createClient(
@@ -96,9 +96,11 @@ Deno.serve(async (req) => {
     const accounts = (data.accounts ?? []) as Array<EnableBankingAccount>;
     if (accounts.length === 0) return redirectToApp({ bank_link_error: EB_NO_ACCOUNTS });
     const consentValidUntil = data.access?.valid_until ?? null;
-    const savedRows: Array<{ uid: string; label: string | null; currency: string }> = [];
+    const savedRows: Array<{ uid: string; ebUid: string; label: string | null; currency: string }> = [];
 
-    // uid is the PK (transactions.account_uid references it), so an existing row's uid never changes.
+    // uid is the PK (transactions, snapshots and sync_cursors reference it), so an existing row's uid
+    // never changes. eb_account_uid follows the session: EB account ids die with their session, so a
+    // renewal stores the new one there.
     // Match on identification_hash (IBAN + currency, unique per Revolut pocket), then IBAN + currency.
     const { data: storedRows, error: storedError } = await supabase
       .from("accounts")
@@ -117,6 +119,7 @@ Deno.serve(async (req) => {
       if (!uid) {
         const { error } = await supabase.from("accounts").insert({
           uid: a.uid,
+          eb_account_uid: a.uid,
           currency: a.currency,
           label,
           iban,
@@ -126,7 +129,7 @@ Deno.serve(async (req) => {
         });
         if (!error) {
           stored = [...stored, { uid: a.uid, iban, currency: a.currency, identification_hash: identificationHash }];
-          savedRows.push({ uid: a.uid, label, currency: a.currency });
+          savedRows.push({ uid: a.uid, ebUid: a.uid, label, currency: a.currency });
           continue;
         }
         // A concurrent callback inserted the same pocket first (unique user_id + identification_hash).
@@ -143,12 +146,11 @@ Deno.serve(async (req) => {
         uid = racedRow.uid;
       }
 
-      const patch: Record<string, unknown> = {
-        consent_valid_until: consentValidUntil,
-        currency: a.currency,
-      };
-      if (label !== null) patch.label = label;
-      if (identificationHash !== null) patch.identification_hash = identificationHash;
+      const patch = matchPatch(
+        { iban, currency: a.currency, identification_hash: identificationHash, label },
+        a.uid,
+        consentValidUntil,
+      );
       const { error } = await supabase
         .from("accounts")
         .update(patch)
@@ -158,15 +160,15 @@ Deno.serve(async (req) => {
       }
       stored = stored.map((s) =>
         s.uid === uid
-          ? { ...s, currency: a.currency, identification_hash: identificationHash ?? s.identification_hash }
+          ? { ...s, iban: iban ?? s.iban, currency: a.currency, identification_hash: identificationHash ?? s.identification_hash }
           : s
       );
-      savedRows.push({ uid, label, currency: a.currency });
+      savedRows.push({ uid, ebUid: a.uid, label, currency: a.currency });
     }
 
     // Fetch an immediate balance for each linked account instead of leaving
     // it invisible until the next scheduled sync (up to 6 hours away) --
-    // same /accounts/{uid}/balances call sync-networth.js makes on its
+    // same /accounts/{id}/balances call sync-networth.js makes on its
     // batch schedule, just run once here for the accounts that just linked.
     // Best-effort: a failure here doesn't fail the link, the batch job
     // catches it up at the next sync regardless.
@@ -174,7 +176,7 @@ Deno.serve(async (req) => {
     for (const row of savedRows) {
       try {
         const balRes = await fetch(
-          `https://api.enablebanking.com/accounts/${row.uid}/balances`,
+          `https://api.enablebanking.com/accounts/${row.ebUid}/balances`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!balRes.ok) continue;
