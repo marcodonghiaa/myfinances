@@ -13,7 +13,7 @@ const CONSOLE_CALL = /console\.(log|error|warn|info)\(.*/;
 // Stripped before the checks: the allowed forms that would otherwise look like a leak.
 const ALLOWED = /\b(err|error)\.name\b|\btotal(Categorized|Classified)\b/g;
 const LEAKS = [
-  /\$\{[^}]*(\bname\b|label|creditor_name|debtor_name|amount|shares|balance|price|value|total|iban|message)[^}]*\}/,
+  /\$\{[^}]*(\bname\b|label|creditor_name|debtor_name|amount|shares|balance|price|value|total|iban|message|\bdescription\b|\bremittance\b|\bentry_reference\b|\buser_id\b)[^}]*\}/,
   /JSON\.stringify/,
   /\.(details|hint|message)\b|\.text\(\)/,
   /, (err|error|row|rows|data|tx|account|holding)\)/,
