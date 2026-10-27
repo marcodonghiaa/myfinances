@@ -11,7 +11,13 @@ async function getEb(fetch, token, path) {
   const res = await fetch(`https://api.enablebanking.com/accounts/${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw Object.assign(new Error(`API error ${res.status}`), { status: res.status });
+  if (!res.ok) {
+    // code = EB's error name (e.g. EXPIRED_SESSION) when the body is JSON; the body itself is never kept.
+    const body = await res.json().catch(() => null);
+    // Only an all-caps name: errorTag prints the code, so free text from EB never reaches the log.
+    const code = /^[A-Z_]+$/.test(body?.error) ? body.error : undefined;
+    throw Object.assign(new Error(`API error ${res.status}`), { status: res.status, ...(code && { code }) });
+  }
   return res.json();
 }
 
@@ -29,6 +35,27 @@ async function fillMissingIds(fetch, supabase, token, account) {
     if (error) throw error;
   } catch (err) {
     console.error(`Account ids not filled: ${errorTag(err)}`);
+  }
+}
+
+// EXPIRED_SESSION: the bank closed the consent before consent_valid_until. Ending it today
+// shows the Renew banner and the consent push. Never moves a date later; best effort like
+// fillMissingIds. Returns whether the row was marked.
+async function markForRenewal(supabase, account, err, today) {
+  if (err.code !== 'EXPIRED_SESSION') return false;
+  if (account.consent_valid_until && account.consent_valid_until.slice(0, 10) <= today) return false;
+  try {
+    // Compare-and-set on the date read at start: a Renew during the sync writes a new date
+    // that a stale EXPIRED_SESSION must not overwrite.
+    const query = supabase.from('accounts').update({ consent_valid_until: today }).eq('uid', account.uid);
+    const { error } = await (account.consent_valid_until
+      ? query.eq('consent_valid_until', account.consent_valid_until)
+      : query.is('consent_valid_until', null));
+    if (error) throw error;
+    return true;
+  } catch (updateErr) {
+    console.error(`Account not marked for renewal: ${errorTag(updateErr)}`);
+    return false;
   }
 }
 
@@ -53,7 +80,8 @@ async function syncAccountBalance({ fetch, supabase }, token, account, userId, t
     return { row, rejected: null };
   } catch (err) {
     console.error(`Failed to fetch balance: ${errorTag(err)}`);
-    return { row: null, rejected: EB_REJECTED_STATUSES.has(err.status) ? err.status : null };
+    const renewed = await markForRenewal(supabase, account, err, today);
+    return { row: null, rejected: EB_REJECTED_STATUSES.has(err.status) ? err.status : null, renewed };
   }
 }
 
@@ -64,6 +92,7 @@ async function main() {
   const userIds = await getAllUserIds(supabase);
   const rows = [];
   let rejectedCount = 0;
+  let renewalCount = 0;
 
   for (const [u, userId] of userIds.entries()) {
     let accounts;
@@ -78,13 +107,15 @@ async function main() {
 
     for (const [i, account] of accounts.entries()) {
       console.log(`\n=== Account ${i + 1}/${accounts.length} ===`);
-      const { row, rejected } = await syncAccountBalance({ fetch: fetchWithTimeout, supabase }, token, account, userId, today);
+      const { row, rejected, renewed } = await syncAccountBalance({ fetch: fetchWithTimeout, supabase }, token, account, userId, today);
       if (row) rows.push(row);
       if (rejected) rejectedCount++;
+      if (renewed) renewalCount++;
     }
   }
 
   if (rejectedCount > 0) console.error(`EB refused ${rejectedCount} account(s) (dead or expired account id)`);
+  if (renewalCount > 0) console.error(`Marked ${renewalCount} account(s) for renewal (bank closed access early)`);
 
   if (rows.length > 0) {
     // one snapshot per account per day — upsert avoids duplicate rows if run twice same day

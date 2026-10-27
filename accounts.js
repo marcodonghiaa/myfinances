@@ -1,4 +1,4 @@
-const ACCOUNT_COLUMNS = 'uid, currency, label, created_at, iban, identification_hash';
+const ACCOUNT_COLUMNS = 'uid, currency, label, created_at, iban, identification_hash, consent_valid_until';
 
 async function getAccounts(supabase, userId) {
   const select = (cols) => supabase.from('accounts').select(cols).eq('user_id', userId);

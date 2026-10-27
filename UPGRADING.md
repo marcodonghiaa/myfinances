@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### A bank that closes access early shows Renew
+- **No migration. Nothing to do** beyond redeploying the sync.
+- When a bank ends its consent before the date it gave (Enable Banking answers `EXPIRED_SESSION`), the balance sync sets that account's consent end to today, so the Renew banner shows at once and the daily consent push fires. A later date is never set, and other 401/403 errors (a bad key, an inactive app) change nothing.
+- The sync log ends with `Marked N account(s) for renewal (bank closed access early)` when this happens.
+
 ### Bank access push also when the banner appears
 - **No migration. No action.** The push now also fires 14 days before access ends, the day the Accounts banner appears.
 
