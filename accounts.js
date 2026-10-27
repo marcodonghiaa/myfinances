@@ -1,8 +1,14 @@
+const ACCOUNT_COLUMNS = 'uid, currency, label, created_at, iban, identification_hash';
+
 async function getAccounts(supabase, userId) {
-  const { data, error } = await supabase
-    .from('accounts')
-    .select('uid, currency, label, created_at, iban, identification_hash, eb_account_uid')
-    .eq('user_id', userId);
+  const select = (cols) => supabase.from('accounts').select(cols).eq('user_id', userId);
+  let { data, error } = await select(`${ACCOUNT_COLUMNS}, eb_account_uid`);
+  // 42703 = undefined column: the eb_account_uid migration isn't applied yet, so
+  // read without it and ebAccountId falls back to uid.
+  if (error?.code === '42703') {
+    console.warn('Reading accounts without eb_account_uid: apply the latest migrations.');
+    ({ data, error } = await select(ACCOUNT_COLUMNS));
+  }
 
   if (error) throw new Error(`Failed to load accounts: ${error.message}`);
   if (!data || data.length === 0) {

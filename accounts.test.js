@@ -39,3 +39,29 @@ test('getAccounts selects the id columns', async () => {
   await getAccounts(supabase, 'user');
   for (const col of ['eb_account_uid', 'identification_hash', 'iban']) assert.ok(selected.includes(col), col);
 });
+
+test('getAccounts reads without eb_account_uid when the column is missing', async () => {
+  const selects = [];
+  const responses = [
+    { data: null, error: { code: '42703' } },
+    { data: [{ uid: 'a' }], error: null },
+  ];
+  const supabase = {
+    from: () => ({
+      select: (cols) => {
+        selects.push(cols);
+        const response = responses[selects.length - 1];
+        return { eq: async () => response };
+      },
+    }),
+  };
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    assert.deepStrictEqual(await getAccounts(supabase, 'user'), [{ uid: 'a' }]);
+  } finally {
+    console.warn = warn;
+  }
+  assert.strictEqual(selects.length, 2);
+  assert.ok(!selects[1].includes('eb_account_uid'));
+});

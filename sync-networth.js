@@ -21,7 +21,10 @@ async function fillMissingIds(fetch, supabase, token, account) {
   if (account.identification_hash) return;
   try {
     const patch = idsPatchFromDetails(await getEb(fetch, token, `${ebAccountId(account)}/details`));
-    if (!patch) return;
+    if (!patch) {
+      console.error('Account ids not filled: no hash in details');
+      return;
+    }
     const { error } = await supabase.from('accounts').update(patch).eq('uid', account.uid);
     if (error) throw error;
   } catch (err) {
