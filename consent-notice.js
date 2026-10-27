@@ -19,7 +19,7 @@ function consentNotices(accounts, today) {
     if (!a.consent_valid_until) continue;
     const daysLeft = Math.round((Date.parse(a.consent_valid_until.slice(0, 10)) - todayUtc) / DAY_MS);
     const banks = soonest.get(a.user_id) ?? new Map();
-    const bank = bankName(a.label);
+    const bank = a.bank_name || bankName(a.label);
     banks.set(bank, Math.min(daysLeft, banks.get(bank) ?? Infinity));
     soonest.set(a.user_id, banks);
   }
@@ -55,7 +55,7 @@ async function main() {
 
   const { data, error } = await supabase
     .from('accounts')
-    .select('user_id, label, consent_valid_until')
+    .select('*')
     .not('consent_valid_until', 'is', null);
   if (error) throw error;
 
