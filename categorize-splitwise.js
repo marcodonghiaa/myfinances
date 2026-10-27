@@ -4,6 +4,7 @@ const { classifyWithGemini } = require('./gemini-classify');
 const { fetchBatchForOneUser } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { SPLITWISE_CATEGORIES, buildPrompt, planUpdates } = require('./splitwise-categories');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -36,7 +37,7 @@ async function applyPlan(plan) {
       .eq('user_id', user_id)
       .in('id', ids)
       .is('category', null);
-    if (error) console.error(`Failed to categorize ${ids.length} Splitwise share(s):`, error.message);
+    if (error) console.error(`Failed to categorize ${ids.length} Splitwise share(s): ${errorTag(error)}`);
   }
 }
 
@@ -46,7 +47,7 @@ async function main() {
     return;
   }
 
-  let total = 0;
+  let looked = 0;
   const stalls = createStallGuard();
   while (true) {
     const rows = await fetchUncategorized(stalls.stuckUserIds);
@@ -54,7 +55,7 @@ async function main() {
 
     // The stall guard keys on account_uid + entry_reference; a share has neither.
     if (stalls.isStalled(rows.map((r) => ({ user_id: r.user_id, account_uid: 'splitwise', entry_reference: r.id })))) {
-      console.warn(`No progress for user ${rows[0].user_id}, skipping them for this run.`);
+      console.warn('No progress for one user, skipping them for this run.');
       continue;
     }
 
@@ -67,13 +68,13 @@ async function main() {
       model: GEMINI_MODEL,
     });
     await applyPlan(planUpdates(results, rows));
-    total += rows.length;
+    looked += rows.length;
   }
 
-  console.log(`Done. Looked at ${total} Splitwise share(s).`);
+  console.log(`Done. Looked at ${looked} Splitwise share(s).`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

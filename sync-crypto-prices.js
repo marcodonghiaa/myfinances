@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { fetchWithTimeout } = require('./http');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -50,10 +51,10 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10);
   const rows = [];
 
-  for (const holding of holdings) {
+  for (const [i, holding] of holdings.entries()) {
     const priceUsd = prices[holding.coingecko_id]?.usd;
     if (priceUsd == null) {
-      console.error(`No price found for ${holding.name} (${holding.coingecko_id})`);
+      console.error(`No price found for holding ${i + 1}/${holdings.length}`);
       continue;
     }
     const valueUsd = priceUsd * holding.amount;
@@ -69,8 +70,6 @@ async function main() {
       value_usd: valueUsd,
       value_eur: valueEur,
     });
-
-    console.log(`${holding.name} (${holding.source}): ${holding.amount} @ $${priceUsd} = €${valueEur.toFixed(2)}`);
   }
 
   if (rows.length > 0) {
@@ -80,11 +79,10 @@ async function main() {
     if (error) throw error;
   }
 
-  const total = rows.reduce((sum, r) => sum + r.value_eur, 0);
-  console.log(`\nSaved ${rows.length} snapshot(s) for ${today}. Total crypto value: €${total.toFixed(2)}`);
+  console.log(`\nSaved ${rows.length} snapshot(s) for ${today}.`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

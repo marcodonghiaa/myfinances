@@ -9,6 +9,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { applyGroupedUpdates } = require('./batch-update');
 const { matchRefunds, WINDOW_DAYS } = require('./refunds');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const BATCH_SIZE = 200;
@@ -91,6 +92,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

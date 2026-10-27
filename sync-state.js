@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { errorTag } = require('./log-safe');
 
 // Per-account sync cursors. A missing or corrupt file just means "start from the
 // default window": the upsert dedupes, so re-fetching is safe, crashing is not.
@@ -6,7 +7,7 @@ function loadSyncState(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
-    if (err.code !== 'ENOENT') console.warn(`Ignoring unreadable ${file}: ${err.message}`);
+    if (err.code !== 'ENOENT') console.warn(`Ignoring unreadable ${file}: ${errorTag(err)}`);
     return {};
   }
 }
@@ -37,7 +38,7 @@ async function loadCursors(supabase, file) {
   const fromFile = loadSyncState(file);
   const { data, error } = await supabase.from('sync_cursors').select('account_uid, last_synced');
   if (error) {
-    console.warn(`Reading sync cursors from ${file} only: ${error.message}. Apply the latest migrations.`);
+    console.warn(`Reading sync cursors from ${file} only: ${errorTag(error)}. Apply the latest migrations.`);
     return fromFile;
   }
   return { ...fromFile, ...Object.fromEntries(data.map((r) => [r.account_uid, r.last_synced])) };
@@ -48,7 +49,7 @@ async function saveCursors(supabase, file, state) {
   const rows = Object.entries(state).map(([account_uid, last_synced]) => ({ account_uid, last_synced }));
   if (rows.length === 0) return;
   const { error } = await supabase.from('sync_cursors').upsert(rows, { onConflict: 'account_uid' });
-  if (error) console.warn(`Sync cursors saved to ${file} only: ${error.message}`);
+  if (error) console.warn(`Sync cursors saved to ${file} only: ${errorTag(error)}`);
 }
 
 module.exports = { loadSyncState, saveSyncState, loadCursors, saveCursors, freshUnsyncedAccounts, addedCursors };

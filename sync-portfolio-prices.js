@@ -2,6 +2,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { fetchWithTimeout } = require('./http');
 const { parseQuote, nextAssetType } = require('./yahoo-quote');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const USER_ID = process.env.USER_ID;
@@ -45,7 +46,7 @@ async function main() {
   const rows = [];
   const typeUpdates = [];
 
-  for (const holding of holdings) {
+  for (const [i, holding] of holdings.entries()) {
     try {
       const { price, currency, assetType } = await fetchQuote(holding.yahoo_symbol);
       const rateToEur = await getLatestFxRate(currency);
@@ -66,10 +67,8 @@ async function main() {
       if (newType && newType !== holding.asset_type) {
         typeUpdates.push({ isin: holding.isin, asset_type: newType });
       }
-
-      console.log(`${holding.name}: ${price} ${currency} x ${holding.shares} = ${valueEur.toFixed(2)} EUR`);
     } catch (err) {
-      console.error(`Failed to price ${holding.name} (${holding.yahoo_symbol}):`, err.message);
+      console.error(`Failed to price holding ${i + 1}/${holdings.length}: ${errorTag(err)}`);
     }
   }
 
@@ -79,7 +78,7 @@ async function main() {
       .update({ asset_type: update.asset_type })
       .eq('user_id', USER_ID)
       .eq('isin', update.isin);
-    if (error) console.error(`Failed to update asset_type for ${update.isin}:`, error.message);
+    if (error) console.error(`Failed to update asset_type for a holding: ${errorTag(error)}`);
   }
 
   if (rows.length > 0) {
@@ -89,11 +88,10 @@ async function main() {
     if (error) throw error;
   }
 
-  const total = rows.reduce((sum, r) => sum + r.value_eur, 0);
-  console.log(`\nSaved ${rows.length} snapshot(s) for ${today}. Total portfolio value: ${total.toFixed(2)} EUR`);
+  console.log(`\nSaved ${rows.length} snapshot(s) for ${today}.`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

@@ -10,6 +10,7 @@ const { createClient } = require("@supabase/supabase-js");
 const { loadCursors, addedCursors } = require("./sync-state");
 const { reportEnv } = require("./env-check");
 const { JOBS, runJob } = require("./jobs");
+const { errorTag } = require("./log-safe");
 
 // A script that hangs would otherwise block every later step and run forever.
 const SCRIPT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -73,4 +74,4 @@ runConsentNotice();
 setInterval(runSync, 6 * 60 * 60 * 1000);
 setInterval(runNotify, 30 * 60 * 1000); // every 30 min
 setInterval(runConsentNotice, 24 * 60 * 60 * 1000); // daily
-setInterval(() => runFirstSync().catch((err) => console.error("[scheduler] first sync check failed:", err.message)), 5 * 60 * 1000); // every 5 min, only touches newly linked banks
+setInterval(() => runFirstSync().catch((err) => console.error(`[scheduler] first sync check failed: ${errorTag(err)}`)), 5 * 60 * 1000); // every 5 min, only touches newly linked banks

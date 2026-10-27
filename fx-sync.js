@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { fetchWithTimeout } = require('./http');
+const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const CURRENCIES = ['USD', 'GBP', 'CHF']; // add more here as you add accounts in other currencies
@@ -46,10 +47,10 @@ async function main() {
   const rows = toRows(data.date, data.rates);
   await upsertRows(rows);
 
-  console.log(`Synced FX rates for ${data.date}:`, rows.map((r) => `${r.currency}=${r.rate_to_eur.toFixed(4)}`).join(', '));
+  console.log(`Synced ${rows.length} FX rates for ${data.date}.`);
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`Failed: ${errorTag(err)}`);
   process.exit(1);
 });

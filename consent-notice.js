@@ -1,6 +1,8 @@
 // Push reminder before a bank's access (PSD2 consent, 180 days) runs out. After that the bank
 // stops syncing with no error the user sees; the dashboard's Accounts page also shows a banner.
 // Meant to run once a day: each threshold day is hit by one run, so no "already sent" state.
+const { errorTag } = require('./log-safe');
+
 const NOTICE_DAYS = [7, 1, 0];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -62,20 +64,20 @@ async function main() {
     console.log('No bank access to renew soon.');
     return;
   }
-  for (const { user_id, banks } of notices) {
+  for (const [i, { user_id, banks }] of notices.entries()) {
     const subscriptions = await fetchSubscriptions(supabase, user_id);
     if (subscriptions.length === 0) {
-      console.log(`User ${user_id}: bank access ending soon, but no push subscription on file.`);
+      console.log(`User ${i + 1}/${notices.length}: bank access ending soon, but no push subscription on file.`);
       continue;
     }
     const delivered = await sendToAllSubscriptions(supabase, subscriptions, buildConsentPayload(banks));
-    console.log(`User ${user_id}: renewal reminder ${delivered ? 'sent' : 'failed'} for ${banks.map((b) => b.bank).join(', ')}.`);
+    console.log(`User ${i + 1}/${notices.length}: renewal reminder ${delivered ? 'sent' : 'failed'} for ${banks.length} bank(s).`);
   }
 }
 
 if (require.main === module) {
   main().catch((err) => {
-    console.error(err);
+    console.error(`Failed: ${errorTag(err)}`);
     process.exit(1);
   });
 }

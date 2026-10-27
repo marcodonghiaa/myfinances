@@ -12,14 +12,15 @@ async function checkSessionExpiry(supabase, userId) {
   if (error) throw error;
 
   const now = new Date();
-  for (const row of data || []) {
+  const rows = data || [];
+  for (const [i, row] of rows.entries()) {
     const validUntil = new Date(row.consent_valid_until);
     const daysLeft = Math.ceil((validUntil - now) / (1000 * 60 * 60 * 24));
 
     if (daysLeft <= 0) {
-      console.error(`\n⚠️  ${row.label}: Enable Banking consent EXPIRED on ${row.consent_valid_until}. Re-link this bank from the dashboard's Accounts page.\n`);
+      console.error(`\n⚠️  Account ${i + 1}/${rows.length}: Enable Banking consent EXPIRED. Re-link this bank from the dashboard's Accounts page.\n`);
     } else if (daysLeft <= 14) {
-      console.warn(`\n⚠️  ${row.label}: Enable Banking consent expires in ${daysLeft} day(s) (${row.consent_valid_until}). Plan to re-authorize soon.\n`);
+      console.warn(`\n⚠️  Account ${i + 1}/${rows.length}: Enable Banking consent expires in ${daysLeft} day(s). Plan to re-authorize soon.\n`);
     }
   }
 }
