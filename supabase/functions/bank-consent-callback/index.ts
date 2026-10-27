@@ -15,6 +15,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { matchAccount, type StoredAccount } from "../_shared/account-match.ts";
 
 
 const supabase = createClient(
@@ -96,58 +97,23 @@ Deno.serve(async (req) => {
     const consentValidUntil = data.access?.valid_until ?? null;
     const savedRows: Array<{ uid: string; label: string | null; currency: string }> = [];
 
-    // Enable Banking issues a new uid per consent session, even for the same
-    // physical account -- re-linking would otherwise create a duplicate row.
-    // uid is the PK (transactions.account_uid references it), so it must
-    // never change on an existing row. Dedup by IBAN when present; IBAN-less
-    // banks (Revolut, confirmed via live test) fall back to
-    // identification_hash, which Enable Banking guarantees on every account
-    // regardless of IBAN and keeps stable across separate consent sessions
-    // for the same physical account. Only truly falls back to inserting a
-    // new row when neither matches an existing one.
+    // uid is the PK (transactions.account_uid references it), so an existing row's uid never changes.
+    // Match on identification_hash (IBAN + currency, unique per Revolut pocket), then IBAN + currency.
+    const { data: storedRows, error: storedError } = await supabase
+      .from("accounts")
+      .select("uid, iban, currency, identification_hash")
+      .eq("user_id", userId);
+    if (storedError) return failLink(storedError.message);
+    let stored: StoredAccount[] = storedRows ?? [];
+
     for (const a of accounts) {
       const iban = a.account_id?.iban ?? null;
       const identificationHash = a.identification_hash ?? null;
       const label = a.name ?? null;
 
-      let existingUid: string | null = null;
-      if (iban) {
-        const { data: existing, error } = await supabase
-          .from("accounts")
-          .select("uid")
-          .eq("user_id", userId)
-          .eq("iban", iban)
-          .maybeSingle();
-        if (error) return failLink(error.message);
-        existingUid = existing?.uid ?? null;
-      }
-      if (!existingUid && identificationHash) {
-        const { data: existing, error } = await supabase
-          .from("accounts")
-          .select("uid")
-          .eq("user_id", userId)
-          .eq("identification_hash", identificationHash)
-          .maybeSingle();
-        if (error) return failLink(error.message);
-        existingUid = existing?.uid ?? null;
-      }
+      let uid = matchAccount(stored, { iban, currency: a.currency, identification_hash: identificationHash });
 
-      if (existingUid) {
-        const patch: Record<string, unknown> = {
-          consent_valid_until: consentValidUntil,
-          currency: a.currency,
-        };
-        if (label !== null) patch.label = label;
-        if (identificationHash !== null) patch.identification_hash = identificationHash;
-        const { error } = await supabase
-          .from("accounts")
-          .update(patch)
-          .eq("uid", existingUid);
-        if (error) {
-          return failLink(error.message);
-        }
-        savedRows.push({ uid: existingUid, label, currency: a.currency });
-      } else {
+      if (!uid) {
         const { error } = await supabase.from("accounts").insert({
           uid: a.uid,
           currency: a.currency,
@@ -157,11 +123,44 @@ Deno.serve(async (req) => {
           user_id: userId,
           consent_valid_until: consentValidUntil,
         });
-        if (error) {
-          return failLink(error.message);
+        if (!error) {
+          stored = [...stored, { uid: a.uid, iban, currency: a.currency, identification_hash: identificationHash }];
+          savedRows.push({ uid: a.uid, label, currency: a.currency });
+          continue;
         }
-        savedRows.push({ uid: a.uid, label, currency: a.currency });
+        // A concurrent callback inserted the same pocket first (unique user_id + identification_hash).
+        if (error.code !== "23505" || !identificationHash) return failLink(error.message);
+        const { data: raced, error: racedError } = await supabase
+          .from("accounts")
+          .select("uid, iban, currency, identification_hash")
+          .eq("user_id", userId)
+          .eq("identification_hash", identificationHash)
+          .maybeSingle();
+        if (racedError || !raced) return failLink(racedError?.message ?? "conflicting account row not found");
+        const racedRow: StoredAccount = raced;
+        stored = [...stored, racedRow];
+        uid = racedRow.uid;
       }
+
+      const patch: Record<string, unknown> = {
+        consent_valid_until: consentValidUntil,
+        currency: a.currency,
+      };
+      if (label !== null) patch.label = label;
+      if (identificationHash !== null) patch.identification_hash = identificationHash;
+      const { error } = await supabase
+        .from("accounts")
+        .update(patch)
+        .eq("uid", uid);
+      if (error) {
+        return failLink(error.message);
+      }
+      stored = stored.map((s) =>
+        s.uid === uid
+          ? { ...s, currency: a.currency, identification_hash: identificationHash ?? s.identification_hash }
+          : s
+      );
+      savedRows.push({ uid, label, currency: a.currency });
     }
 
     // Fetch an immediate balance for each linked account instead of leaving
