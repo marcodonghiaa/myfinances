@@ -39,3 +39,14 @@ test('setup.sh no longer asks for the dashboard address or a second run', () => 
   assert.match(setup, /dashboard_origins\?select=origin/);
   assert.match(setup, /\[ -t 0 \]/);
 });
+
+// Secrets must not stay on screen or in terminal scrollback; the overview must name every step.
+test('setup.sh hides secret input and opens with an overview', () => {
+  const setup = fs.readFileSync('setup.sh', 'utf8');
+  assert.match(setup, /read -rsp "GEMINI_API_KEY/);
+  assert.match(setup, /read -rsp "Password/);
+  assert.doesNotMatch(setup, /read -rp "[^"]*(KEY|PASSWORD|SECRET)/);
+  const overview = setup.slice(setup.indexOf('bold "MyFinances setup:'), setup.indexOf('step "Where should the sync run?"'));
+  assert.strictEqual(overview.match(/^echo "  \d\. /gm).length, 8);
+  assert.match(overview, /press Enter to accept it/);
+});
