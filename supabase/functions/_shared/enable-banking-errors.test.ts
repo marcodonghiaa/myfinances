@@ -1,7 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 
 // enable-banking.ts reads these at module load, so set them before importing it.
-Deno.env.set("FRONTEND_URL", "https://x.test");
 Deno.env.set("ENABLE_BANKING_APP_ID", "test-app");
 Deno.env.set("ENABLE_BANKING_PRIVATE_KEY", "test-key");
 const { ebErrorMessage, EB_KEY_INVALID, EB_NO_ACCOUNTS } = await import("./enable-banking.ts");

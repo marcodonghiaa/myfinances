@@ -10,7 +10,7 @@
 // Requires a signed-in user, like list-banks: otherwise this is an open proxy to Yahoo/CoinGecko.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { CORS_HEADERS, json } from "../_shared/enable-banking.ts";
+import { serveWithCors } from "../_shared/origins.ts";
 import {
   type HoldingRequest,
   parseCoinGeckoSearch,
@@ -129,10 +129,7 @@ async function addCoin(userClient: any, userId: string, req: AddRequest): Promis
   return !snapError;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+Deno.serve(serveWithCors(async (req, json) => {
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
@@ -177,4 +174,4 @@ Deno.serve(async (req) => {
     console.error("Add failed:", (err as Error).message);
     return json({ error: "Couldn't add it right now, try again" }, 502);
   }
-});
+}));

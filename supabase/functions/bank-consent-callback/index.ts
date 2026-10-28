@@ -14,7 +14,8 @@
 // user id only comes from looking up and deleting that row here.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { EB_NO_ACCOUNTS, FRONTEND_ORIGIN, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { EB_NO_ACCOUNTS, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { redirectOrigin } from "../_shared/origins.ts";
 import { matchAccount, matchPatch, type StoredAccount } from "../_shared/account-match.ts";
 import { bankLogo, type BankInfo } from "../_shared/bank-info.ts";
 import { linkedParams } from "../_shared/linked-summary.ts";
@@ -24,23 +25,6 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
-
-const APP_URL = FRONTEND_ORIGIN;
-
-// Land back in the real app instead of a bare Edge Function page -- the app
-// reads bank_linked/bank_link_error off /accounts and shows a proper toast.
-function redirectToApp(params: Record<string, string>): Response {
-  const url = new URL(`${APP_URL}/accounts`);
-  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-  return new Response(null, { status: 302, headers: { Location: url.toString() } });
-}
-
-// Log the real reason server-side; the redirect URL (and the toast it feeds) only
-// gets a generic message so database or upstream error text never reaches the browser.
-function failLink(detail: string): Response {
-  console.error("bank-consent-callback failed:", detail);
-  return redirectToApp({ bank_link_error: "Couldn't link the bank, please try again" });
-}
 
 interface EnableBankingAccount {
   uid: string;
@@ -56,6 +40,49 @@ Deno.serve(async (req) => {
   const state = url.searchParams.get("state");
   const errorParam = url.searchParams.get("error");
 
+  // `state` is an opaque token from start-bank-consent, not a trusted user id
+  // (Enable Banking never validates it -- see start-bank-consent's comment).
+  // Resolve it against the single-use pending-consent row and delete it
+  // immediately so it can't be replayed. Done first, for every outcome, because the row
+  // also says which dashboard started the link and so where to send the browser back.
+  let pending: { user_id: string; created_at: string; origin: string | null } | null = null;
+  let pendingError: unknown = null;
+  if (state) {
+    const res = await supabase
+      .from("pending_bank_consents")
+      .delete()
+      .eq("id", state)
+      .select("user_id, created_at, origin")
+      .maybeSingle();
+    pending = res.data;
+    pendingError = res.error;
+  }
+
+  // Only ever an origin the owner registered (or the legacy FRONTEND_URL secret), chosen server-side:
+  // nothing in this request's URL decides where the browser goes.
+  const appUrl = await redirectOrigin(pending?.origin ?? null);
+  if (!appUrl) {
+    return new Response(
+      "Your dashboard's address isn't known yet. Open your dashboard, sign in once, then link the bank again.",
+      { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } },
+    );
+  }
+
+  // Land back in the real app instead of a bare Edge Function page -- the app
+  // reads bank_linked/bank_link_error off /accounts and shows a proper toast.
+  const redirectToApp = (params: Record<string, string>): Response => {
+    const target = new URL(`${appUrl}/accounts`);
+    for (const [key, value] of Object.entries(params)) target.searchParams.set(key, value);
+    return new Response(null, { status: 302, headers: { Location: target.toString() } });
+  };
+
+  // Log the real reason server-side; the redirect URL (and the toast it feeds) only
+  // gets a generic message so database or upstream error text never reaches the browser.
+  const failLink = (detail: string): Response => {
+    console.error("bank-consent-callback failed:", detail);
+    return redirectToApp({ bank_link_error: "Couldn't link the bank, please try again" });
+  };
+
   if (errorParam) {
     // errorParam comes from a public GET, so it is logged, not echoed into the app.
     console.error("bank declined consent:", errorParam);
@@ -64,17 +91,6 @@ Deno.serve(async (req) => {
   if (!code || !state) {
     return redirectToApp({ bank_link_error: "Missing code or state" });
   }
-
-  // `state` is an opaque token from start-bank-consent, not a trusted user id
-  // (Enable Banking never validates it -- see start-bank-consent's comment).
-  // Resolve it against the single-use pending-consent row and delete it
-  // immediately so it can't be replayed.
-  const { data: pending, error: pendingError } = await supabase
-    .from("pending_bank_consents")
-    .delete()
-    .eq("id", state)
-    .select("user_id, created_at")
-    .maybeSingle();
   if (pendingError || !pending) {
     return redirectToApp({ bank_link_error: "Invalid or expired consent request" });
   }
