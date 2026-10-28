@@ -25,6 +25,17 @@ test('setup.sh finishes in one run and every failure says what to do next', () =
   assert.ok(setup.includes('Fix that, then run ./setup.sh again: answers already saved in .env are reused.'));
   assert.ok(setup.includes('artifact-and-log-retention'));
   assert.ok(setup.includes('--dashboard-url'));
+  assert.ok(setup.includes('Done! Open $DASHBOARD_URL and sign in as $SIGN_IN_AS'));
   assert.doesNotMatch(setup, /^\s*(VITE_)?SUPABASE_PROJECT_ID=/m);
   assert.match(fs.readFileSync('.gitignore', 'utf8'), /^dashboard-values\.txt$/m);
+});
+
+// The dashboard registers its own address (dashboard_origins), so setup must not ask for one,
+// and must not ask the user to run setup a second time.
+test('setup.sh no longer asks for the dashboard address or a second run', () => {
+  const setup = fs.readFileSync('setup.sh', 'utf8');
+  assert.doesNotMatch(setup, /read -rp "Dashboard address/);
+  assert.doesNotMatch(setup, /Then run \.\/setup\.sh --dashboard-url/);
+  assert.match(setup, /dashboard_origins\?select=origin/);
+  assert.match(setup, /\[ -t 0 \]/);
 });

@@ -101,13 +101,13 @@ Run:
 
 Choose **1, GitHub Actions**. Setup forks this repo to your account, creates or links your Supabase project, applies the schema, deploys the functions, creates your login (the app has no sign-up screen), switches off public sign-ups, stores your keys as secrets of your fork and turns the sync on. When it asks for the `.pem`, drag it from your Downloads onto the file list on the left.
 
-When it asks where the dashboard lives, it prints three values for the next step (also saved in `dashboard-values.txt`); press Enter to skip that question for now. Keep the Codespace open.
+At the end it prints three values for the next step (also saved in `dashboard-values.txt`) and waits for you to open the dashboard and sign in once. Keep the Codespace open.
 
 ### 3. Put the dashboard online (about 5 minutes)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmy-wealth-view&project-name=my-finances&repository-name=my-finances&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+by+setup.sh%2C+also+in+dashboard-values.txt&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmyfinances%23-getting-started)
 
-Click **GitHub** first, then **Install Vercel** (All repositories is fine). Paste the three values setup printed and deploy. Copy the address under **Domains** on the project page, not the deployment URL. Go back to the Codespace and run `./setup.sh --dashboard-url https://<name>.vercel.app` with your address (keep `https://` in front). That way bank linking sends you back to your dashboard.
+Click **GitHub** first, then **Install Vercel** (All repositories is fine). Paste the three values setup printed and deploy, then open the address under **Domains** on the project page (not a deployment URL) and sign in. Your dashboard tells your database its own address on that first sign-in, so there is nothing to copy back: setup sees it, prints `Done! Open <your address>, sign in as <email>` and bank linking sends you back there. Closed the terminal first? Nothing is lost, the sign-in alone finishes it.
 
 Then delete the Codespace, since it holds your keys: [github.com/codespaces](https://github.com/codespaces), the `...` menu, Delete. GitHub warns about unsaved changes: that's expected, delete anyway. Everything you set up stays in Supabase, GitHub and Vercel.
 
@@ -141,7 +141,7 @@ Open http://localhost:3000. With Docker, a newly linked bank's last 90 days of t
 
 1. Create a Supabase project, then `supabase link --project-ref <ref>` and `supabase db push`.
 2. In Enable Banking, create a Production application with redirect URL `https://<ref>.supabase.co/functions/v1/bank-consent-callback` (must match exactly). Activate it by linking one of your own accounts in their panel.
-3. Deploy the functions and set `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY` and `FRONTEND_URL` as Edge Function secrets.
+3. Deploy the functions and set `ENABLE_BANKING_APP_ID` and `ENABLE_BANKING_PRIVATE_KEY` as Edge Function secrets. (`FRONTEND_URL` is optional: the dashboard registers its own address when you sign in.)
 4. In the dashboard, **Authentication -> Users -> Add user** (tick auto-confirm) to create your login, and put its id in `.env` as `USER_ID`.
 5. **Authentication -> Sign In / Providers -> User Signups**: turn off *Allow new users to sign up*. Supabase leaves it on, which lets anyone who finds your project URL create an account.
 6. `npm install`, then `cp .env.example .env` and fill it in.
