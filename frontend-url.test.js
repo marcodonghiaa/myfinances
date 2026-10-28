@@ -48,3 +48,21 @@ test('CLI exit codes: 0 ok, 1 rejected, 3 warned', () => {
   assert.strictEqual(warned.out, 'https://my-finances-git-main-marco.vercel.app\n');
   assert.match(warned.err, /Domains/);
 });
+
+// supabase/migrations/20261106000000_dashboard_origins.sql repeats these rules in SQL; one list keeps them equal.
+test('frontend-url.js agrees with the dashboard-origins cases the SQL rehearsal asserts', () => {
+  const fs = require('node:fs');
+  const cases = JSON.parse(fs.readFileSync(path.join(__dirname, 'supabase/rehearsals/dashboard-origins.cases.json'), 'utf8'));
+  const rehearsal = fs.readFileSync(path.join(__dirname, 'supabase/rehearsals/dashboard_origins.assert.sql'), 'utf8');
+  for (const { origin, ok } of cases) {
+    let accepted;
+    try {
+      const r = normalizeFrontendUrl(origin);
+      accepted = r.origin === origin && !r.warning;
+    } catch {
+      accepted = false;
+    }
+    assert.strictEqual(accepted, ok, origin);
+    assert.ok(rehearsal.includes(`'${origin}'`), `${origin} missing from dashboard_origins.assert.sql`);
+  }
+});
