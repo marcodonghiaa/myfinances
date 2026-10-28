@@ -50,3 +50,12 @@ test('setup.sh hides secret input and opens with an overview', () => {
   assert.strictEqual(overview.match(/^echo "  \d\. /gm).length, 8);
   assert.match(overview, /press Enter to accept it/);
 });
+
+// The CLI's chatter is hidden, but only ever on success: a failure must replay all of it.
+test('setup.sh runs the Supabase CLI through quiet, which replays the log on failure', () => {
+  const setup = fs.readFileSync('setup.sh', 'utf8');
+  assert.match(setup, /quiet supabase db push --linked --yes/);
+  assert.match(setup, /quiet supabase functions deploy/);
+  assert.match(setup, /quiet supabase secrets set/);
+  assert.match(setup, /cat "\$log" >&2/);
+});

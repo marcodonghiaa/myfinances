@@ -24,6 +24,17 @@ step() { echo; bold "==> $1"; }
 die() { echo "Error: $1" >&2; exit 1; }
 # Any failing exit (die, or a command that stops the script under set -e) ends with the next step.
 trap '[ $? -eq 0 ] || echo "Fix that, then run ./setup.sh again: answers already saved in .env are reused." >&2' EXIT
+# quiet <command...>: hides the CLI's chatter (migration names, "new version" notices) when it works, and
+# replays everything it printed when it fails, so an error is never hidden.
+quiet() {
+  local log rc
+  log=$(mktemp)
+  "$@" >"$log" 2>&1 && { rm -f "$log"; return 0; }
+  rc=$?
+  cat "$log" >&2
+  rm -f "$log"
+  return "$rc"
+}
 # Value already in this install's .env ('' when missing), so a re-run doesn't ask again.
 existing() { node env-file.js get .env "$1"; }
 # Merge into the existing files (or the .env.example templates on a first run), so values
@@ -59,9 +70,9 @@ if [ "${1:-}" = "--dashboard-url" ]; then
   REF=${SUPABASE_URL#https://}; REF=${REF%%.*}
   # It prints why on stderr. Exit 3 is only a warning: the address was typed deliberately, so use it.
   ORIGIN=$(node frontend-url.js "${2:-}") || [ $? -eq 3 ] || exit 1
-  supabase secrets set --project-ref "$REF" "FRONTEND_URL=$ORIGIN" >/dev/null \
+  quiet supabase secrets set --project-ref "$REF" "FRONTEND_URL=$ORIGIN" \
     || die "Could not save FRONTEND_URL in Supabase (not logged in? run: supabase login)."
-  supabase functions deploy --project-ref "$REF" --use-api || die "Could not redeploy the Edge Functions."
+  quiet supabase functions deploy --project-ref "$REF" --use-api || die "Could not redeploy the Edge Functions."
   write_env .env .env.example <<EOF
 FRONTEND_URL=$ORIGIN
 EOF
@@ -215,14 +226,16 @@ fi
 step "Linking and applying schema"
 echo "New projects take a minute or two to finish provisioning -- retrying until ready."
 for i in $(seq 1 20); do
-  if supabase link --project-ref "$PROJECT_REF" 2>/tmp/setup-link-err; then
+  if supabase link --project-ref "$PROJECT_REF" >/tmp/setup-link-err 2>&1; then
     break
   fi
   [ "$i" -eq 20 ] && { cat /tmp/setup-link-err >&2; die "Project never became ready after ~10 minutes."; }
+  echo "Still waiting for the project to be ready (try $i of 20)..."
   sleep 30
 done
-supabase db push --linked --yes
-echo "Migrations applied."
+echo "Creating your tables..."
+quiet supabase db push --linked --yes
+echo "Tables ready."
 
 step "Fetching API keys"
 KEYS_JSON=$(supabase projects api-keys --project-ref "$PROJECT_REF" --reveal --output json)
@@ -335,8 +348,8 @@ step "Deploying Edge Functions and secrets"
 FRONTEND_URL=$(existing FRONTEND_URL)
 SECRETS=("ENABLE_BANKING_APP_ID=$EB_APP_ID" "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY")
 [ -z "$FRONTEND_URL" ] || SECRETS+=("FRONTEND_URL=$FRONTEND_URL")
-supabase secrets set --project-ref "$PROJECT_REF" "${SECRETS[@]}"
-supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remotely: no Docker needed
+quiet supabase secrets set --project-ref "$PROJECT_REF" "${SECRETS[@]}"
+quiet supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remotely: no Docker needed
 echo "Edge Functions live."
 
 step "Writing .env files"
@@ -411,7 +424,7 @@ if ! signups_closed; then
   SIGNUP_DIR=$(mktemp -d)
   mkdir "$SIGNUP_DIR/supabase"
   printf 'project_id = "myfinances-setup"\n\n[auth]\nenable_signup = false\n' > "$SIGNUP_DIR/supabase/config.toml"
-  supabase config push --workdir "$SIGNUP_DIR" --project-ref "$PROJECT_REF" --yes || echo "Could not switch them off automatically."
+  quiet supabase config push --workdir "$SIGNUP_DIR" --project-ref "$PROJECT_REF" --yes || echo "Could not switch them off automatically."
   rm -rf "$SIGNUP_DIR"
   for _ in 1 2 3 4 5; do signups_closed && break; sleep 2; done # the setting takes a moment to apply
 fi
