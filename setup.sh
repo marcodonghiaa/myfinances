@@ -5,7 +5,8 @@
 # asks for what's missing, and applies any new migrations and functions.
 #
 # Forgot your password? ./setup.sh --reset-password
-# Deployed the dashboard? ./setup.sh --dashboard-url https://<its address>
+# Bank linking sends you to the wrong address? ./setup.sh --dashboard-url https://<its address>
+# (normally unneeded: the dashboard registers its own address when you sign in)
 #
 # It also creates your login (the app has no sign-up screen) and switches off
 # public sign-ups so nobody else can create an account on your instance.
@@ -76,7 +77,7 @@ echo "  4. Supabase project"
 echo "  5. Your login for the app"
 echo "  6. Enable Banking"
 echo "  7. Gemini API key (optional)"
-echo "  8. Dashboard address"
+echo "  8. Put the dashboard online (github option; setup waits for your first sign-in)"
 
 step "Where should the sync run?"
 echo "  1) GitHub Actions: free, no computer has to stay on. Needs your fork of this repo and the GitHub CLI (gh)."
@@ -320,36 +321,13 @@ else
   read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
 fi
 
-step "Dashboard address (for bank-linking redirects)"
-PREVIOUS_FRONTEND_URL=$(existing FRONTEND_URL)
-PREVIOUS_FRONTEND_URL="${PREVIOUS_FRONTEND_URL:-http://localhost:3000}"
-if [ "$SYNC_ON" = "github" ]; then
-  echo "Deploy the dashboard with the Deploy button in the my-wealth-view README (Vercel)."
-  echo "Values to paste there (also saved in dashboard-values.txt):"
-  # Public values only: the publishable key and VAPID public key are meant for browsers.
-  printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\nVITE_VAPID_PUBLIC_KEY=%s\n' \
-    "$SUPABASE_URL" "$PUBLISHABLE_KEY" "$VAPID_PUBLIC" | tee dashboard-values.txt
-  echo "Then enter its address (https://<name>.vercel.app). Not deployed yet? Press Enter to skip."
-fi
-# frontend-url.js keeps only the origin (must exact-match the browser's Origin header for CORS)
-# and prints why it refused (exit 1) or warned about (exit 3) an address, so ask again.
-while true; do
-  read -rp "Dashboard address (Enter to skip; later: ./setup.sh --dashboard-url https://...) [$PREVIOUS_FRONTEND_URL]: " DASHBOARD_INPUT
-  if [ -z "$DASHBOARD_INPUT" ]; then FRONTEND_URL="$PREVIOUS_FRONTEND_URL"; break; fi
-  URL_STATUS=0
-  FRONTEND_URL=$(node frontend-url.js "$DASHBOARD_INPUT") || URL_STATUS=$?
-  [ "$URL_STATUS" -eq 0 ] && break
-  if [ "$URL_STATUS" -eq 3 ]; then
-    read -rp "Use this address anyway? [y/N] " USE_ANYWAY
-    [[ "$USE_ANYWAY" =~ ^[Yy]$ ]] && break
-  fi
-done
-
 step "Deploying Edge Functions and secrets"
-supabase secrets set --project-ref "$PROJECT_REF" \
-  "ENABLE_BANKING_APP_ID=$EB_APP_ID" \
-  "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY" \
-  "FRONTEND_URL=$FRONTEND_URL"
+# The dashboard registers its own address when you sign in, so FRONTEND_URL is only kept (never
+# asked for) on installs that already have one, or that ran --dashboard-url.
+FRONTEND_URL=$(existing FRONTEND_URL)
+SECRETS=("ENABLE_BANKING_APP_ID=$EB_APP_ID" "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY")
+[ -z "$FRONTEND_URL" ] || SECRETS+=("FRONTEND_URL=$FRONTEND_URL")
+supabase secrets set --project-ref "$PROJECT_REF" "${SECRETS[@]}"
 supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remotely: no Docker needed
 echo "Edge Functions live."
 
@@ -440,21 +418,46 @@ fi
 
 step "Almost done"
 SIGN_IN_AS="${LOGIN_EMAIL:-your login}"
-DASHBOARD_LIVE=""
-[ "$SYNC_ON" = "github" ] && [[ "$FRONTEND_URL" != http://localhost* ]] && DASHBOARD_LIVE=1
-if [ -n "$DASHBOARD_LIVE" ]; then
-  echo "1. In the dashboard, click 'Connect a bank' on the Accounts page."
-  echo "2. Start a sync any time from https://github.com/$REPO/actions (Sync -> Run workflow)."
-elif [ "$SYNC_ON" = "github" ]; then
-  echo "1. Deploy the dashboard: the Deploy button in the my-wealth-view README (Vercel)."
-  echo "   Values to paste there: in dashboard-values.txt (printed above)."
-  echo "   Then run ./setup.sh --dashboard-url https://<its address>, so bank linking redirects there."
-  echo "2. Open the dashboard, sign in as $SIGN_IN_AS and click 'Connect a bank' on the Accounts page."
-  echo "3. Start a sync any time from https://github.com/$REPO/actions (Sync -> Run workflow)."
-else
+# The dashboard tells the database its own address on your first sign-in (table dashboard_origins).
+# Prefer an https address over a localhost one (https sorts after http:).
+registered_origin() {
+  json_get "$(curl -fsS "$SUPABASE_URL/rest/v1/dashboard_origins?select=origin&order=origin.desc&limit=1" \
+    -H "apikey: $SECRET_KEY" 2>/dev/null)" 0.origin 2>/dev/null || true
+}
+DASHBOARD_URL=""
+if [ "$SYNC_ON" = "docker" ]; then
+  DASHBOARD_URL="http://localhost:3000"
   echo "1. Start the app:      docker compose up -d --build"
-  echo "2. Open http://localhost:3000 and sign in as $SIGN_IN_AS"
+  echo "2. Open $DASHBOARD_URL and sign in as $SIGN_IN_AS"
   echo "3. In the app, click 'Connect a bank' on the Accounts page."
+else
+  DASHBOARD_URL=$(registered_origin)
+  if [ -z "$DASHBOARD_URL" ]; then
+    # Public values only: the publishable key and VAPID public key are meant for browsers.
+    printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\nVITE_VAPID_PUBLIC_KEY=%s\n' \
+      "$SUPABASE_URL" "$PUBLISHABLE_KEY" "$VAPID_PUBLIC" > dashboard-values.txt
+    echo "Put the dashboard online: the Deploy button in the my-wealth-view README (Vercel)."
+    echo "Paste these three values there (also saved in dashboard-values.txt):"
+    echo
+    cat dashboard-values.txt
+    echo
+    echo "Then open the dashboard and sign in as $SIGN_IN_AS. I'll wait for that first sign-in (up to 15 minutes);"
+    echo "press Enter to skip waiting: it finishes by itself, you do not need to run setup again."
+    # Only on a terminal: without one, read returns at once and the loop would spin.
+    if [ -t 0 ]; then
+      for _ in $(seq 1 180); do
+        DASHBOARD_URL=$(registered_origin)
+        [ -z "$DASHBOARD_URL" ] || break
+        read -t 5 -r _ && break # Enter: stop waiting
+      done
+    fi
+  fi
+  if [ -n "$DASHBOARD_URL" ]; then
+    echo "1. In the dashboard, click 'Connect a bank' on the Accounts page."
+  else
+    echo "1. Open the dashboard, sign in as $SIGN_IN_AS and click 'Connect a bank' on the Accounts page."
+  fi
+  echo "2. Start a sync any time from https://github.com/$REPO/actions (Sync -> Run workflow)."
 fi
 if [ "${CODESPACES:-}" = "true" ]; then
   echo
@@ -463,4 +466,4 @@ if [ "${CODESPACES:-}" = "true" ]; then
 fi
 echo
 echo "If MyFinances is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"
-[ -z "$DASHBOARD_LIVE" ] || echo "Done! Open $FRONTEND_URL and sign in as $SIGN_IN_AS"
+[ -z "$DASHBOARD_URL" ] || echo "Done! Open $DASHBOARD_URL and sign in as $SIGN_IN_AS"

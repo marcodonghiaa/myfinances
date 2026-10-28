@@ -6,6 +6,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Setup no longer asks for the dashboard address
+- **No migration beyond `20261106000000_dashboard_origins`** (apply with `supabase db push` first, then `supabase functions deploy`).
+- `./setup.sh` has no "Dashboard address" question any more. Your dashboard registers its own address in `dashboard_origins` when the owner signs in, the Edge Functions allow those addresses in CORS, and a bank link returns to the address that started it. For GitHub installs setup prints the three Vercel values, then waits for that first sign-in and ends with `Done! Open <address>, sign in as <email>`.
+- Existing installs: nothing breaks. `FRONTEND_URL` stays set and is still accepted; your dashboard registers itself on the next sign-in once it runs the matching my-wealth-view version. `./setup.sh --dashboard-url https://...` still works if bank linking ever returns to the wrong address.
+- To forget a registered address (an old domain): in the Supabase SQL editor, `delete from dashboard_origins where origin = 'https://old.example.com';`.
+- **Roll back:** revert the code first, then `supabase/rollbacks/20261106000000_dashboard_origins.down.sql`.
+
 ### Accounts show the bank's name and logo
 - **Migration:** `20261105000000_account_bank`. Apply it with `supabase db push` BEFORE redeploying `bank-consent-callback` (`supabase functions deploy bank-consent-callback`), then update the dashboard. A callback deployed before the migration fails every bank link, because it writes columns that don't exist yet.
 - `accounts` gains `bank_name`, `bank_country` and `bank_logo`, and `v_bank_accounts_latest` exposes `bank_name`, `bank_logo` and `bank_country`. Before, an account was named after the holder name Enable Banking returns.
