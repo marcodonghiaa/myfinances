@@ -31,10 +31,10 @@ Functions → Secrets). Never committed anywhere:
 
 - `ENABLE_BANKING_APP_ID`
 - `ENABLE_BANKING_PRIVATE_KEY` (the full PEM, same key the local CLI scripts use)
-- `FRONTEND_URL` — where `bank-consent-callback` redirects the browser after
-  linking a bank, and the CORS origin for `list-banks`/`start-bank-consent`.
-  Your deployed frontend's URL (e.g. `http://localhost:3000` for a local
-  Docker setup, or your real domain if deployed elsewhere).
+- `FRONTEND_URL` (optional) — an extra allowed dashboard origin, kept for older setups and
+  `./setup.sh --dashboard-url`. Normally unneeded: the dashboard registers its own address
+  (table `dashboard_origins`) when you sign in, and the functions allow those origins in CORS.
+  `bank-consent-callback` sends the browser back to the origin that started the link.
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are
 auto-injected by Supabase into every function; nothing to set for those.

@@ -11,19 +11,11 @@
 // never leaves the browser at all ("Failed to send a request").
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import {
-  CORS_HEADERS,
-  EB_KEY_INVALID,
-  ebErrorMessage,
-  json,
-  signEnableBankingJwt,
-} from "../_shared/enable-banking.ts";
+import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { serveWithCors } from "../_shared/origins.ts";
 import { isBankName, isCountryCode, MAX_OPEN_CONSENTS } from "../_shared/validate.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+Deno.serve(serveWithCors(async (req, json, origin) => {
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
@@ -74,7 +66,8 @@ Deno.serve(async (req) => {
   }
   const { data: pending, error: pendingError } = await supabase
     .from("pending_bank_consents")
-    .insert({ user_id: userData.user.id })
+    // The dashboard that started the link: the callback sends the browser back to this origin.
+    .insert({ user_id: userData.user.id, origin })
     .select("id")
     .single();
   if (pendingError || !pending) {
@@ -106,4 +99,4 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "Something went wrong, please try again" }, 500);
   }
-});
+}));

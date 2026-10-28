@@ -12,13 +12,8 @@
 // the one that's actually reproducible from a plain `supabase functions deploy`.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import {
-  CORS_HEADERS,
-  EB_KEY_INVALID,
-  ebErrorMessage,
-  json,
-  signEnableBankingJwt,
-} from "../_shared/enable-banking.ts";
+import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { serveWithCors } from "../_shared/origins.ts";
 import { isCountryCode } from "../_shared/validate.ts";
 
 interface Aspsp {
@@ -28,10 +23,7 @@ interface Aspsp {
   beta?: boolean;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
+Deno.serve(serveWithCors(async (req, json) => {
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
@@ -79,4 +71,4 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "Something went wrong, please try again" }, 500);
   }
-});
+}));

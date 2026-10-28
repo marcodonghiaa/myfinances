@@ -1,25 +1,8 @@
 // Shared by the bank-linking Edge Functions: signs the RS256 JWT Enable Banking
-// expects on every API call, plus the CORS/JSON helpers the browser-facing ones use.
+// expects on every API call. CORS and the JSON reply helper live in origins.ts.
 
 const ENABLE_BANKING_APP_ID = Deno.env.get("ENABLE_BANKING_APP_ID")!;
 const ENABLE_BANKING_PRIVATE_KEY = Deno.env.get("ENABLE_BANKING_PRIVATE_KEY")!;
-
-// Browsers compare the Origin header exactly, so a trailing slash in the secret ("https://x.app/")
-// would block every request. Strip it here instead of relying on whoever set the secret.
-export const FRONTEND_ORIGIN = Deno.env.get("FRONTEND_URL")!.replace(/\/+$/, "");
-
-export const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": FRONTEND_ORIGIN,
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-export function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
 
 export const EB_KEY_INVALID = "The Enable Banking key is invalid: run ./setup.sh again with the .pem.";
 export const EB_NO_ACCOUNTS =
