@@ -17,6 +17,11 @@ plain deploy from this repo reproduces the same gating described below.
   with the service role. `verify_jwt: true`.
 - **list-banks** — read-only lookup of Enable Banking's supported banks for
   a country, powers the bank picker. `verify_jwt: true`.
+- **sync-bank** — P2 spike: syncs balance and transactions for one account
+  (`{"account_uid": "..."}`), the Deno port of `sync-networth.js` +
+  `sync-transactions.js`. Service role only (checked in the function on top of
+  `verify_jwt: true`). Never run it beside the launchd/Docker sync: banks allow
+  ~4 unattended calls a day per account.
 
 ## Secrets
 
