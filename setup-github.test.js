@@ -59,3 +59,12 @@ test('setup.sh runs the Supabase CLI through quiet, which replays the log on fai
   assert.match(setup, /quiet supabase secrets set/);
   assert.match(setup, /cat "\$log" >&2/);
 });
+
+// The Enable Banking form has 8 fields; setup must say what to type in every one.
+test('setup.sh lists every Enable Banking form field with a value', () => {
+  const setup = fs.readFileSync('setup.sh', 'utf8');
+  for (const field of ['Environment', 'Private key', 'Application name', 'Redirect URL', 'Application description', 'Data protection email', 'Privacy URL', 'Terms URL']) {
+    assert.ok(setup.includes(field), field);
+  }
+  assert.ok(setup.includes('bank-consent-callback'));
+});
