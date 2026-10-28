@@ -19,6 +19,7 @@ import { redirectOrigin } from "../_shared/origins.ts";
 import { matchAccount, matchPatch, type StoredAccount } from "../_shared/account-match.ts";
 import { bankLogo, type BankInfo } from "../_shared/bank-info.ts";
 import { linkedParams } from "../_shared/linked-summary.ts";
+import { latestFxRows } from "../_shared/fx-rates.ts";
 
 
 const supabase = createClient(
@@ -235,6 +236,18 @@ Deno.serve(async (req) => {
       } catch {
         // best-effort, batch sync will catch up
       }
+    }
+
+    // A fresh instance has no fx_rates until the first sync, and v_net_worth_eur counts a currency
+    // with no rate as 0. Seed the latest rates now. Best-effort, fx-sync.js keeps them current.
+    try {
+      const rows = await latestFxRows(savedRows.map((r) => r.currency));
+      if (rows.length > 0) {
+        const { error } = await supabase.from("fx_rates").upsert(rows, { onConflict: "date,currency" });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("fx seed failed:", (err as Error).message);
     }
 
     return redirectToApp(linkedParams(savedRows.length, bank.bank_name, savedRows.map((r) => r.currency)));
