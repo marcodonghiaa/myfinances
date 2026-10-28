@@ -7,8 +7,8 @@
 // Never run it beside the launchd sync for the same reason.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { timingSafeEqual } from "jsr:@std/crypto@1/timing-safe-equal";
 import { signEnableBankingJwt } from "../_shared/enable-banking.ts";
+import { isServiceRole } from "../_shared/service-role.ts";
 import {
   ACCOUNT_COLUMNS,
   errorTag,
@@ -17,22 +17,13 @@ import {
   syncAccountTransactions,
 } from "../_shared/bank-sync.ts";
 
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_ROLE_KEY);
+const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
 // All bank calls of one invocation share this budget, leaving time under the 150 s
 // wall clock to save the cursor and snapshot. An aborted run keeps the old cursor.
 const BANK_DEADLINE_MS = 120000;
 
 const fail = (status: number, error: string) => Response.json({ error }, { status });
-
-// verify_jwt lets any valid JWT through, the public anon key included: require the service role.
-function isServiceRole(req: Request): boolean {
-  const enc = new TextEncoder();
-  const given = enc.encode(req.headers.get("Authorization") ?? "");
-  const expected = enc.encode(`Bearer ${SERVICE_ROLE_KEY}`);
-  return given.length === expected.length && timingSafeEqual(given, expected);
-}
 
 Deno.serve(async (req) => {
   const started = Date.now();
