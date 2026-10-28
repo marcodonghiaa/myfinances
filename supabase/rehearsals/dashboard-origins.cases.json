@@ -1,0 +1,11 @@
+[
+  { "origin": "https://my-finances.vercel.app", "ok": true },
+  { "origin": "https://finances.example.com", "ok": true },
+  { "origin": "http://localhost:3000", "ok": true },
+  { "origin": "http://localhost:8080", "ok": true },
+  { "origin": "http://localhost", "ok": false },
+  { "origin": "http://my-finances.vercel.app", "ok": false },
+  { "origin": "https://my-finances-abc123xyz-marco.vercel.app", "ok": false },
+  { "origin": "https://my-finances-git-main-marco.vercel.app", "ok": false },
+  { "origin": "not an origin", "ok": false }
+]
