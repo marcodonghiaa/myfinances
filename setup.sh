@@ -462,7 +462,8 @@ else
     echo
     cat dashboard-values.txt
     echo
-    echo "Then open the dashboard and sign in as $SIGN_IN_AS. I'll wait for that first sign-in (up to 15 minutes);"
+    echo "Then open the dashboard (the short address under Domains on the Vercel project page, not a long deployment"
+    echo "address) and sign in as $SIGN_IN_AS. I'll wait for that first sign-in (up to 15 minutes);"
     echo "press Enter to skip waiting: it finishes by itself, you do not need to run setup again."
     # Only on a terminal: without one, read returns at once and the loop would spin.
     if [ -t 0 ]; then
