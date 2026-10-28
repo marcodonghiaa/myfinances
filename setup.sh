@@ -69,15 +69,18 @@ EOF
   exit 0
 fi
 
-bold "MyFinances setup. Steps:"
-echo "  1. Where the sync runs"
-echo "  2. GitHub login (GitHub option only)"
-echo "  3. Supabase login"
-echo "  4. Supabase project"
-echo "  5. Your login for the app"
-echo "  6. Enable Banking"
-echo "  7. Gemini API key (optional)"
-echo "  8. Put the dashboard online (github option; setup waits for your first sign-in)"
+bold "MyFinances setup: 8 short steps, about 15-30 minutes (most of it on Enable Banking's site)."
+echo "Every question shows a recommended answer: press Enter to accept it."
+echo "Your answers are saved as you go, so you can stop and run ./setup.sh again any time."
+echo
+echo "  1. Where the sync runs (Enter: GitHub Actions)"
+echo "  2. GitHub login (GitHub option only; opens your browser)"
+echo "  3. Supabase login (opens your browser, free account)"
+echo "  4. Supabase project (Enter: a fresh free one)"
+echo "  5. Your login for the app (an email and a password you choose)"
+echo "  6. Enable Banking (you leave the terminal: sign-up and key on their site, about 10 minutes)"
+echo "  7. Gemini API key (recommended, free; Enter skips)"
+echo "  8. Put the dashboard online on Vercel (about 5 minutes; setup waits for your first sign-in)"
 
 step "Where should the sync run?"
 echo "  1) GitHub Actions: free, no computer has to stay on. Needs your fork of this repo and the GitHub CLI (gh)."
@@ -141,7 +144,7 @@ json_get() {
 
 step "Supabase login"
 if ! supabase projects list >/dev/null 2>&1; then
-  echo "Not logged in -- opening browser."
+  echo "Opening your browser to sign in to Supabase (free account). Nothing to type here; come back when it says you are logged in."
   supabase login
 fi
 
@@ -243,6 +246,8 @@ if [ -n "$USER_ID" ] && [ "$PROJECT_REF" = "${PREVIOUS_REF:-}" ]; then
   echo "Login already set up (USER_ID in .env). To change its password: ./setup.sh --reset-password"
 else
 echo "The app has no sign-up screen, so the login is created here. Re-running with the same email keeps the existing user."
+echo "This email and password are what you will sign in to your dashboard with. Any email you can read works."
+echo "Save the password in your password manager: setup does not show or store it."
 read -rp "Email: " LOGIN_EMAIL
 read -rsp "Password (6+ characters, not shown): " LOGIN_PASSWORD
 echo
@@ -275,6 +280,7 @@ echo "one of your own accounts through Enable Banking's UI -- this unlocks the"
 echo "app for free Restricted Production use. It does NOT connect that account"
 echo "to this app yet; you'll do that separately from this app's own dashboard"
 echo "once setup finishes."
+echo "The APP_ID is the long id shown for your app under API applications."
 read -rp "Enable Banking APP_ID: " EB_APP_ID
 if [ "${CODESPACES:-}" = "true" ]; then
   echo "In Codespaces: drag the .pem from your Downloads onto the file list on the left, then type its name."
@@ -314,11 +320,13 @@ step "Gemini API key (recommended: AI sorts your transactions into categories)"
 echo "Get one free at https://aistudio.google.com/apikey"
 echo "Leave empty to skip: only the rules you write in the app will categorize, and"
 echo "subscriptions won't be detected. You can add a key to .env later."
+echo "Recommended: paste a key (free). What you type is not shown."
 GEMINI_API_KEY=$(existing GEMINI_API_KEY)
 if [ -n "$GEMINI_API_KEY" ]; then
   echo "Using the key from .env."
 else
-  read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
+  read -rsp "GEMINI_API_KEY (not shown; Enter to skip): " GEMINI_API_KEY
+  echo
 fi
 
 step "Deploying Edge Functions and secrets"
