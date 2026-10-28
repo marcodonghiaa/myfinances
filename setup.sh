@@ -24,6 +24,17 @@ step() { echo; bold "==> $1"; }
 die() { echo "Error: $1" >&2; exit 1; }
 # Any failing exit (die, or a command that stops the script under set -e) ends with the next step.
 trap '[ $? -eq 0 ] || echo "Fix that, then run ./setup.sh again: answers already saved in .env are reused." >&2' EXIT
+# quiet <command...>: hides the CLI's chatter (migration names, "new version" notices) when it works, and
+# replays everything it printed when it fails, so an error is never hidden.
+quiet() {
+  local log rc
+  log=$(mktemp)
+  "$@" >"$log" 2>&1 && { rm -f "$log"; return 0; }
+  rc=$?
+  cat "$log" >&2
+  rm -f "$log"
+  return "$rc"
+}
 # Value already in this install's .env ('' when missing), so a re-run doesn't ask again.
 existing() { node env-file.js get .env "$1"; }
 # Merge into the existing files (or the .env.example templates on a first run), so values
@@ -59,9 +70,9 @@ if [ "${1:-}" = "--dashboard-url" ]; then
   REF=${SUPABASE_URL#https://}; REF=${REF%%.*}
   # It prints why on stderr. Exit 3 is only a warning: the address was typed deliberately, so use it.
   ORIGIN=$(node frontend-url.js "${2:-}") || [ $? -eq 3 ] || exit 1
-  supabase secrets set --project-ref "$REF" "FRONTEND_URL=$ORIGIN" >/dev/null \
+  quiet supabase secrets set --project-ref "$REF" "FRONTEND_URL=$ORIGIN" \
     || die "Could not save FRONTEND_URL in Supabase (not logged in? run: supabase login)."
-  supabase functions deploy --project-ref "$REF" --use-api || die "Could not redeploy the Edge Functions."
+  quiet supabase functions deploy --project-ref "$REF" --use-api || die "Could not redeploy the Edge Functions."
   write_env .env .env.example <<EOF
 FRONTEND_URL=$ORIGIN
 EOF
@@ -69,15 +80,18 @@ EOF
   exit 0
 fi
 
-bold "MyFinances setup. Steps:"
-echo "  1. Where the sync runs"
-echo "  2. GitHub login (GitHub option only)"
-echo "  3. Supabase login"
-echo "  4. Supabase project"
-echo "  5. Your login for the app"
-echo "  6. Enable Banking"
-echo "  7. Gemini API key (optional)"
-echo "  8. Put the dashboard online (github option; setup waits for your first sign-in)"
+bold "MyFinances setup: 8 short steps, about 15-30 minutes (most of it on Enable Banking's site)."
+echo "Every question shows a recommended answer: press Enter to accept it."
+echo "Your answers are saved as you go, so you can stop and run ./setup.sh again any time."
+echo
+echo "  1. Where the sync runs (Enter: GitHub Actions)"
+echo "  2. GitHub login (GitHub option only; opens your browser)"
+echo "  3. Supabase login (opens your browser, free account)"
+echo "  4. Supabase project (Enter: a fresh free one)"
+echo "  5. Your login for the app (an email and a password you choose)"
+echo "  6. Enable Banking (you leave the terminal: sign-up and key on their site, about 10 minutes)"
+echo "  7. Gemini API key (recommended, free; Enter skips)"
+echo "  8. Put the dashboard online on Vercel (about 5 minutes; setup waits for your first sign-in)"
 
 step "Where should the sync run?"
 echo "  1) GitHub Actions: free, no computer has to stay on. Needs your fork of this repo and the GitHub CLI (gh)."
@@ -141,7 +155,7 @@ json_get() {
 
 step "Supabase login"
 if ! supabase projects list >/dev/null 2>&1; then
-  echo "Not logged in -- opening browser."
+  echo "Opening your browser to sign in to Supabase (free account). Nothing to type here; come back when it says you are logged in."
   supabase login
 fi
 
@@ -212,14 +226,16 @@ fi
 step "Linking and applying schema"
 echo "New projects take a minute or two to finish provisioning -- retrying until ready."
 for i in $(seq 1 20); do
-  if supabase link --project-ref "$PROJECT_REF" 2>/tmp/setup-link-err; then
+  if supabase link --project-ref "$PROJECT_REF" >/tmp/setup-link-err 2>&1; then
     break
   fi
   [ "$i" -eq 20 ] && { cat /tmp/setup-link-err >&2; die "Project never became ready after ~10 minutes."; }
+  echo "Still waiting for the project to be ready (try $i of 20)..."
   sleep 30
 done
-supabase db push --linked --yes
-echo "Migrations applied."
+echo "Creating your tables..."
+quiet supabase db push --linked --yes
+echo "Tables ready."
 
 step "Fetching API keys"
 KEYS_JSON=$(supabase projects api-keys --project-ref "$PROJECT_REF" --reveal --output json)
@@ -243,6 +259,8 @@ if [ -n "$USER_ID" ] && [ "$PROJECT_REF" = "${PREVIOUS_REF:-}" ]; then
   echo "Login already set up (USER_ID in .env). To change its password: ./setup.sh --reset-password"
 else
 echo "The app has no sign-up screen, so the login is created here. Re-running with the same email keeps the existing user."
+echo "This email and password are what you will sign in to your dashboard with. Any email you can read works."
+echo "Save the password in your password manager: setup does not show or store it."
 read -rp "Email: " LOGIN_EMAIL
 read -rsp "Password (6+ characters, not shown): " LOGIN_PASSWORD
 echo
@@ -275,6 +293,7 @@ echo "one of your own accounts through Enable Banking's UI -- this unlocks the"
 echo "app for free Restricted Production use. It does NOT connect that account"
 echo "to this app yet; you'll do that separately from this app's own dashboard"
 echo "once setup finishes."
+echo "The APP_ID is the long id shown for your app under API applications."
 read -rp "Enable Banking APP_ID: " EB_APP_ID
 if [ "${CODESPACES:-}" = "true" ]; then
   echo "In Codespaces: drag the .pem from your Downloads onto the file list on the left, then type its name."
@@ -314,11 +333,13 @@ step "Gemini API key (recommended: AI sorts your transactions into categories)"
 echo "Get one free at https://aistudio.google.com/apikey"
 echo "Leave empty to skip: only the rules you write in the app will categorize, and"
 echo "subscriptions won't be detected. You can add a key to .env later."
+echo "Recommended: paste a key (free). What you type is not shown."
 GEMINI_API_KEY=$(existing GEMINI_API_KEY)
 if [ -n "$GEMINI_API_KEY" ]; then
   echo "Using the key from .env."
 else
-  read -rp "GEMINI_API_KEY (Enter to skip): " GEMINI_API_KEY
+  read -rsp "GEMINI_API_KEY (not shown; Enter to skip): " GEMINI_API_KEY
+  echo
 fi
 
 step "Deploying Edge Functions and secrets"
@@ -327,8 +348,8 @@ step "Deploying Edge Functions and secrets"
 FRONTEND_URL=$(existing FRONTEND_URL)
 SECRETS=("ENABLE_BANKING_APP_ID=$EB_APP_ID" "ENABLE_BANKING_PRIVATE_KEY=$EB_PRIVATE_KEY")
 [ -z "$FRONTEND_URL" ] || SECRETS+=("FRONTEND_URL=$FRONTEND_URL")
-supabase secrets set --project-ref "$PROJECT_REF" "${SECRETS[@]}"
-supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remotely: no Docker needed
+quiet supabase secrets set --project-ref "$PROJECT_REF" "${SECRETS[@]}"
+quiet supabase functions deploy --project-ref "$PROJECT_REF" --use-api # bundled remotely: no Docker needed
 echo "Edge Functions live."
 
 step "Writing .env files"
@@ -403,7 +424,7 @@ if ! signups_closed; then
   SIGNUP_DIR=$(mktemp -d)
   mkdir "$SIGNUP_DIR/supabase"
   printf 'project_id = "myfinances-setup"\n\n[auth]\nenable_signup = false\n' > "$SIGNUP_DIR/supabase/config.toml"
-  supabase config push --workdir "$SIGNUP_DIR" --project-ref "$PROJECT_REF" --yes || echo "Could not switch them off automatically."
+  quiet supabase config push --workdir "$SIGNUP_DIR" --project-ref "$PROJECT_REF" --yes || echo "Could not switch them off automatically."
   rm -rf "$SIGNUP_DIR"
   for _ in 1 2 3 4 5; do signups_closed && break; sleep 2; done # the setting takes a moment to apply
 fi
@@ -441,7 +462,8 @@ else
     echo
     cat dashboard-values.txt
     echo
-    echo "Then open the dashboard and sign in as $SIGN_IN_AS. I'll wait for that first sign-in (up to 15 minutes);"
+    echo "Then open the dashboard (the short address under Domains on the Vercel project page, not a long deployment"
+    echo "address) and sign in as $SIGN_IN_AS. I'll wait for that first sign-in (up to 15 minutes);"
     echo "press Enter to skip waiting: it finishes by itself, you do not need to run setup again."
     # Only on a terminal: without one, read returns at once and the loop would spin.
     if [ -t 0 ]; then
