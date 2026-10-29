@@ -11,7 +11,7 @@ const EXCLUDED = ['env-file.js', 'first-user.js', 'net-worth-history.js', 'spend
 
 const CONSOLE_CALL = /console\.(log|error|warn|info)\(.*/;
 // Stripped before the checks: the allowed forms that would otherwise look like a leak.
-const ALLOWED = /\b(err|error)\.name\b|\btotal(Categorized|Classified)\b/g;
+const ALLOWED = /\b(err|error)\.name\b|\btotal(Categorized|Classified)\b|JSON\.stringify\(result\)/g;
 const LEAKS = [
   /\$\{[^}]*(\bname\b|label|creditor_name|debtor_name|amount|shares|balance|price|value|total|iban|message|\bdescription\b|\bremittance\b|\bentry_reference\b|\buser_id\b)[^}]*\}/,
   /JSON\.stringify/,
@@ -20,14 +20,24 @@ const LEAKS = [
   /^console\.\w+\((err|error)\)/,
 ];
 
+// The Deno port of the sync, run by pg_cron: counts only, same rules. The other Edge Functions
+// log to the project's private Supabase logs, not to public Actions logs, so they are not held to this.
+const EDGE_SYNC_PATHS = ['supabase/functions/_shared/bank-sync.ts', 'supabase/functions/sync-bank/index.ts'];
+
+function leakyLines(file) {
+  const offenders = [];
+  fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+    const call = line.match(CONSOLE_CALL)?.[0].replace(ALLOWED, '');
+    if (call && LEAKS.some((re) => re.test(call))) offenders.push(`${file}:${i + 1}`);
+  });
+  return offenders;
+}
+
 test('no script logs personal data, raw responses or error messages', () => {
   const scripts = fs.readdirSync('.').filter((f) => f.endsWith('.js') && !f.endsWith('.test.js') && !EXCLUDED.includes(f));
-  const offenders = [];
-  for (const file of scripts) {
-    fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-      const call = line.match(CONSOLE_CALL)?.[0].replace(ALLOWED, '');
-      if (call && LEAKS.some((re) => re.test(call))) offenders.push(`${file}:${i + 1}`);
-    });
-  }
-  assert.deepStrictEqual(offenders, []);
+  assert.deepStrictEqual(scripts.flatMap(leakyLines), []);
+});
+
+test('the Edge Function sync paths log no personal data, raw responses or error messages', () => {
+  assert.deepStrictEqual(EDGE_SYNC_PATHS.flatMap(leakyLines), []);
 });
