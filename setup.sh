@@ -283,11 +283,20 @@ if [ -n "$EB_APP_ID" ] && [ -n "$EB_PRIVATE_KEY_ENV" ]; then
   echo "Using the Enable Banking app from .env ($EB_APP_ID)."
   EB_PRIVATE_KEY=$(node -e 'process.stdout.write(process.argv[1].replace(/\\n/g, "\n"))' -- "$EB_PRIVATE_KEY_ENV")
 else
-echo "If you haven't already: sign up at https://enablebanking.com/sign-in/,"
-echo "then in the Control Panel -> API applications -> Add a new application:"
-echo "  - Choose Production (not Sandbox)"
-echo "  - Redirect URL: https://${PROJECT_REF}.supabase.co/functions/v1/bank-consent-callback"
-echo "  - Register -> downloads a .pem private key to your Downloads folder"
+echo "If you haven't already, sign up at https://enablebanking.com/sign-in/. Then open the Control Panel,"
+echo "API applications -> Add a new application, and fill the form like this (it is your own private app,"
+echo "only you use it, so the privacy and terms addresses can simply be your GitHub page):"
+echo
+echo "  1. Environment ........... Production (not Sandbox)"
+echo "  2. Private key ........... leave 'Generate in the browser' selected"
+echo "  3. Application name ...... MyFinances (any name)"
+echo "  4. Redirect URL .......... https://${PROJECT_REF}.supabase.co/functions/v1/bank-consent-callback"
+echo "  5. Application description  Personal net-worth tracker for my own accounts"
+echo "  6. Data protection email . ${LOGIN_EMAIL:-your email}"
+echo "  7. Privacy URL ........... https://github.com/${REPO:-marcodonghiaa/myfinances}"
+echo "  8. Terms URL ............. https://github.com/${REPO:-marcodonghiaa/myfinances}"
+echo
+echo "Click Register: a .pem key file downloads to your Downloads folder. Keep it, setup asks for it below."
 echo "The app starts Inactive. Click 'Activate by linking accounts' and link any"
 echo "one of your own accounts through Enable Banking's UI -- this unlocks the"
 echo "app for free Restricted Production use. It does NOT connect that account"
