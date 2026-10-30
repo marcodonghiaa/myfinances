@@ -12,6 +12,7 @@ const JOBS = {
     "sync-portfolio-prices.js",
     "sync-crypto-coinbase.js",
     "sync-crypto-prices.js",
+    "backfill-price-history.js",
   ],
   notify: ["notify-worth-it.js"],
   consent: ["consent-notice.js"],

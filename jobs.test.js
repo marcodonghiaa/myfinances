@@ -21,3 +21,9 @@ test('a failing step does not stop the rest, and the job reports which ones fail
 test('an unknown job is an error, not a silent no-op', () => {
   assert.throws(() => runJob('nope', () => true), /Unknown job "nope"/);
 });
+
+test('past prices are fetched after both price syncs, so a new holding is priced first', () => {
+  const at = (s) => JOBS.sync.indexOf(s);
+  assert.ok(at('backfill-price-history.js') > at('sync-portfolio-prices.js'));
+  assert.ok(at('backfill-price-history.js') > at('sync-crypto-prices.js'));
+});
