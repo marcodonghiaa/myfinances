@@ -22,6 +22,10 @@ create policy "Authenticated users can view price history" on public.price_histo
 -- Supabase grants new tables to anon and authenticated by default; RLS alone would be the only guard.
 revoke all on public.price_history from anon;
 revoke insert, update, delete, truncate, references, trigger on public.price_history from authenticated;
+-- Said outright, not left to Supabase's default grants (which a project can switch off): signed-in
+-- users read it (holding_performance runs as the caller), the sync writes it with the service role.
+grant select on public.price_history to authenticated;
+grant select, insert, update, delete on public.price_history to service_role;
 
 -- One row per held stock/fund (key = isin) and per held coin (key = asset symbol, sources summed),
 -- with the price at p_from and the latest price, both in EUR.
@@ -34,8 +38,11 @@ revoke insert, update, delete, truncate, references, trigger on public.price_his
 --                   since  first price is after p_from: measured from start_date
 --                   stale  latest price on or before p_from is older than 7 days (a hole): do not use
 --                   no_price  nothing priced, or no fx rate for its currency
+--                   stale also covers a price that stopped updating: its latest price is more than
+--                   3 days older than the newest latest price among your holdings (a delisted symbol)
 -- p_last_move: ignore p_from; start is the latest earlier price that differs from the current one
 -- (within 7 days), so "1D" on a Sunday compares Friday with Thursday, not Friday with Friday.
+-- A p_from after the latest price gives start = end with status ok (zero length; callers skip it).
 -- Sold holdings (quantity 0) are not returned. Only the caller's rows, never anyone else's.
 create function public.holding_performance(p_from date, p_last_move boolean default false)
 returns table (
@@ -142,6 +149,7 @@ begin
     case
       when priced.ed is null or priced.erate is null or priced.srate is null then 'no_price'
       when priced.is_since then 'since'
+      when priced.ed < max(priced.ed) over () - 3 then 'stale' -- stopped updating
       when not p_last_move and least(p_from, priced.ed) - priced.sd > 7 then 'stale'
       else 'ok'
     end

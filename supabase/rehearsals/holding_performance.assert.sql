@@ -9,16 +9,31 @@
 -- Success prints no error. The rollback file is rehearsed too: it must remove both objects, and the
 -- migration must apply again on top.
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+-- fx_rates' policy checks auth.role(), which reads this claim: without it the signed-in path differs
+select set_config('request.jwt.claim.role', 'authenticated', true);
 
 create temp table m1 as select * from public.holding_performance('2026-09-30');
 create temp table wk as select * from public.holding_performance('2026-10-25');
 create temp table lm as select * from public.holding_performance('2026-09-30', true);
 
+-- the same call as a signed-in user (RLS on holdings, snapshots, fx_rates, price_history) must be identical
+create temp table m1_user as select * from m1 limit 0;
+grant all on m1_user to authenticated;
+set local role authenticated;
+insert into m1_user select * from public.holding_performance('2026-09-30');
+reset role;
+do $$
+begin
+  assert (select count(*) from m1) = (select count(*) from m1_user), 'signed-in user gets a different row count';
+  assert not exists (select * from m1 except select * from m1_user), 'signed-in user gets different rows (RLS or grants)';
+  assert not exists (select * from m1_user except select * from m1), 'signed-in user gets different rows (RLS or grants)';
+end $$;
+
 do $$
 declare r record;
 begin
   -- who is returned
-  assert (select count(*) from m1) = 10, 'want 9 stocks (sold one excluded) + 1 coin, got ' || (select count(*) from m1);
+  assert (select count(*) from m1) = 14, 'want 13 stocks (sold one excluded) + 1 coin, got ' || (select count(*) from m1);
   assert not exists (select 1 from m1 where key = 'US0000000009'), 'sold holding returned';
   assert (select count(*) from m1 where kind = 'crypto') = 1, 'BTC from two sources not one row';
   assert (select quantity from m1 where key = 'BTC') = 1.5, 'BTC quantities not summed';
@@ -40,6 +55,17 @@ begin
   select * into r from wk where key = 'IE0000000003';
   assert r.status = 'ok' and r.start_date = '2026-10-23' and r.start_price_eur = 10 and r.end_price_eur = 11,
     'weekend carry wrong: ' || r::text;
+
+  -- 7 days before the start is still ok, 8 is a hole
+  assert (select status from m1 where key = 'US0000000011') = 'ok', 'seven days not ok';
+  assert (select status from m1 where key = 'US0000000012') = 'stale', 'eight days not stale';
+
+  -- history only, no snapshot: still priced
+  select * into r from m1 where key = 'US0000000013';
+  assert r.status = 'ok' and r.start_price_eur = 20 and r.end_price_eur = 25, 'history-only holding: ' || r::text;
+
+  -- a price that stopped updating (latest 10 days older than the rest) is not used
+  assert (select status from m1 where key = 'US0000000014') = 'stale', 'stopped-updating price not stale';
 
   -- DDD first priced after the range start
   select * into r from m1 where key = 'US0000000004';
@@ -66,10 +92,10 @@ begin
   select * into r from m1 where key = 'BTC';
   assert r.start_price_eur = 45 and r.end_price_eur = 100 and r.status = 'ok', 'BTC wrong: ' || r::text;
 
-  -- last move: LLL ends Sunday 10-25 at 10; Friday and Saturday also 10, so the start is Thursday 9
+  -- last move: LLL ends 10-30 at 10; 10-28 and 10-29 also 10, so the start is 10-27 at 9
   select * into r from lm where key = 'IE0000000010';
-  assert r.status = 'ok' and r.start_date = '2026-10-22' and r.start_price_eur = 9 and r.end_price_eur = 10,
-    'last move not Thursday: ' || r::text;
+  assert r.status = 'ok' and r.start_date = '2026-10-27' and r.start_price_eur = 9 and r.end_price_eur = 10,
+    'last move not the last different price: ' || r::text;
   -- BTC last move: 10-29 history price 90 USD (x 0.90) differs from 100
   select * into r from lm where key = 'BTC';
   assert r.start_date = '2026-10-29' and r.start_price_eur = 90 * 0.90, 'BTC last move: ' || r::text;

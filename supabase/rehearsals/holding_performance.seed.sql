@@ -9,7 +9,7 @@ insert into public.fx_rates (date, currency, rate_to_eur) values
   ('2026-09-01', 'USD', 0.88), ('2026-09-25', 'USD', 0.90), ('2026-10-30', 'USD', 1.00),
   ('2026-09-25', 'GBP', 1.20);
 
--- shares: AAA 10, BBB 2, CCC 5, DDD 1, EEE 1, FFF 1, GGG 1, HHH 4, III 0 (sold), LLL 3
+-- shares: MMM-PPP 1 each (stale edge cases), AAA 10, BBB 2, CCC 5, DDD 1, EEE 1, FFF 1, GGG 1, HHH 4, III 0 (sold), LLL 3
 insert into public.portfolio_holdings (user_id, isin, yahoo_symbol, name, shares, broker_label, asset_type) values
   ('00000000-0000-0000-0000-0000000000a1', 'US0000000001', 'AAA', 'Hole filled', 10, 'T', 'Stock'),
   ('00000000-0000-0000-0000-0000000000a1', 'US0000000002', 'BBB', 'Hole not filled', 2, 'T', 'Stock'),
@@ -21,6 +21,10 @@ insert into public.portfolio_holdings (user_id, isin, yahoo_symbol, name, shares
   ('00000000-0000-0000-0000-0000000000a1', 'GB0000000008', 'HHH', 'Pounds', 4, 'T', 'Stock'),
   ('00000000-0000-0000-0000-0000000000a1', 'US0000000009', 'III', 'Sold', 0, 'T', 'Stock'),
   ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', 'LLL', 'Weekend repeat', 3, 'T', 'ETF'),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000011', 'MMM', 'Seven days before', 1, 'T', 'Stock'),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000012', 'NNN', 'Eight days before', 1, 'T', 'Stock'),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000013', 'OOO', 'History only', 1, 'T', 'Stock'),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000014', 'PPP', 'Stopped updating', 1, 'T', 'Stock'),
   ('00000000-0000-0000-0000-0000000000a2', 'US0000000001', 'AAA', 'Other user', 99, 'T', 'Stock');
 
 insert into public.portfolio_snapshots (user_id, isin, snapshot_date, price, currency, value_native, value_eur) values
@@ -46,18 +50,29 @@ insert into public.portfolio_snapshots (user_id, isin, snapshot_date, price, cur
   ('00000000-0000-0000-0000-0000000000a1', 'GB0000000008', '2026-10-30', 3, 'GBP', 12, 14.4),
   -- III: sold, still has snapshots
   ('00000000-0000-0000-0000-0000000000a1', 'US0000000009', '2026-10-30', 5, 'USD', 0, 0),
-  -- LLL: Friday close repeated on Saturday and Sunday (what Yahoo gives on a weekend)
-  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-22', 9, 'EUR', 27, 27),
-  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-23', 10, 'EUR', 30, 30),
-  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-24', 10, 'EUR', 30, 30),
-  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-25', 10, 'EUR', 30, 30),
+  -- LLL: the same close repeated on the days after it (what Yahoo gives when the market is shut)
+  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-27', 9, 'EUR', 27, 27),
+  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-28', 10, 'EUR', 30, 30),
+  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-29', 10, 'EUR', 30, 30),
+  ('00000000-0000-0000-0000-0000000000a1', 'IE0000000010', '2026-10-30', 10, 'EUR', 30, 30),
+  -- MMM / NNN: latest price on or before 2026-09-30 is exactly 7 / 8 days earlier (ok / stale)
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000011', '2026-09-23', 10, 'EUR', 10, 10),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000011', '2026-10-30', 12, 'EUR', 12, 12),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000012', '2026-09-22', 10, 'EUR', 10, 10),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000012', '2026-10-30', 12, 'EUR', 12, 12),
+  -- PPP: stopped updating on 10-20 while the rest priced on 10-30
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000014', '2026-09-30', 10, 'EUR', 10, 10),
+  ('00000000-0000-0000-0000-0000000000a1', 'US0000000014', '2026-10-20', 11, 'EUR', 11, 11),
   -- the other user
   ('00000000-0000-0000-0000-0000000000a2', 'US0000000001', '2026-10-30', 500, 'USD', 49500, 49500);
 
 insert into public.price_history (provider, symbol, price_date, price, currency) values
   ('yahoo', 'AAA', '2026-09-30', 90, 'USD'),
   ('yahoo', 'AAA', '2026-10-06', 999, 'USD'),
-  ('coingecko', 'bitcoin', '2026-10-29', 90, 'USD');
+  ('coingecko', 'bitcoin', '2026-10-29', 90, 'USD'),
+  -- OOO has no snapshot at all, only history
+  ('yahoo', 'OOO', '2026-09-30', 20, 'EUR'),
+  ('yahoo', 'OOO', '2026-10-30', 25, 'EUR');
 
 -- BTC held in two places: one row, amounts summed
 insert into public.crypto_holdings (user_id, asset_symbol, name, amount, source, coingecko_id) values
