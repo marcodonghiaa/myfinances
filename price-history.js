@@ -11,7 +11,6 @@ const YAHOO_PACE_MS = 300;
 const COINGECKO_PACE_MS = 8000; // the free tier allows only a few calls a minute
 const RETRIES = 3;
 const RETRY_MS = 20000;
-const CHUNK = 500;
 const TABLE_MISSING = new Set(['PGRST205', '42P01']); // migration not applied yet
 
 const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
@@ -119,11 +118,8 @@ async function backfillPriceHistory({
       const { url, headers } = requestFor(target, env);
       const { currency, rows } = parsers[target.provider](await getJson(url, headers, { fetch, sleep }), today);
       const records = rows.map((r) => ({ provider: target.provider, symbol: target.symbol, currency, ...r }));
-      for (let from = 0; from < records.length; from += CHUNK) {
-        const { error } = await supabase.from('price_history')
-          .upsert(records.slice(from, from + CHUNK), { onConflict: 'provider,symbol,price_date' });
-        if (error) throw error;
-      }
+      const { error } = await supabase.from('price_history').upsert(records, { onConflict: 'provider,symbol,price_date' }); // a year is at most ~366 rows
+      if (error) throw error;
       out.filled++;
     } catch (err) {
       if (TABLE_MISSING.has(err?.code)) return { ...out, tableMissing: true };
