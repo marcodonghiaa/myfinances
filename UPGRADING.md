@@ -6,6 +6,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Past prices for price returns (backfill)
+- **No migration of its own; needs `20261107000000_price_history_and_holding_performance`.** Apply that with `supabase db push` first. Until then the new step prints `price_history not found: apply the latest migration` and does nothing; the rest of the sync is unaffected.
+- New `backfill-price-history.js`: fetches up to a year of past daily prices (Yahoo for stocks and funds, CoinGecko for coins) into `price_history`, only for holdings that have little of it. It runs as the last step of the daily sync, so a holding you add gets its history on the next sync. To fill everything now, run `node backfill-price-history.js` once (`--force` refetches all). Safe to re-run.
+- A symbol Yahoo or CoinGecko will not answer for is counted as failed (`Price history: N filled, M failed, K already complete`) and retried next sync; the dashboard shows "since <date>" for it. CoinGecko's free tier is slow and rate limited (about 8 seconds between coins). An optional free demo key in `COINGECKO_DEMO_API_KEY` (see `.env.example`) helps.
+- Nothing is written to `portfolio_snapshots` or `crypto_snapshots`, so net worth history is unchanged.
+- **Roll back:** revert the code. The table stays until you run the migration's rollback.
+
 ### Setup no longer asks for the dashboard address
 - **No migration beyond `20261106000000_dashboard_origins`** (apply with `supabase db push` first, then `supabase functions deploy`).
 - `./setup.sh` has no "Dashboard address" question any more. Your dashboard registers its own address in `dashboard_origins` when the owner signs in, the Edge Functions allow those addresses in CORS, and a bank link returns to the address that started it. For GitHub installs setup prints the three Vercel values, then waits for that first sign-in and ends with `Done! Open <address>, sign in as <email>`.

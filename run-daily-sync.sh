@@ -19,4 +19,5 @@ echo "=== Sync started at $(date) ===" >> "$LOG_FILE"
 "$NODE" sync-portfolio-prices.js >> "$LOG_FILE" 2>&1
 "$NODE" sync-crypto-coinbase.js >> "$LOG_FILE" 2>&1
 "$NODE" sync-crypto-prices.js >> "$LOG_FILE" 2>&1
+"$NODE" backfill-price-history.js >> "$LOG_FILE" 2>&1
 echo "=== Sync finished at $(date) ===" >> "$LOG_FILE"
