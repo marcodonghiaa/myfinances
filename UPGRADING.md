@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Price return for Portfolio and Crypto (database part)
+- **Migration:** `20261107000000_price_history_and_holding_performance`. You apply it with `supabase db push`; nothing applies it for you. Safe to apply before or after updating the dashboard.
+- Adds the `price_history` table (past market prices, readable when signed in, written only by the sync) and the `holding_performance(p_from, p_last_move)` function the dashboard will call for price returns. It reads your holdings and prices only and writes nothing. `price_history` is never used by net worth.
+- Until the price backfill ships (next release) the function works from your snapshots alone: ranges that start before your first snapshot show "since <date>".
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261107000000_price_history_and_holding_performance.down.sql` (drops the function and the table; backfilled prices are lost and can be fetched again).
+
 ### Setup no longer asks for the dashboard address
 - **No migration beyond `20261106000000_dashboard_origins`** (apply with `supabase db push` first, then `supabase functions deploy`).
 - `./setup.sh` has no "Dashboard address" question any more. Your dashboard registers its own address in `dashboard_origins` when the owner signs in, the Edge Functions allow those addresses in CORS, and a bank link returns to the address that started it. For GitHub installs setup prints the three Vercel values, then waits for that first sign-in and ends with `Done! Open <address>, sign in as <email>`.
