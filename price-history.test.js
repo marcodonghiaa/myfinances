@@ -86,8 +86,8 @@ test('a server error is not retried', async () => {
   assert.strictEqual(calls, 1);
 });
 
-// A fake Supabase: tables answer by name, price_history counts and upserts are recorded.
-function fakeSupabase({ stocks = [], coins = [], counts = {}, tableMissing = false } = {}) {
+// A fake Supabase: tables answer by name, price_history newest dates and upserts are recorded.
+function fakeSupabase({ stocks = [], coins = [], newest = {}, tableMissing = false } = {}) {
   const upserts = [];
   const client = {
     upserts,
@@ -97,6 +97,8 @@ function fakeSupabase({ stocks = [], coins = [], counts = {}, tableMissing = fal
         select: (cols, opts) => { q.head = opts?.head; return q; },
         eq: (k, v) => ((filters[k] = v), q),
         gt: () => q,
+        order: () => q,
+        limit: () => q,
         upsert: async (rows) => {
           upserts.push({ table, rows });
           return { error: tableMissing ? { code: 'PGRST205' } : null };
@@ -105,7 +107,8 @@ function fakeSupabase({ stocks = [], coins = [], counts = {}, tableMissing = fal
           if (table === 'portfolio_holdings') return resolve({ data: stocks.map((yahoo_symbol) => ({ yahoo_symbol })), error: null });
           if (table === 'crypto_holdings') return resolve({ data: coins.map((coingecko_id) => ({ coingecko_id })), error: null });
           if (tableMissing) return resolve({ count: null, error: { code: 'PGRST205' } });
-          return resolve({ count: counts[`${filters.provider}:${filters.symbol}`] ?? 0, error: null });
+          const d = newest[`${filters.provider}:${filters.symbol}`];
+          return resolve({ data: d ? [{ price_date: d }] : [], error: null });
         },
       };
       return q;
@@ -123,7 +126,7 @@ const route = (answers) => async (url) => {
 const base = { userId: 'u', today: '2026-11-01', userEnv: {}, sleep: async () => {} };
 
 test('fills holdings that have little history and skips complete ones', async () => {
-  const supabase = fakeSupabase({ stocks: ['AAA', 'BBB'], coins: ['bitcoin'], counts: { 'yahoo:BBB': 200 } });
+  const supabase = fakeSupabase({ stocks: ['AAA', 'BBB'], coins: ['bitcoin'], newest: { 'yahoo:BBB': '2026-10-31' } });
   const urls = [];
   const out = await backfillPriceHistory({
     ...base, supabase, env: {},
@@ -136,8 +139,31 @@ test('fills holdings that have little history and skips complete ones', async ()
   assert.strictEqual(supabase.upserts[1].rows[0].currency, 'USD');
 });
 
+test('a holding whose newest price is 3 days old is complete, 4 days old is topped up', async () => {
+  const supabase = fakeSupabase({ stocks: ['AAA', 'BBB'], newest: { 'yahoo:AAA': '2026-10-29', 'yahoo:BBB': '2026-10-28' } });
+  const out = await backfillPriceHistory({ ...base, supabase, env: {}, fetch: async () => res(200, yahooBody) });
+  assert.deepStrictEqual({ ...out }, { filled: 1, failed: 0, complete: 1, tableMissing: false });
+});
+
+test('a long Retry-After is capped', async () => {
+  const waits = [];
+  const answers = [res(429, {}, { 'retry-after': '3600' }), res(200, {})];
+  await getJson('u', {}, { fetch: async () => answers.shift(), sleep: async (ms) => waits.push(ms) });
+  assert.deepStrictEqual(waits, [60000]);
+});
+
+test('after the time budget no new symbol is started, the rest count as failed', async () => {
+  let t = 0;
+  const supabase = fakeSupabase({ stocks: ['AAA', 'BBB', 'CCC'] });
+  const out = await backfillPriceHistory({
+    ...base, supabase, env: {}, now: () => t,
+    fetch: async () => ((t += 5 * 60000), res(200, yahooBody)),
+  });
+  assert.deepStrictEqual({ ...out }, { filled: 2, failed: 1, complete: 0, tableMissing: false }); // 5 min, 10 min, then over 8
+});
+
 test('--force refetches holdings that are complete', async () => {
-  const supabase = fakeSupabase({ stocks: ['AAA'], counts: { 'yahoo:AAA': 200 } });
+  const supabase = fakeSupabase({ stocks: ['AAA'], newest: { 'yahoo:AAA': '2026-10-31' } });
   const out = await backfillPriceHistory({ ...base, supabase, env: {}, force: true, fetch: async () => res(200, yahooBody) });
   assert.strictEqual(out.filled, 1);
 });
@@ -173,8 +199,8 @@ test('the demo key is sent to CoinGecko only when set', async () => {
   assert.strictEqual(seen[1]['x-cg-demo-api-key'], 'k');
 });
 
-test('a missing price_history table (migration not applied) is reported, not thrown', async () => {
-  const out = await backfillPriceHistory({ ...base, supabase: fakeSupabase({ stocks: ['AAA'], tableMissing: true }), env: {}, fetch: async () => res(200, yahooBody) });
+test('a missing price_history table (migration not applied) is reported before any fetch', async () => {
+  const out = await backfillPriceHistory({ ...base, supabase: fakeSupabase({ stocks: ['AAA'], tableMissing: true }), env: {}, fetch: async () => { throw new Error('no call expected'); } });
   assert.strictEqual(out.tableMissing, true);
   assert.strictEqual(out.failed, 0);
 });

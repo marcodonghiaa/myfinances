@@ -27,3 +27,8 @@ test('past prices are fetched after both price syncs, so a new holding is priced
   assert.ok(at('backfill-price-history.js') > at('sync-portfolio-prices.js'));
   assert.ok(at('backfill-price-history.js') > at('sync-crypto-prices.js'));
 });
+
+test('run-daily-sync.sh (launchd/cron) runs every script of the sync job', () => {
+  const sh = require('fs').readFileSync(require('path').join(__dirname, 'run-daily-sync.sh'), 'utf8');
+  for (const script of JOBS.sync) assert.ok(sh.includes(script), `${script} missing from run-daily-sync.sh`);
+});

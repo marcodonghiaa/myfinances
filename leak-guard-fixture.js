@@ -85,7 +85,10 @@ function answer(table, calls) {
     return { data: rows, error: null };
   }
   // price history: the migration may not be applied yet
-  if (table === 'price_history' && scenario === 'no_table') return { data: null, error: { code: 'PGRST205', message: LEAK, details: LEAK, hint: LEAK } };
+  // (a HEAD count on a missing table has no error code in real life, so only plain selects get one)
+  if (table === 'price_history' && scenario === 'no_table') {
+    return { data: null, error: { code: 'PGRST205', message: LEAK, details: LEAK, hint: LEAK } };
+  }
   if (table === 'portfolio_holdings') {
     return { data: [{ isin: FIXTURE.isin, yahoo_symbol: FIXTURE.symbol, name: FIXTURE.holding, shares: Number(FIXTURE.shares), asset_type: null }], error: null };
   }

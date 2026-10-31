@@ -6,7 +6,7 @@ const { errorTag } = require('./log-safe');
 // Up to a year of past prices for the holdings you have, so Portfolio and Crypto can show price
 // returns for ranges that start before your first snapshot. Runs on its own after setup
 // (`node backfill-price-history.js`, `--force` refetches everything) and as the last step of the
-// daily sync, which only tops up holdings that have little history. Safe to re-run.
+// daily sync, which only tops up holdings whose newest stored price is older than 3 days. Safe to re-run.
 // Needs the 20261107000000 migration; without it this says so and does nothing.
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
@@ -20,7 +20,7 @@ async function main() {
     return;
   }
   console.log(`Price history: ${result.filled} filled, ${result.failed} failed, ${result.complete} already complete.`);
-  if (result.filled === 0 && result.failed > 0) process.exit(1);
+  // Exit 0 even when some failed: a flaky price source must not mark the whole daily sync as failed.
 }
 
 main().catch((err) => {

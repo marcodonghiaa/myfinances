@@ -4,7 +4,9 @@ const { errorTag } = require('./log-safe');
 // Past market prices for price returns (holding_performance). Written to price_history only: never
 // to portfolio_snapshots / crypto_snapshots, which feed the net worth history.
 
-const MIN_ROWS = 30; // a holding with fewer stored days is filled; ponytail: a very young coin is refetched each sync, add a marker if that ever matters
+const FRESH_DAYS = 3; // a holding whose newest stored day is older than this (or has none) is fetched again
+const MAX_WAIT_MS = 60000; // never obey a Retry-After longer than this
+const BUDGET_MS = 8 * 60000; // stop starting new symbols after this; the scheduler kills a script at 10 min
 const YAHOO_PACE_MS = 300;
 const COINGECKO_PACE_MS = 8000; // the free tier allows only a few calls a minute
 const RETRIES = 3;
@@ -63,7 +65,7 @@ async function getJson(url, headers, { fetch = fetchWithTimeout, sleep }) {
     const res = await fetch(url, { headers });
     if (res.status === 429 && attempt < RETRIES) {
       const sent = Number(res.headers?.get?.('retry-after'));
-      await sleep(Number.isFinite(sent) && sent > 0 ? sent * 1000 : RETRY_MS * 2 ** attempt);
+      await sleep(Math.min(Number.isFinite(sent) && sent > 0 ? sent * 1000 : RETRY_MS * 2 ** attempt, MAX_WAIT_MS));
       continue;
     }
     if (!res.ok) throw Object.assign(new Error('History request failed'), { status: res.status });
@@ -88,7 +90,7 @@ const paceMs = { yahoo: YAHOO_PACE_MS, coingecko: COINGECKO_PACE_MS };
 // Soft per symbol: one failure is counted, never thrown. Returns { filled, failed, complete, tableMissing }.
 async function backfillPriceHistory({
   supabase, userId, today = dayOf(Date.now()), force = false, env = process.env,
-  fetch = fetchWithTimeout, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  fetch = fetchWithTimeout, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now,
 }) {
   const stocks = await supabase.from('portfolio_holdings').select('yahoo_symbol').eq('user_id', userId).gt('shares', 0);
   if (stocks.error) throw stocks.error;
@@ -97,14 +99,20 @@ async function backfillPriceHistory({
   const targets = historyTargets((stocks.data ?? []).map((r) => r.yahoo_symbol), (coins.data ?? []).map((r) => r.coingecko_id));
 
   const out = { filled: 0, failed: 0, complete: 0, tableMissing: false };
+  // Probe once, with a plain select: a HEAD request on a missing table comes back without its error code.
+  const probe = await supabase.from('price_history').select('symbol').limit(1);
+  if (TABLE_MISSING.has(probe.error?.code)) return { ...out, tableMissing: true };
+  const fresh = dayOf(Date.parse(today) - FRESH_DAYS * 86400000);
+  const startedAt = now();
   const called = new Set();
   for (const [i, target] of targets.entries()) {
     try {
+      if (now() - startedAt > BUDGET_MS) throw new Error('Time budget used up');
       if (!force) {
-        const { count, error } = await supabase.from('price_history').select('price_date', { count: 'exact', head: true })
-          .eq('provider', target.provider).eq('symbol', target.symbol);
+        const { data, error } = await supabase.from('price_history').select('price_date')
+          .eq('provider', target.provider).eq('symbol', target.symbol).order('price_date', { ascending: false }).limit(1);
         if (error) throw error;
-        if ((count ?? 0) >= MIN_ROWS) { out.complete++; continue; }
+        if ((data?.[0]?.price_date ?? '') >= fresh) { out.complete++; continue; }
       }
       if (called.has(target.provider)) await sleep(paceMs[target.provider]);
       called.add(target.provider);
@@ -126,4 +134,4 @@ async function backfillPriceHistory({
   return out;
 }
 
-module.exports = { parseYahooHistory, parseCoinGeckoHistory, historyTargets, getJson, backfillPriceHistory, MIN_ROWS };
+module.exports = { parseYahooHistory, parseCoinGeckoHistory, historyTargets, getJson, backfillPriceHistory };
