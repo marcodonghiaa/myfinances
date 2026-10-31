@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Your trades, for real performance (database part)
+- **Migration:** `20261108000000_holding_trades`. You apply it with `supabase db push`. Apply it before deploying the dashboard that uses it; until then that dashboard says the update is missing.
+- Adds the `holding_trades` table (your buys and sells, only you can see or change them). `holding_performance` now also returns holdings sold to zero that have trades.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261108000000_holding_trades.down.sql`. This deletes your trades, so export them first.
+
 ### Past prices for price returns (backfill)
 - **No migration of its own; needs `20261107000000_price_history_and_holding_performance`.** Apply that with `supabase db push` first. Until then the new step prints `price_history not found: apply the latest migration` and does nothing; the rest of the sync is unaffected.
 - New `backfill-price-history.js`: fetches up to a year of past daily prices (Yahoo for stocks and funds, CoinGecko for coins) into `price_history`, only for holdings that have little of it. It runs as the last step of the daily sync, so a holding you add gets its history on the next sync. To fill everything now, run `node backfill-price-history.js` once (`--force` refetches all). Safe to re-run.
