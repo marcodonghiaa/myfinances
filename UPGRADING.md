@@ -6,6 +6,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Past prices for price returns (backfill)
+- **No migration of its own; needs `20261107000000_price_history_and_holding_performance`.** Apply that with `supabase db push` first. Until then the new step prints `price_history not found: apply the latest migration` and does nothing; the rest of the sync is unaffected.
+- New `backfill-price-history.js`: fetches up to a year of past daily prices (Yahoo for stocks and funds, CoinGecko for coins) into `price_history`, only for holdings that have little of it. It runs as the last step of the daily sync, so a holding you add gets its history on the next sync. To fill everything now, run `node backfill-price-history.js` once (`--force` refetches all). Safe to re-run.
+- A symbol Yahoo or CoinGecko will not answer for is counted as failed (`Price history: N filled, M failed, K already complete`) and retried next sync; the dashboard shows "since <date>" for it. CoinGecko's free tier is slow and rate limited (about 8 seconds between coins). An optional free demo key in `COINGECKO_DEMO_API_KEY` (see `.env.example`) helps.
+- Nothing is written to `portfolio_snapshots` or `crypto_snapshots`, so net worth history is unchanged.
+- **Roll back:** revert the code. The table stays until you run the migration's rollback.
+
 ### Price return for Portfolio and Crypto (database part)
 - **Migration:** `20261107000000_price_history_and_holding_performance`. You apply it with `supabase db push`; nothing applies it for you. Safe to apply before or after updating the dashboard.
 - Adds the `price_history` table (past market prices, readable when signed in, written only by the sync) and the `holding_performance(p_from, p_last_move)` function the dashboard will call for price returns. It reads your holdings and prices only and writes nothing. `price_history` is never used by net worth.

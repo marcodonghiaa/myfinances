@@ -35,9 +35,11 @@ function run(script, scenario) {
 
 const BANK = ['sync-networth.js', 'sync-transactions.js'];
 const PRICES = ['sync-portfolio-prices.js', 'sync-crypto-prices.js'];
+const HISTORY = 'backfill-price-history.js';
 const CASES = [
   ...BANK.flatMap((s) => ['ok', 'bank_error', 'expired', 'zero_accounts', 'db_error'].map((sc) => [s, sc])),
   ...PRICES.flatMap((s) => ['ok', 'bank_error', 'no_fx', 'db_error'].map((sc) => [s, sc])),
+  ...['ok', 'bank_error', 'db_error', 'no_table'].map((sc) => [HISTORY, sc]),
 ];
 
 for (const [script, scenario] of CASES) {
@@ -57,4 +59,6 @@ test('fixture reaches the scripts: the ok path saves its rows', () => {
   assert.match(run('sync-transactions.js', 'ok'), /Upserted 1 transactions/);
   assert.match(run('sync-portfolio-prices.js', 'ok'), /Saved 1 snapshot/);
   assert.match(run('sync-crypto-prices.js', 'ok'), /Saved 1 snapshot/);
+  assert.match(run('backfill-price-history.js', 'ok'), /Price history: 2 filled, 0 failed/);
+  assert.match(run('backfill-price-history.js', 'no_table'), /price_history not found/);
 });

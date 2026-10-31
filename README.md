@@ -58,6 +58,7 @@ A sync runs **every 6 hours** (banks typically cap unattended access at about 4 
 5. `classify-type.js` marks `Subscription` or `One-time`.
 6. `classify-flow.js` marks `spend`, `income` or `transfer`, then pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days; the merchant of a refund is read from its "Refund from <merchant>" remittance) and marks both `refunded` so neither counts as spend or income.
 7. `sync-portfolio-prices.js`, `sync-crypto-coinbase.js`, `sync-crypto-prices.js` price your holdings.
+8. `backfill-price-history.js` fetches up to a year of past prices for holdings whose newest stored price is more than 3 days old (price returns on Portfolio and Crypto).
 
 A newly linked bank doesn't wait for the next run: in Docker, every 5 minutes the scheduler syncs banks linked in the last hour that have never synced, then categorizes what arrived. With cron or launchd, run `bash run-daily-sync.sh` once after linking.
 
