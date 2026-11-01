@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Past-price backfill removed
+- **No migration.** `backfill-price-history.js` no longer runs in the sync: total return needs only the latest price, and the script could take up to 8 minutes per sync. The `price_history` table and its rows stay, harmlessly.
+- `COINGECKO_DEMO_API_KEY` is no longer used; you can remove it from `.env`.
+- **Roll back:** revert the code.
+
 ### Your trades, for real performance (database part)
 - **Migration:** `20261108000000_holding_trades`. You apply it with `supabase db push`. Apply it before deploying the dashboard that uses it; until then that dashboard says the update is missing.
 - Adds the `holding_trades` table (your buys and sells, only you can see or change them). `holding_performance` now also returns holdings sold to zero that have trades.

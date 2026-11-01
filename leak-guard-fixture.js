@@ -61,13 +61,9 @@ function respondFetch(url) {
   if (scenario === 'bank_error' && /yahoo|coingecko/.test(url)) {
     return { ok: false, status: 500, json: async () => ({}), text: async () => LEAK };
   }
-  if (url.includes('finance.yahoo.com') && url.includes('range=1y')) {
-    return ok({ chart: { result: [{ meta: { currency: 'EUR', gmtoffset: 0, symbol: FIXTURE.symbol }, timestamp: [1760000000, 1760086400], indicators: { quote: [{ close: [Number(FIXTURE.price), Number(FIXTURE.price)] }] } }] } });
-  }
   if (url.includes('finance.yahoo.com')) {
     return ok({ chart: { result: [{ meta: { regularMarketPrice: Number(FIXTURE.price), currency: 'EUR', instrumentType: 'ETF', symbol: FIXTURE.symbol } }] } });
   }
-  if (url.includes('coingecko.com') && url.includes('market_chart')) return ok({ prices: [[1760000000000, Number(FIXTURE.price)]] });
   if (url.includes('coingecko.com')) return ok({ 'leakcoin-prime': { usd: Number(FIXTURE.price) } });
   throw new Error(`leak-guard fixture: unexpected network call ${url}`);
 }
@@ -83,11 +79,6 @@ function answer(table, calls) {
   if (table === 'accounts' && select) {
     const rows = scenario === 'zero_accounts' ? [] : [ACCOUNT];
     return { data: rows, error: null };
-  }
-  // price history: the migration may not be applied yet
-  // (a HEAD count on a missing table has no error code in real life, so only plain selects get one)
-  if (table === 'price_history' && scenario === 'no_table') {
-    return { data: null, error: { code: 'PGRST205', message: LEAK, details: LEAK, hint: LEAK } };
   }
   if (table === 'portfolio_holdings') {
     return { data: [{ isin: FIXTURE.isin, yahoo_symbol: FIXTURE.symbol, name: FIXTURE.holding, shares: Number(FIXTURE.shares), asset_type: null }], error: null };
