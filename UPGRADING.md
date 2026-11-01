@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Splitwise corrections
+- **Migration:** `20261109000000_splitwise_corrections`. You apply it with `supabase db push`. Apply it before using corrections in the dashboard; until then that screen says the update is missing, and importing still works.
+- Adds `apply_splitwise_corrections`, which applies the rows you tick: added late, edited or removed in Splitwise. A removed row linked to a bank transaction clears its personal amount; an edited one recalculates it. Undo does not cover corrections.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261109000000_splitwise_corrections.down.sql`. Corrections already applied stay.
+
 ### Past-price backfill removed
 - **No migration.** `backfill-price-history.js` no longer runs in the sync: total return needs only the latest price, and the script could take up to 8 minutes per sync. The `price_history` table and its rows stay, harmlessly.
 - `COINGECKO_DEMO_API_KEY` is no longer used; you can remove it from `.env`.
