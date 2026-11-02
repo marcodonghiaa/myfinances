@@ -53,7 +53,7 @@ async function main() {
 
   for (const [i, holding] of holdings.entries()) {
     const priceUsd = prices[holding.coingecko_id]?.usd;
-    if (priceUsd == null) {
+    if (!(priceUsd > 0)) {
       console.error(`No price found for holding ${i + 1}/${holdings.length}`);
       continue;
     }

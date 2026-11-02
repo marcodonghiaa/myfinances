@@ -11,12 +11,16 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
+import { fetchRateToEur } from "../_shared/fx-rates.ts";
 import {
+  HoldingError,
   type HoldingRequest,
+  parseCoinGeckoPrice,
   parseCoinGeckoSearch,
   parseHoldingRequest,
   parseYahooChart,
   parseYahooSearch,
+  upstreamMessage,
 } from "../_shared/holdings.ts";
 
 type AddRequest = Extract<HoldingRequest, { action: "add" }>;
@@ -25,19 +29,26 @@ const TIMEOUT_MS = 15_000;
 const DUPLICATE_KEY = "23505";
 
 async function getJson(url: string): Promise<Record<string, unknown>> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`${new URL(url).host} error ${res.status}`);
+  const { host } = new URL(url);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.error(`${host} did not answer:`, (err as Error).message);
+    throw new HoldingError(upstreamMessage(host, 0));
+  }
+  if (!res.ok) throw new HoldingError(upstreamMessage(host, res.status));
   return await res.json();
 }
 
 const admin = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-// Latest stored rate; null when fx-sync hasn't stored this currency yet (value_eur stays empty
-// until the next price sync instead of being guessed).
-async function rateToEur(currency: string): Promise<number | null> {
+// Latest stored rate, or today's from Frankfurter when fx-sync hasn't stored this currency yet.
+// Throws when there is none: a holding with no value in EUR would show as 0 and never heal.
+async function rateToEur(currency: string): Promise<number> {
   if (currency === "EUR") return 1;
   const { data } = await admin()
     .from("fx_rates")
@@ -45,7 +56,17 @@ async function rateToEur(currency: string): Promise<number | null> {
     .eq("currency", currency)
     .order("date", { ascending: false })
     .limit(1);
-  return data?.[0]?.rate_to_eur ?? null;
+  const stored = data?.[0]?.rate_to_eur;
+  if (stored != null) return stored;
+
+  const found = await fetchRateToEur(currency).catch((err) => {
+    console.error("fx lookup failed:", (err as Error).message);
+    return null;
+  });
+  if (!found) throw new HoldingError(`No exchange rate for ${currency}, can't value this holding`);
+  const { error } = await admin().from("fx_rates").upsert(found.rows, { onConflict: "date,currency" });
+  if (error) console.error("fx seed failed:", error.message);
+  return found.rate;
 }
 
 async function search(kind: "stock" | "crypto", query: string) {
@@ -66,6 +87,7 @@ async function addStock(userClient: any, userId: string, req: AddRequest): Promi
     await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(req.id)}?interval=1d&range=1d`),
     req.id,
   );
+  const rate = await rateToEur(quote.currency);
   // portfolio_holdings is keyed by ISIN; a holding found by name or ticker has no ISIN, so the
   // Yahoo symbol stands in (still unique per user).
   const key = req.isin ?? req.id;
@@ -80,7 +102,6 @@ async function addStock(userClient: any, userId: string, req: AddRequest): Promi
   });
   if (error) throw error;
 
-  const rate = await rateToEur(quote.currency);
   const valueNative = quote.price * req.quantity;
   const { error: snapError } = await admin().from("portfolio_snapshots").upsert({
     user_id: userId,
@@ -89,7 +110,7 @@ async function addStock(userClient: any, userId: string, req: AddRequest): Promi
     price: quote.price,
     currency: quote.currency,
     value_native: valueNative,
-    value_eur: rate === null ? null : valueNative * rate,
+    value_eur: valueNative * rate,
   }, { onConflict: "user_id,isin,snapshot_date" });
   if (snapError) console.error("Snapshot insert failed:", snapError.message);
   return !snapError;
@@ -97,11 +118,11 @@ async function addStock(userClient: any, userId: string, req: AddRequest): Promi
 
 // deno-lint-ignore no-explicit-any
 async function addCoin(userClient: any, userId: string, req: AddRequest): Promise<boolean> {
-  const prices = await getJson(
-    `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(req.id)}&vs_currencies=usd`,
+  const priceUsd = parseCoinGeckoPrice(
+    await getJson(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(req.id)}&vs_currencies=usd`),
+    req.id,
   );
-  const priceUsd = (prices[req.id] as { usd?: unknown } | undefined)?.usd;
-  if (typeof priceUsd !== "number" || !Number.isFinite(priceUsd)) throw new Error(`No price for ${req.id}`);
+  const rate = await rateToEur("USD");
 
   const { error } = await userClient.from("crypto_holdings").insert({
     user_id: userId,
@@ -113,7 +134,6 @@ async function addCoin(userClient: any, userId: string, req: AddRequest): Promis
   });
   if (error) throw error;
 
-  const rate = await rateToEur("USD");
   const valueUsd = priceUsd * req.quantity;
   const { error: snapError } = await admin().from("crypto_snapshots").upsert({
     user_id: userId,
@@ -123,11 +143,14 @@ async function addCoin(userClient: any, userId: string, req: AddRequest): Promis
     amount: req.quantity,
     price_usd: priceUsd,
     value_usd: valueUsd,
-    value_eur: rate === null ? null : valueUsd * rate,
+    value_eur: valueUsd * rate,
   }, { onConflict: "user_id,asset_symbol,source,snapshot_date" });
   if (snapError) console.error("Snapshot insert failed:", snapError.message);
   return !snapError;
 }
+
+// Anything else (a database error, say) stays in the function log, not the browser.
+const userMessage = (err: unknown, fallback: string) => err instanceof HoldingError ? err.message : fallback;
 
 Deno.serve(serveWithCors(async (req, json) => {
   if (req.method !== "POST") {
@@ -157,9 +180,8 @@ Deno.serve(serveWithCors(async (req, json) => {
     try {
       return json({ results: await search(parsed.kind, parsed.query) });
     } catch (err) {
-      // Upstream details stay in the function log, not the browser.
       console.error("Search failed:", (err as Error).message);
-      return json({ error: "Search is unavailable right now, try again" }, 502);
+      return json({ error: userMessage(err, "Search is unavailable right now, try again") }, 502);
     }
   }
 
@@ -172,6 +194,6 @@ Deno.serve(serveWithCors(async (req, json) => {
       return json({ error: "Already in your holdings: change its quantity instead" }, 409);
     }
     console.error("Add failed:", (err as Error).message);
-    return json({ error: "Couldn't add it right now, try again" }, 502);
+    return json({ error: userMessage(err, "Couldn't add it right now, try again") }, 502);
   }
 }));

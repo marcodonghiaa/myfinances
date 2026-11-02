@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Adding a holding: no more silent zero, clearer errors
+- **Deploy the function:** `supabase functions deploy add-holding`. No migration.
+- A holding is refused when it has no valid price or no exchange rate, instead of being saved and shown at 0. A missing rate is fetched on the spot.
+- Search and add errors now say what failed, for example that CoinGecko is limiting requests.
+
 ### Exchange rates for every currency
 - **No migration, no deploy:** `fx-sync.js` now stores every currency Frankfurter publishes (about 30 rows a day) instead of USD, GBP and CHF. A holding that showed 0 because its currency had no rate, CAD for example, gets its value at the next sync.
 

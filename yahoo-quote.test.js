@@ -20,6 +20,10 @@ test('throws when Yahoo omits the price, so no NaN row reaches the upsert', () =
   assert.throws(() => parseQuote(chart({ currency: 'EUR' }), 'X'), /No valid price for X/);
 });
 
+test('throws on a zero price, so a holding is never valued at 0', () => {
+  assert.throws(() => parseQuote(chart({ regularMarketPrice: 0, currency: 'EUR' }), 'X'), /No valid price/);
+});
+
 test('throws on a non-finite or non-numeric price', () => {
   assert.throws(() => parseQuote(chart({ regularMarketPrice: 'n/a', currency: 'EUR' }), 'X'), /No valid price/);
   assert.throws(() => parseQuote(chart({ regularMarketPrice: NaN, currency: 'EUR' }), 'X'), /No valid price/);

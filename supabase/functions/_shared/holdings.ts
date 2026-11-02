@@ -37,11 +37,25 @@ export const isIsin = (value: string): boolean => /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.t
 const ASSET_TYPE: Record<string, string> = { EQUITY: "Stock", ETF: "ETF", MUTUALFUND: "Fund", BOND: "Bond" };
 
 type Json = Record<string, unknown>;
+
+// A failure whose message says what went wrong: shown to the user as is, and never holds an upstream body.
+export class HoldingError extends Error {}
+
+export function upstreamMessage(host: string, status: number): string {
+  const provider = host.includes("coingecko") ? "CoinGecko" : "Yahoo Finance";
+  if (status === 429 || status === 403) {
+    return `${provider} is limiting requests from this server (error ${status}), try again in a minute`;
+  }
+  if (status === 404) return `${provider} has no price for this (error 404)`;
+  return `${provider} is unavailable right now${status ? ` (error ${status})` : ""}, try again`;
+}
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
+const isPrice = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v > 0;
+
 export function parseYahooSearch(data: Json): Array<Candidate> {
-  const quotes = Array.isArray(data.quotes) ? (data.quotes as Array<Json>) : [];
-  return quotes
+  if (!Array.isArray(data.quotes)) throw new HoldingError("Yahoo Finance sent an unexpected reply, try again");
+  return (data.quotes as Array<Json>)
     .filter((q) => text(q.quoteType) in ASSET_TYPE)
     .map((q) => ({
       id: text(q.symbol),
@@ -53,21 +67,21 @@ export function parseYahooSearch(data: Json): Array<Candidate> {
     .slice(0, MAX_RESULTS);
 }
 
-// Rejects a missing price so a NaN never reaches a snapshot. London quotes come in pence (GBp).
+// Rejects a missing or zero price so a holding is never stored without a value. London quotes come in pence (GBp).
 export function parseYahooChart(data: Json, symbol: string): Quote {
   const result = ((data.chart as Json | undefined)?.result as Array<Json> | undefined)?.[0];
-  if (!result) throw new Error(`No quote for ${symbol}`);
+  if (!result) throw new HoldingError(`No quote for ${symbol}`);
   const meta = (result.meta ?? {}) as Json;
   const price = meta.regularMarketPrice;
-  if (typeof price !== "number" || !Number.isFinite(price)) throw new Error(`No valid price for ${symbol}`);
+  if (!isPrice(price)) throw new HoldingError(`No valid price for ${symbol}`);
   const assetType = ASSET_TYPE[text(meta.instrumentType)] ?? "Other";
   if (meta.currency === "GBp") return { price: price / 100, currency: "GBP", assetType };
   return { price, currency: text(meta.currency), assetType };
 }
 
 export function parseCoinGeckoSearch(data: Json): Array<Candidate> {
-  const coins = Array.isArray(data.coins) ? (data.coins as Array<Json>) : [];
-  return coins
+  if (!Array.isArray(data.coins)) throw new HoldingError("CoinGecko sent an unexpected reply, try again");
+  return (data.coins as Array<Json>)
     .map((c) => ({
       id: text(c.id),
       symbol: text(c.symbol).toUpperCase(),
@@ -76,6 +90,12 @@ export function parseCoinGeckoSearch(data: Json): Array<Candidate> {
     }))
     .filter((c) => c.id !== "" && c.symbol !== "" && c.name !== "")
     .slice(0, MAX_RESULTS);
+}
+
+export function parseCoinGeckoPrice(data: Json, id: string): number {
+  const price = (data[id] as { usd?: unknown } | undefined)?.usd;
+  if (!isPrice(price)) throw new HoldingError(`CoinGecko has no price for ${id}`);
+  return price;
 }
 
 const isKind = (v: unknown): v is HoldingKind => v === "stock" || v === "crypto";
