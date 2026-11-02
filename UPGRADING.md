@@ -6,6 +6,9 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Exchange rates for every currency
+- **No migration, no deploy:** `fx-sync.js` now stores every currency Frankfurter publishes (about 30 rows a day) instead of USD, GBP and CHF. A holding that showed 0 because its currency had no rate, CAD for example, gets its value at the next sync.
+
 ### Splitwise corrections
 - **Migration:** `20261109000000_splitwise_corrections`. You apply it with `supabase db push`. Apply it before using corrections in the dashboard; until then that screen says the update is missing, and importing still works.
 - Adds `apply_splitwise_corrections`, which applies the rows you tick: added late, edited or removed in Splitwise. A removed row linked to a bank transaction clears its personal amount; an edited one recalculates it. Undo does not cover corrections.
