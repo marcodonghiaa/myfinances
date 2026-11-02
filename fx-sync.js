@@ -4,12 +4,12 @@ const { fetchWithTimeout } = require('./http');
 const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-const CURRENCIES = ['USD', 'GBP', 'CHF']; // add more here as you add accounts in other currencies
 const HISTORY_DAYS = 100; // transaction sync pulls 90 days; every view needs a rate on or before each booking_date
 const daysAgo = (n) => new Date(Date.now() - n * 24 * 3600 * 1000).toISOString().slice(0, 10);
 
+// Every currency Frankfurter has: a holding or account can be in any of them.
 async function fetchRates(path) {
-  const res = await fetchWithTimeout(`https://api.frankfurter.dev/v1/${path}?base=EUR&symbols=${CURRENCIES.join(',')}`);
+  const res = await fetchWithTimeout(`https://api.frankfurter.dev/v1/${path}?base=EUR`);
   if (!res.ok) throw new Error(`Frankfurter API error ${res.status}: ${await res.text()}`);
   return res.json();
 }
