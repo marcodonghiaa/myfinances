@@ -19,3 +19,13 @@ export async function latestFxRows(currencies: string[]) {
   const data = await res.json();
   return fxRows(data.date, data.rates);
 }
+
+// The rate for one currency, plus the rows to store, when fx_rates has none yet. Null when the code
+// is not a plain currency (Yahoo also returns subunits like ZAc) or Frankfurter has no such rate.
+// Throws on a bad response, like latestFxRows.
+export async function fetchRateToEur(currency: string) {
+  if (!/^[A-Z]{3}$/.test(currency)) return null;
+  const rows = await latestFxRows([currency]);
+  const rate = rows.find((r) => r.currency === currency)?.rate_to_eur;
+  return rate === undefined ? null : { rate, rows };
+}

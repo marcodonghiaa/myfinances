@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Adding a holding: no more silent zero, clearer errors
+- **Deploy the function:** `supabase functions deploy add-holding`. No migration.
+- A holding is refused when it has no valid price or no exchange rate, instead of being saved and shown at 0. A missing rate is fetched on the spot.
+- Search and add errors now say what failed, for example that CoinGecko is limiting requests.
+
 ### Splitwise corrections
 - **Migration:** `20261109000000_splitwise_corrections`. You apply it with `supabase db push`. Apply it before using corrections in the dashboard; until then that screen says the update is missing, and importing still works.
 - Adds `apply_splitwise_corrections`, which applies the rows you tick: added late, edited or removed in Splitwise. A removed row linked to a bank transaction clears its personal amount; an edited one recalculates it. Undo does not cover corrections.
