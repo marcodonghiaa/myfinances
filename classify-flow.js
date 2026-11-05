@@ -67,13 +67,32 @@ async function markRefunds() {
   return pairs.length;
 }
 
-async function main() {
-  let totalClassified = 0;
+// Classifies batches until none is left. The same batch coming back means its updates didn't
+// land (applyGroupedUpdates only logs a failure): stop instead of looping until the job is
+// killed, which would also hold the launchd lock and skip every later sync.
+async function classifyAll(fetchBatch, applyBatch) {
+  let total = 0;
+  let lastKey = null;
   while (true) {
-    const rows = await fetchUnclassified();
+    const rows = await fetchBatch();
     if (rows.length === 0) break;
+    const key = rows.map((r) => `${r.account_uid}:${r.entry_reference}`).join();
+    if (key === lastKey) {
+      console.error(`${rows.length} transaction(s) could not be classified; stopping.`);
+      process.exitCode = 1;
+      break;
+    }
+    lastKey = key;
+    await applyBatch(rows);
+    total += rows.length;
+    if (rows.length < BATCH_SIZE) break;
+  }
+  return total;
+}
 
-    await applyGroupedUpdates(
+async function main() {
+  const totalClassified = await classifyAll(fetchUnclassified, (rows) =>
+    applyGroupedUpdates(
       supabase,
       rows.map((row) => ({
         account_uid: row.account_uid,
@@ -81,17 +100,18 @@ async function main() {
         update: { flow_type: resolveFlowType(row) },
         guardColumn: 'flow_type',
       })),
-    );
-
-    totalClassified += rows.length;
-    if (rows.length < BATCH_SIZE) break;
-  }
+    ),
+  );
 
   const refunded = await markRefunds();
   console.log(`Done. Classified ${totalClassified} transaction(s), paired ${refunded} refund(s).`);
 }
 
-main().catch((err) => {
-  console.error(`Failed: ${errorTag(err)}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`Failed: ${errorTag(err)}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { classifyAll, resolveFlowType, BATCH_SIZE };
