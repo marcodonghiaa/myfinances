@@ -132,7 +132,7 @@ cd myfinances
 docker compose up -d --build
 ```
 
-Open http://localhost:3000. With Docker, a newly linked bank's last 90 days of transactions arrive within about 5 minutes. Check your configuration any time with `node env-check.js`.
+Open http://localhost:3000 (only this computer; set `WEB_BIND=0.0.0.0` in `.env` to reach it from your phone on the same network). With Docker, a newly linked bank's last 90 days of transactions arrive within about 5 minutes. Check your configuration any time with `node env-check.js`.
 
 </details>
 
