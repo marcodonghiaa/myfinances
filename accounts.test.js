@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getAccounts, ebAccountId, idsPatchFromDetails } = require('./accounts');
+const { getAccounts, getAllUserIds, ebAccountId, idsPatchFromDetails } = require('./accounts');
 
 test('ebAccountId uses eb_account_uid when set', () => {
   assert.strictEqual(ebAccountId({ uid: 'a', eb_account_uid: 'b' }), 'b');
@@ -44,6 +44,7 @@ test('getAccounts reads without eb_account_uid when the column is missing', asyn
   const selects = [];
   const responses = [
     { data: null, error: { code: '42703' } },
+    { data: null, error: { code: '42703' } },
     { data: [{ uid: 'a' }], error: null },
   ];
   const supabase = {
@@ -62,6 +63,50 @@ test('getAccounts reads without eb_account_uid when the column is missing', asyn
   } finally {
     console.warn = warn;
   }
-  assert.strictEqual(selects.length, 2);
-  assert.ok(!selects[1].includes('eb_account_uid'));
+  assert.strictEqual(selects.length, 3);
+  assert.ok(!selects[2].includes('eb_account_uid'));
+});
+
+function accountsClient(rows) {
+  return {
+    from: () => ({
+      select: () => {
+        const result = Promise.resolve({ data: rows, error: null });
+        result.eq = async () => ({ data: rows, error: null });
+        return result;
+      },
+    }),
+  };
+}
+
+test('getAccounts skips manual accounts: they have no bank to sync', async () => {
+  const supabase = accountsClient([{ uid: 'bank' }, { uid: 'cash', manual: true }]);
+  assert.deepStrictEqual(await getAccounts(supabase, 'user'), [{ uid: 'bank' }]);
+});
+
+test('getAccounts reads manual when the eb column exists but manual does not', async () => {
+  const selects = [];
+  const responses = [
+    { data: null, error: { code: '42703' } },
+    { data: [{ uid: 'a', eb_account_uid: null }], error: null },
+  ];
+  const supabase = {
+    from: () => ({
+      select: (cols) => {
+        selects.push(cols);
+        return { eq: async () => responses[selects.length - 1] };
+      },
+    }),
+  };
+  assert.deepStrictEqual(await getAccounts(supabase, 'user'), [{ uid: 'a', eb_account_uid: null }]);
+  assert.ok(selects[0].includes('manual'));
+  assert.ok(selects[1].includes('eb_account_uid') && !selects[1].includes('manual'));
+});
+
+test('getAllUserIds leaves out users with only manual accounts', async () => {
+  const supabase = accountsClient([
+    { user_id: 'u1', manual: false },
+    { user_id: 'u2', manual: true },
+  ]);
+  assert.deepStrictEqual(await getAllUserIds(supabase), ['u1']);
 });

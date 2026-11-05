@@ -1,29 +1,41 @@
 const ACCOUNT_COLUMNS = 'uid, currency, label, created_at, iban, identification_hash, consent_valid_until';
 
-async function getAccounts(supabase, userId) {
-  const select = (cols) => supabase.from('accounts').select(cols).eq('user_id', userId);
-  let { data, error } = await select(`${ACCOUNT_COLUMNS}, eb_account_uid`);
-  // 42703 = undefined column: the eb_account_uid migration isn't applied yet, so
-  // read without it and ebAccountId falls back to uid.
-  if (error?.code === '42703') {
-    console.warn('Reading accounts without eb_account_uid: apply the latest migrations.');
-    ({ data, error } = await select(ACCOUNT_COLUMNS));
-  }
+// Newest columns first: 42703 (undefined column) means that migration isn't applied yet, so
+// read again without it. eb_account_uid missing: ebAccountId falls back to uid. manual
+// missing: there are no manual accounts yet.
+const OPTIONAL_COLUMNS = [', eb_account_uid, manual', ', eb_account_uid', ''];
 
+async function selectNewest(supabase, base, filter) {
+  for (const extra of OPTIONAL_COLUMNS) {
+    let query = supabase.from('accounts').select(`${base}${extra}`);
+    if (filter) query = filter(query);
+    const { data, error } = await query;
+    if (error?.code === '42703' && extra) continue;
+    if (!extra) console.warn('Reading accounts without eb_account_uid: apply the latest migrations.');
+    return { data, error };
+  }
+}
+
+// Bank accounts only: manual accounts (transactions typed in by hand) have no bank to sync.
+async function getAccounts(supabase, userId) {
+  const { data, error } = await selectNewest(supabase, ACCOUNT_COLUMNS, (q) => q.eq('user_id', userId));
   if (error) throw new Error(`Failed to load accounts: ${error.message}`);
-  if (!data || data.length === 0) {
+  const bank = (data || []).filter((a) => !a.manual);
+  if (bank.length === 0) {
     throw new Error('No accounts found for this user_id — add a row to the accounts table first.');
   }
 
-  return data;
+  return bank;
 }
 
 // Every real user with at least one linked bank account -- what the sync
-// pipeline loops over instead of a single hardcoded USER_ID.
+// pipeline loops over instead of a single hardcoded USER_ID. Someone with only
+// manual transactions has nothing to sync.
 async function getAllUserIds(supabase) {
-  const { data, error } = await supabase.from('accounts').select('user_id');
+  let { data, error } = await supabase.from('accounts').select('user_id, manual');
+  if (error?.code === '42703') ({ data, error } = await supabase.from('accounts').select('user_id'));
   if (error) throw new Error(`Failed to load user ids: ${error.message}`);
-  const ids = new Set((data || []).map((row) => row.user_id));
+  const ids = new Set((data || []).filter((row) => !row.manual).map((row) => row.user_id));
   return Array.from(ids);
 }
 

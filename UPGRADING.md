@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Add transactions by hand
+- **Migration:** `20261111000000_manual_transactions`. You apply it with `supabase db push`. Apply it before deploying the dashboard with the "+" button; until then adding says the update is missing.
+- **Sync:** pull the new code too. The bank sync now skips manual accounts. An older sync would try to fetch them from Enable Banking and log errors.
+- Adds `add_manual_transaction` and a `manual` flag on accounts: each source you name ("Fineco", "Cash") gets a hidden manual account. The amount, date and description of a manual transaction can be edited; bank rows stay read-only. Manual accounts don't appear in the accounts list or in net worth.
+- **Roll back:** revert the dashboard and the sync first, then `supabase/rollbacks/20261111000000_manual_transactions.down.sql`. This deletes every transaction you added by hand.
+
 ### Delete a holding
 - **Migration:** `20261110000000_delete_holding`. You apply it with `supabase db push`. Apply it before deploying the dashboard that has the Delete button; until then deleting says the update is missing.
 - Adds `delete_holding`, which deletes one of your investments or crypto holdings for good, with its price history and trades. Its value also leaves your past net worth. Use "Mark as sold" instead for something you really sold.
