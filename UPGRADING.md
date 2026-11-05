@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Delete a holding
+- **Migration:** `20261110000000_delete_holding`. You apply it with `supabase db push`. Apply it before deploying the dashboard that has the Delete button; until then deleting says the update is missing.
+- Adds `delete_holding`, which deletes one of your investments or crypto holdings for good, with its price history and trades. Its value also leaves your past net worth. Use "Mark as sold" instead for something you really sold.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261110000000_delete_holding.down.sql`. Holdings already deleted stay deleted.
+
 ### Adding a holding: no more silent zero, clearer errors
 - **Deploy the function:** `supabase functions deploy add-holding`. No migration.
 - A holding is refused when it has no valid price or no exchange rate, instead of being saved and shown at 0. A missing rate is fetched on the spot.
