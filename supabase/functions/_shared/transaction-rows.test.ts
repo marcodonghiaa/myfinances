@@ -50,3 +50,12 @@ Deno.test("names a credit after the payer and a debit after the payee", async ()
   const [debit] = await buildRows([tx({ creditor: { name: "Spotify" }, debtor: { name: "Me" } })], "acc", "user");
   assertEquals(debit.creditor_name, "Spotify");
 });
+
+Deno.test("pending transactions are left out until the bank books them", async () => {
+  const rows = await buildRows(
+    [tx({ entry_reference: null, status: "PDNG", booking_date: null }), tx({ entry_reference: "b1", status: "BOOK" })],
+    "acc",
+    "u1",
+  );
+  assertEquals(rows.map((r) => (r as { entry_reference: string }).entry_reference), ["b1"]);
+});

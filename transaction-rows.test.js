@@ -52,3 +52,14 @@ test('a credit without a payer name keeps whatever name the bank gave', () => {
   const [row] = buildRows([tx({ credit_debit_indicator: 'CRDT', creditor: { name: 'Me' } })], 'acc', 'user');
   assert.strictEqual(row.creditor_name, 'Me');
 });
+
+// Regression: a pending transaction and its booked copy got different ids and both were kept,
+// so the spend counted twice.
+test('pending transactions are left out until the bank books them', () => {
+  const rows = buildRows(
+    [tx({ entry_reference: null, status: 'PDNG', booking_date: null }), tx({ entry_reference: 'b1', status: 'BOOK' }), tx({ entry_reference: 'b2' })],
+    'acc',
+    'u1',
+  );
+  assert.deepStrictEqual(rows.map((r) => r.entry_reference), ['b1', 'b2']);
+});
