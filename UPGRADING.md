@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Net worth keeps a bank that didn't sync, and counts deposits
+- **Migration:** `20261114000000_net_worth_bank_carry_and_deposits`. You apply it with `supabase db push`. No dashboard change needed.
+- A bank whose sync failed on a day (an expired consent, say) dropped out of that day's net worth. Each account now keeps its last balance for up to 30 days.
+- Deposits (CDs) now count in net worth, inside cash, from their start until they mature.
+- **Roll back:** `supabase/rollbacks/20261114000000_net_worth_bank_carry_and_deposits.down.sql`.
+
 ### Spending and subscription view fixes
 - **Migration:** `20261113000000_spend_and_subscription_views`. You apply it with `supabase db push`. No dashboard change needed.
 - Spending: a month with imported totals and Splitwise shares listed each category twice; now once, with the same total.
