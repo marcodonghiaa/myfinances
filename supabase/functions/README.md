@@ -19,9 +19,12 @@ plain deploy from this repo reproduces the same gating described below.
   a country, powers the bank picker. `verify_jwt: true`.
 - **sync-bank** — P2 spike: syncs balance and transactions for one account
   (`{"account_uid": "..."}`), the Deno port of `sync-networth.js` +
-  `sync-transactions.js`. Service role only (checked in the function on top of
-  `verify_jwt: true`). Never run it beside the launchd/Docker sync: banks allow
-  ~4 unattended calls a day per account.
+  `sync-transactions.js`. Callers send a project secret key (`sb_secret_...`) on
+  the `apikey` header; the function checks it against `SUPABASE_SECRET_KEYS`
+  (`verify_jwt: false`, secret keys are not JWTs). A project still on the legacy
+  keys only must create its secret keys first (Settings → API Keys), or every
+  call gets 401. Never run it beside the
+  launchd/Docker sync: banks allow ~4 unattended calls a day per account.
 
 ## Secrets
 
