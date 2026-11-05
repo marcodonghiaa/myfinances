@@ -30,3 +30,9 @@ test('the prompt still sends the fields it sent before', () => {
     assert.ok(prompt.includes(`"${field}"`), field);
   }
 });
+
+test("the prompt offers the user's own list when given one", () => {
+  const prompt = buildCategorizePrompt([credit], ['Groceries', 'Gym', 'Transfer']);
+  assert.match(prompt, /exactly one of these categories: Groceries, Gym, Transfer\./);
+  assert.doesNotMatch(prompt, /Entertainment/);
+});

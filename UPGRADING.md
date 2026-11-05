@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Your own categories
+- **Migration:** `20261115000000_user_categories`. You apply it with `supabase db push --linked`. Until then everyone has the built-in categories, as before.
+- Adds `user_categories`: add categories of your own or hide built-in ones you don't use (Settings → Categories in the dashboard). The AI categorizes with your list. Transfer and Income can't be hidden.
+- **Roll back:** `supabase/rollbacks/20261115000000_user_categories.down.sql`. Transactions keep the category names they have.
+
 ### Net worth keeps a bank that didn't sync, and counts deposits
 - **Migration:** `20261114000000_net_worth_bank_carry_and_deposits`. You apply it with `supabase db push --linked`. No dashboard change needed.
 - A bank whose sync failed on a day (an expired consent, say) dropped out of that day's net worth. Each account now keeps its last balance for up to 30 days.

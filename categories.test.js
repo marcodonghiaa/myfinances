@@ -20,3 +20,26 @@ test('the Taxes guide names the tax payments to expect', () => {
 test('shared Splitwise expenses are never taxes', () => {
   assert.ok(!SPLITWISE_CATEGORIES.includes('Taxes'));
 });
+
+const { categoriesFor } = require('./categories');
+
+// A self-hoster wanted their own categories instead of the built-in ones.
+test("a user's list drops the built-ins they hid and adds their own", () => {
+  const list = categoriesFor([
+    { name: 'Taxes', hidden: true },
+    { name: 'Experiences', hidden: true },
+    { name: 'Gym', hidden: false },
+    { name: 'Gifts', hidden: false },
+  ]);
+  assert.ok(!list.includes('Taxes') && !list.includes('Experiences'));
+  assert.deepStrictEqual(list.slice(-2), ['Gym', 'Gifts']);
+  assert.ok(list.includes('Transfer') && list.includes('Income'));
+});
+
+test('with no rows the list is the built-in one', () => {
+  assert.deepStrictEqual(categoriesFor([]), CATEGORIES);
+});
+
+test('the prompt guide describes a category the user created', () => {
+  assert.match(guideFor(['Gym']), /- Gym: a category the user created/);
+});

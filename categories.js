@@ -22,7 +22,17 @@ const CATEGORY_GUIDE = {
 };
 
 function guideFor(categories) {
-  return categories.map((c) => `- ${c}: ${CATEGORY_GUIDE[c]}`).join('\n');
+  return categories
+    .map((c) => `- ${c}: ${CATEGORY_GUIDE[c] ?? 'a category the user created; use it when the name fits.'}`)
+    .join('\n');
 }
 
-module.exports = { CATEGORIES, guideFor };
+// One user's list: the built-in categories minus the ones they hid, plus their own.
+// rows: that user's user_categories rows ({ name, hidden }).
+function categoriesFor(rows) {
+  const hidden = new Set(rows.filter((r) => r.hidden).map((r) => r.name));
+  const own = rows.filter((r) => !r.hidden && !CATEGORIES.includes(r.name)).map((r) => r.name);
+  return [...CATEGORIES.filter((c) => !hidden.has(c)), ...own];
+}
+
+module.exports = { CATEGORIES, guideFor, categoriesFor };
