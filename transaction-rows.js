@@ -40,6 +40,9 @@ function buildRows(transactions, accountUid, userId) {
   const seen = new Map();
   const byRef = new Map(); // Map keeps one row per key, last wins
   for (const tx of transactions) {
+    // A pending transaction has no stable id yet: stored now, it would be kept beside its
+    // booked copy (a different id) and counted twice. It is stored once the bank books it.
+    if (tx.status === 'PDNG') continue;
     const ref = entryReferenceFor(tx, seen);
     byRef.set(ref, mapToRow(tx, accountUid, userId, ref));
   }

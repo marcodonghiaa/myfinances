@@ -49,6 +49,8 @@ export async function buildRows(transactions: EbTransaction[], accountUid: strin
   const seen = new Map<string, number>();
   const byRef = new Map<string, Json>(); // one row per key, last wins
   for (const tx of transactions) {
+    // Pending rows wait until booked: their id changes when booked, so they would count twice.
+    if (tx.status === "PDNG") continue;
     const ref = await entryReferenceFor(tx, seen);
     byRef.set(ref, mapToRow(tx, accountUid, userId, ref));
   }
