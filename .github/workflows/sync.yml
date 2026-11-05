@@ -33,25 +33,15 @@ jobs:
     if: vars.SYNC_ON_GITHUB == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      APP_ID: ${{ secrets.APP_ID }}
-      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      USER_ID: ${{ secrets.USER_ID }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      COINBASE_API_KEY_NAME: ${{ secrets.COINBASE_API_KEY_NAME }}
-      COINBASE_API_PRIVATE_KEY: ${{ secrets.COINBASE_API_PRIVATE_KEY }}
-      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --omit=dev
+      # No secrets in the steps above: only the sync step below gets them, and no package
+      # install script runs (none needs one).
+      - run: npm ci --omit=dev --ignore-scripts
       - name: Pick the job
         id: job
         run: |
@@ -61,4 +51,17 @@ jobs:
             "3 8 * * *") echo "name=consent" >> "$GITHUB_OUTPUT" ;;
             *) echo "name=${{ inputs.job || 'sync' }}" >> "$GITHUB_OUTPUT" ;;
           esac
-      - run: node scheduler.js --once ${{ steps.job.outputs.name }}
+      - name: Run the job
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          USER_ID: ${{ secrets.USER_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          COINBASE_API_KEY_NAME: ${{ secrets.COINBASE_API_KEY_NAME }}
+          COINBASE_API_PRIVATE_KEY: ${{ secrets.COINBASE_API_PRIVATE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: node scheduler.js --once ${{ steps.job.outputs.name }}
