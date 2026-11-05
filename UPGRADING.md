@@ -8,7 +8,8 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ### Import a statement PDF
 - **Deploy the function and set its key:** `supabase functions deploy parse-statement`, then `supabase secrets set GEMINI_API_KEY=<the key in your .env>`. No migration.
-- The dashboard's statement import also takes PDFs: Gemini reads the transactions, you check them and confirm. The PDF is sent to Gemini and not stored.
+- The dashboard's statement import also takes PDFs: Gemini reads the transactions, you check them and confirm. The PDF is sent to Gemini and not stored here.
+- **Privacy:** the whole PDF goes to Google, with your name, address and IBAN. On Gemini's free tier Google may use what you send to improve its products, and people may review it. Use a key from a paid (billing-enabled) project if that matters to you; categorization sends transaction descriptions to the same key.
 - Needs the manual transactions migration (`20261111000000_manual_transactions`) applied.
 
 ### Add transactions by hand

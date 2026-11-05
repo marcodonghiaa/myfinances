@@ -17,7 +17,9 @@ plain deploy from this repo reproduces the same gating described below.
   with the service role. `verify_jwt: true`.
 - **parse-statement** — reads the transactions out of a bank statement PDF with Gemini
   for the dashboard's import (`{ pdf: <base64> }` → `{ rows }`). The PDF is never stored and
-  nothing is written: the dashboard adds the rows you confirm. Needs `GEMINI_API_KEY`.
+  nothing is written: the dashboard adds the rows you confirm. Needs `GEMINI_API_KEY`;
+  the whole PDF (name, IBAN) goes to Google, which on the free tier may use it, so prefer a
+  paid-tier key.
   `verify_jwt: true`.
 - **list-banks** — read-only lookup of Enable Banking's supported banks for
   a country, powers the bank picker. `verify_jwt: true`.
