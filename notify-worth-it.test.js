@@ -44,3 +44,32 @@ test('booking-date floor uses the UTC date', async () => {
 
   assert.deepStrictEqual(calls.find((c) => c[0] === 'or'), ['or', 'booking_date.gte.2026-10-21,booking_date.is.null']);
 });
+
+const { userIdsWithSubscriptions, notifyUser } = require('./notify-worth-it');
+
+// Regression: prompts went only to USER_ID; other users with notifications on never got any.
+test('every user with a push subscription is prompted, each once', async () => {
+  const supabase = {
+    from: () => ({
+      select: async () => ({ data: [{ user_id: 'a' }, { user_id: 'b' }, { user_id: 'a' }], error: null }),
+    }),
+  };
+  assert.deepStrictEqual(await userIdsWithSubscriptions(supabase), ['a', 'b']);
+});
+
+test('a user with nothing to prompt sends nothing', async () => {
+  const sent = [];
+  const supabase = {
+    from: () => {
+      const q = {
+        select: () => q, eq: () => q, gte: () => q, is: () => q, or: () => q, in: () => q, not: () => q,
+        neq: () => q, lt: () => q, lte: () => q, gt: () => q, order: () => q, limit: () => q,
+        then: (resolve) => resolve({ data: [], error: null }),
+      };
+      return q;
+    },
+  };
+  const push = { fetchSubscriptions: async () => [{}], sendToAllSubscriptions: async () => sent.push(1) };
+  assert.strictEqual(await notifyUser(supabase, 'a', push), 0);
+  assert.deepStrictEqual(sent, []);
+});
