@@ -16,6 +16,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - **Migration:** `20261112000000_set_holding_quantity`. You apply it with `supabase db push`. Until then the dashboard changes the quantity as before, and net worth follows at the next price sync.
 - Adds `set_holding_quantity`: changing a quantity (or Mark as sold) also writes today's value from the latest price. Before, net worth kept the old value until the price sync ran, and for good where it doesn't.
 - **Roll back:** `supabase/rollbacks/20261112000000_set_holding_quantity.down.sql`.
+### Import a statement PDF
+- **Deploy the function and set its key:** `supabase functions deploy parse-statement`, then `supabase secrets set GEMINI_API_KEY=<the key in your .env>`. No migration.
+- The dashboard's statement import also takes PDFs: Gemini reads the transactions, you check them and confirm. The PDF is sent to Gemini and not stored here.
+- **Privacy:** the whole PDF goes to Google, with your name, address and IBAN. On Gemini's free tier Google may use what you send to improve its products, and people may review it. Use a key from a paid (billing-enabled) project if that matters to you; categorization sends transaction descriptions to the same key.
+- Needs the manual transactions migration (`20261111000000_manual_transactions`) applied.
 
 ### Add transactions by hand
 - **Migration:** `20261111000000_manual_transactions`. You apply it with `supabase db push`. Apply it before deploying the dashboard with the "+" button; until then adding says the update is missing.

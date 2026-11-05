@@ -15,6 +15,12 @@ plain deploy from this repo reproduces the same gating described below.
   (crypto) by name, ticker or ISIN, and adds the chosen holding with today's
   price so it shows at once. Writes the holding as the user (RLS), the price
   with the service role. `verify_jwt: true`.
+- **parse-statement** — reads the transactions out of a bank statement PDF with Gemini
+  for the dashboard's import (`{ pdf: <base64> }` → `{ rows }`). The PDF is never stored and
+  nothing is written: the dashboard adds the rows you confirm. Needs `GEMINI_API_KEY`;
+  the whole PDF (name, IBAN) goes to Google, which on the free tier may use it, so prefer a
+  paid-tier key.
+  `verify_jwt: true`.
 - **list-banks** — read-only lookup of Enable Banking's supported banks for
   a country, powers the bank picker. `verify_jwt: true`.
 - **sync-bank** — P2 spike: syncs balance and transactions for one account
@@ -34,6 +40,8 @@ Functions → Secrets). Never committed anywhere:
 
 - `ENABLE_BANKING_APP_ID`
 - `ENABLE_BANKING_PRIVATE_KEY` (the full PEM, same key the local CLI scripts use)
+- `GEMINI_API_KEY` (for parse-statement; the same key as the sync's `.env`). Optional
+  `GEMINI_MODEL`.
 - `FRONTEND_URL` (optional) — an extra allowed dashboard origin, kept for older setups and
   `./setup.sh --dashboard-url`. Normally unneeded: the dashboard registers its own address
   (table `dashboard_origins`) when you sign in, and the functions allow those origins in CORS.
