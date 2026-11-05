@@ -1,12 +1,17 @@
 const webpush = require('web-push');
 const { errorTag } = require('./log-safe');
 
-// Web Push shared by every notification script.
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY,
-);
+// Web Push shared by every notification script. The keys are optional (env-check says so), so
+// they are read when a push is sent, not when this file loads: loading it without them used to
+// crash the consent notice even with nothing to send.
+let configured = false;
+function configure() {
+  const { VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = process.env;
+  if (!VAPID_SUBJECT || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return false;
+  if (!configured) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  configured = true;
+  return true;
+}
 
 async function fetchSubscriptions(supabase, userId) {
   const { data, error } = await supabase
@@ -21,6 +26,10 @@ async function fetchSubscriptions(supabase, userId) {
 // callers use this to decide whether it's safe to mark work as done
 // (a transient failure on every subscription should retry next run).
 async function sendToAllSubscriptions(supabase, subscriptions, payload) {
+  if (!configure()) {
+    console.log('Push keys (VAPID_*) are not set, so no notification was sent.');
+    return false;
+  }
   let delivered = false;
   for (const [i, sub] of subscriptions.entries()) {
     try {

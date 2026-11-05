@@ -73,3 +73,19 @@ test('a user with nothing to prompt sends nothing', async () => {
   assert.strictEqual(await notifyUser(supabase, 'a', push), 0);
   assert.deepStrictEqual(sent, []);
 });
+
+// Regression: refunded or deleted charges still got a "worth it?" prompt.
+test('refunded, deleted and transfer rows are not prompted', async () => {
+  const rows = [
+    { entry_reference: 'ok', flow_type: 'spend', deleted_at: null },
+    { entry_reference: 'new', flow_type: null, deleted_at: null },
+    { entry_reference: 'refunded', flow_type: 'refunded', deleted_at: null },
+    { entry_reference: 'deleted', flow_type: 'spend', deleted_at: '2026-10-27T10:00:00Z' },
+    { entry_reference: 'transfer', flow_type: 'transfer', deleted_at: null },
+  ];
+  const builder = new Proxy({}, {
+    get: (_, m) => (m === 'then' ? (resolve) => resolve({ data: rows, error: null }) : () => builder),
+  });
+  const got = await fetchEligibleTransactions(builder, 'user', NOW);
+  assert.deepStrictEqual(got.map((t) => t.entry_reference), ['ok', 'new']);
+});
