@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Splitwise undo keeps how a row counts
+- **Migration:** `20261116000000_splitwise_undo_keeps_flow`. You apply it with `supabase db push --linked`.
+- Undoing a Splitwise import no longer resets spend/income on bank rows it only gave a share; only rows the import marked as transfers are reset.
+- **Roll back:** `supabase/rollbacks/20261116000000_splitwise_undo_keeps_flow.down.sql`.
+
 ### Your own categories
 - **Migration:** `20261115000000_user_categories`. You apply it with `supabase db push --linked`. Until then everyone has the built-in categories, as before.
 - Adds `user_categories`: add categories of your own or hide built-in ones you don't use (Settings → Categories in the dashboard). The AI categorizes with your list. Transfer and Income can't be hidden.
