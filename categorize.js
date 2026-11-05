@@ -7,6 +7,7 @@ const { applyGroupedUpdates } = require('./batch-update');
 const { CATEGORIES } = require('./categories');
 const { buildCategorizePrompt } = require('./categorize-prompt');
 const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
+const { fetchLearned, applyLearned, learnedUpdate, planRelearn } = require('./learned-categories');
 const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
@@ -60,6 +61,71 @@ async function applyCategories(results, rows) {
   await applyGroupedUpdates(supabase, items);
 }
 
+async function applyLearnedMatches(matched) {
+  await applyGroupedUpdates(
+    supabase,
+    matched.map(({ row, category }) => ({
+      account_uid: row.account_uid,
+      entry_reference: row.entry_reference,
+      update: learnedUpdate(category),
+      guardColumn: 'category',
+    })),
+  );
+}
+
+// Of `rows` (one user's), those whose merchant you categorized by hand before get that category.
+async function learnFrom(rows) {
+  if (rows.length === 0) return rows;
+  const learned = await fetchLearned(supabase, rows[0].user_id, rows.map((r) => r.creditor_name));
+  const { matched, unmatched } = applyLearned(rows, learned);
+  if (matched.length > 0) {
+    console.log(`Applying ${matched.length} category(ies) you set before for the same merchant...`);
+    await applyLearnedMatches(matched);
+  }
+  return unmatched;
+}
+
+const RELEARN_DAYS = 120;
+
+// Recent AI-categorized rows whose merchant you later categorized by hand take your category,
+// so one correction fixes the merchant's other rows too. The update guards on category_source
+// = 'ai', so a row you change in the meantime is never overwritten.
+async function relearnAiRows() {
+  const since = new Date(Date.now() - RELEARN_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('user_id, account_uid, entry_reference, creditor_name, category, category_source')
+      .eq('category_source', 'ai')
+      .gte('booking_date', since)
+      .is('deleted_at', null)
+      .order('account_uid')
+      .order('entry_reference')
+      .range(from, from + 999);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  let changed = 0;
+  for (const userRows of Map.groupBy(rows, (r) => r.user_id).values()) {
+    const learned = await fetchLearned(supabase, userRows[0].user_id, userRows.map((r) => r.creditor_name));
+    const plan = planRelearn(userRows, learned);
+    await applyGroupedUpdates(
+      supabase,
+      plan.map(({ row, category }) => ({
+        account_uid: row.account_uid,
+        entry_reference: row.entry_reference,
+        update: learnedUpdate(category),
+        guardColumn: 'category_source',
+        guardIn: ['ai'],
+      })),
+    );
+    changed += plan.length;
+  }
+  if (changed > 0) console.log(`Matched ${changed} AI category(ies) to ones you set for the same merchant.`);
+}
+
 async function applyRuleMatches(matched) {
   await applyGroupedUpdates(
     supabase,
@@ -104,17 +170,20 @@ async function reapplyRules() {
 // Rules alone, over every uncategorized row: used without a Gemini key, or after the AI
 // fails, so your rules never depend on the AI being available.
 async function applyRulesOnly(rules) {
-  if (rules.length === 0) return;
   const filled = await walkNullRows(supabase, {
     select: 'user_id, account_uid, entry_reference, creditor_name, remittance_info',
     nullColumn: 'category',
     handlePage: async (rows) => {
-      const { matched } = applyRules(rows, rules);
+      const { matched, unmatched } = applyRules(rows, rules);
       if (matched.length > 0) await applyRuleMatches(matched);
-      return matched.length;
+      // Categories you set by hand, one user at a time (the page can span users).
+      let learned = 0;
+      const byUser = Map.groupBy(unmatched, (r) => r.user_id);
+      for (const userRows of byUser.values()) learned += userRows.length - (await learnFrom(userRows)).length;
+      return matched.length + learned;
     },
   });
-  console.log(`Applied rules to ${filled} transaction(s).`);
+  console.log(`Applied rules or your past categories to ${filled} transaction(s).`);
 }
 
 async function categorizeWithAi(rules) {
@@ -129,13 +198,14 @@ async function categorizeWithAi(rules) {
       continue;
     }
 
-    const { matched, unmatched } = applyRules(rows, rules);
+    const { matched, unmatched: afterRules } = applyRules(rows, rules);
 
     if (matched.length > 0) {
       console.log(`Applying ${matched.length} rule match(es)...`);
       await applyRuleMatches(matched);
     }
 
+    const unmatched = await learnFrom(afterRules);
     if (unmatched.length > 0) {
       console.log(`Categorizing ${unmatched.length} transaction(s) via AI...`);
       const results = await classifyBatch(unmatched);
@@ -160,6 +230,7 @@ async function main() {
   }
   try {
     await categorizeWithAi(rules);
+    await relearnAiRows();
   } catch (err) {
     console.error(`AI categorization failed, applying your rules only: ${errorTag(err)}`);
     await applyRulesOnly(rules);
