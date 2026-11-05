@@ -197,3 +197,38 @@ test('an error that is not an all-caps name is not kept as a code', async () => 
   assert.deepStrictEqual(logged, ['Failed to fetch balance: HTTP 401']);
   assert.deepStrictEqual(updates, []);
 });
+
+// Regression: one unparseable balance became null, hit `amount not null` and the single upsert
+// lost that day's snapshot for every account.
+test('an unreadable balance is skipped, not saved as null', async () => {
+  const errors = console.error;
+  console.error = () => {};
+  try {
+    for (const balance of [{ balance_amount: { amount: 'n/a', currency: 'EUR' } }, { balance_amount: { amount: '5' } }, {}]) {
+      const { fetch } = fakeFetch({ '/balances': { body: { balances: [balance] } } });
+      const { supabase } = fakeSupabase();
+      const { row } = await syncAccountBalance({ fetch, supabase }, 't', { uid: 'pk', identification_hash: 'h' }, 'u', '2026-10-27');
+      assert.strictEqual(row, null);
+    }
+  } finally {
+    console.error = errors;
+  }
+});
+
+test('saving one by one keeps the good rows when one fails', async () => {
+  const { saveOneByOne } = require('./sync-networth');
+  const errors = console.error;
+  console.error = () => {};
+  const saved = [];
+  const supabase = {
+    from: () => ({
+      upsert: async (row) => (row.account_uid === 'bad' ? { error: { message: 'boom' } } : (saved.push(row.account_uid), { error: null })),
+    }),
+  };
+  try {
+    assert.strictEqual(await saveOneByOne(supabase, [{ account_uid: 'a' }, { account_uid: 'bad' }, { account_uid: 'b' }]), 2);
+  } finally {
+    console.error = errors;
+  }
+  assert.deepStrictEqual(saved, ['a', 'b']);
+});
