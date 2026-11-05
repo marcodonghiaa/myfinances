@@ -55,15 +55,33 @@ function buildJwt() {
   return `${signingInput}.${base64url(signature)}`;
 }
 
-async function fetchCoinbaseAccounts() {
-  const token = buildJwt();
-  const res = await fetchWithTimeout(`https://${HOST}${PATH}`, {
-    headers: { Authorization: `Bearer ${token}` },
+// Coinbase returns about 49 accounts per page by default; follow the cursor so coins past the
+// first page are updated too. The signed uri is the path alone, without the query.
+async function fetchPage(cursor) {
+  const params = new URLSearchParams({ limit: '250' });
+  if (cursor) params.set('cursor', cursor);
+  const res = await fetchWithTimeout(`https://${HOST}${PATH}?${params}`, {
+    headers: { Authorization: `Bearer ${buildJwt()}` },
   });
   if (!res.ok) throw new Error(`Coinbase API error ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data.accounts || [];
+  return res.json();
 }
+
+const MAX_PAGES = 50; // a cursor that never ends must not loop forever
+
+async function fetchAllAccounts(getPage) {
+  const accounts = [];
+  let cursor = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await getPage(cursor);
+    accounts.push(...(data.accounts || []));
+    if (!data.has_next || !data.cursor || data.cursor === cursor) return accounts;
+    cursor = data.cursor;
+  }
+  throw new Error(`Coinbase returned more than ${MAX_PAGES} pages of accounts`);
+}
+
+const fetchCoinbaseAccounts = () => fetchAllAccounts(fetchPage);
 
 async function main() {
   if (!USER_ID) throw new Error('USER_ID missing from .env');
@@ -101,7 +119,11 @@ async function main() {
   console.log(`Synced ${rows.length} Coinbase holding(s).`);
 }
 
-main().catch((err) => {
-  console.error(`Failed: ${errorTag(err)}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`Failed: ${errorTag(err)}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { fetchAllAccounts };
