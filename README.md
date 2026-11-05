@@ -139,7 +139,7 @@ Open http://localhost:3000. With Docker, a newly linked bank's last 90 days of t
 <details>
 <summary><b>Manual setup</b></summary>
 
-1. Create a Supabase project, then `supabase link --project-ref <ref>` and `supabase db push`.
+1. Create a Supabase project, then `supabase link --project-ref <ref>` and `supabase db push --linked`.
 2. In Enable Banking, create a Production application with redirect URL `https://<ref>.supabase.co/functions/v1/bank-consent-callback` (must match exactly). Activate it by linking one of your own accounts in their panel.
 3. Deploy the functions and set `ENABLE_BANKING_APP_ID` and `ENABLE_BANKING_PRIVATE_KEY` as Edge Function secrets. (`FRONTEND_URL` is optional: the dashboard registers its own address when you sign in.)
 4. In the dashboard, **Authentication -> Users -> Add user** (tick auto-confirm) to create your login, and put its id in `.env` as `USER_ID`.
