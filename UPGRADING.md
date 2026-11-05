@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Import a statement PDF
+- **Deploy the function and set its key:** `supabase functions deploy parse-statement`, then `supabase secrets set GEMINI_API_KEY=<the key in your .env>`. No migration.
+- The dashboard's statement import also takes PDFs: Gemini reads the transactions, you check them and confirm. The PDF is sent to Gemini and not stored.
+- Needs the manual transactions migration (`20261111000000_manual_transactions`) applied.
+
 ### Add transactions by hand
 - **Migration:** `20261111000000_manual_transactions`. You apply it with `supabase db push`. Apply it before deploying the dashboard with the "+" button; until then adding says the update is missing.
 - **Sync:** pull the new code too. The bank sync now skips manual accounts. An older sync would try to fetch them from Enable Banking and log errors.
