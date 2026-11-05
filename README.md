@@ -61,7 +61,7 @@ A sync runs **every 6 hours** (banks typically cap unattended access at about 4 
 
 A newly linked bank doesn't wait for the next run: in Docker, every 5 minutes the scheduler syncs banks linked in the last hour that have never synced, then categorizes what arrived. With cron or launchd, run `bash run-daily-sync.sh` once after linking.
 
-`notify-worth-it.js` runs every 30 minutes. Portfolio, crypto and notification scripts are single-user (`USER_ID`); bank sync is multi-user.
+`notify-worth-it.js` runs every 30 minutes. Bank sync, prices and "worth it?" prompts cover every user; only the Coinbase sync is single-user (`USER_ID`, your own API key).
 
 Bank linking from the dashboard runs as three Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
 
