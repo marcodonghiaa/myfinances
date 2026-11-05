@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Spending and subscription view fixes
+- **Migration:** `20261113000000_spend_and_subscription_views`. You apply it with `supabase db push`. No dashboard change needed.
+- Spending: a month with imported totals and Splitwise shares listed each category twice; now once, with the same total.
+- Subscriptions: a shared plan counted at full price; it now counts your share when one is set.
+- **Roll back:** `supabase/rollbacks/20261113000000_spend_and_subscription_views.down.sql`.
+
 ### Selling or changing a holding moves net worth at once
 - **Migration:** `20261112000000_set_holding_quantity`. You apply it with `supabase db push`. Until then the dashboard changes the quantity as before, and net worth follows at the next price sync.
 - Adds `set_holding_quantity`: changing a quantity (or Mark as sold) also writes today's value from the latest price. Before, net worth kept the old value until the price sync ran, and for good where it doesn't.
