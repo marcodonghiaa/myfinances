@@ -5,13 +5,13 @@ const { parseQuote, nextAssetType } = require('./yahoo-quote');
 const { errorTag } = require('./log-safe');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
-const USER_ID = process.env.USER_ID;
 
+// Every user's holdings: anyone can add investments in the dashboard, so prices can't be
+// limited to the owner's USER_ID.
 async function fetchHoldings() {
   const { data, error } = await supabase
     .from('portfolio_holdings')
-    .select('isin, yahoo_symbol, name, shares, asset_type')
-    .eq('user_id', USER_ID);
+    .select('user_id, isin, yahoo_symbol, name, shares, asset_type');
   if (error) throw error;
   return data;
 }
@@ -38,45 +38,50 @@ async function getLatestFxRate(currency) {
   return data[0].rate_to_eur;
 }
 
-async function main() {
-  if (!USER_ID) throw new Error('USER_ID missing from .env');
-
-  const holdings = await fetchHoldings();
-  const today = new Date().toISOString().slice(0, 10);
+// One snapshot per holding, each under its own user. A symbol held by several users is
+// fetched once. A holding that can't be priced is skipped and logged.
+async function priceHoldings(holdings, getQuote, getRate, today) {
+  const quotes = new Map();
+  const quoteOf = (symbol) => {
+    if (!quotes.has(symbol)) quotes.set(symbol, getQuote(symbol));
+    return quotes.get(symbol);
+  };
   const rows = [];
   const typeUpdates = [];
-
   for (const [i, holding] of holdings.entries()) {
     try {
-      const { price, currency, assetType } = await fetchQuote(holding.yahoo_symbol);
-      const rateToEur = await getLatestFxRate(currency);
+      const { price, currency, assetType } = await quoteOf(holding.yahoo_symbol);
       const valueNative = price * holding.shares;
-      const valueEur = valueNative * rateToEur;
-
       rows.push({
-        user_id: USER_ID,
+        user_id: holding.user_id,
         isin: holding.isin,
         snapshot_date: today,
         price,
         currency,
         value_native: valueNative,
-        value_eur: valueEur,
+        value_eur: valueNative * (await getRate(currency)),
       });
-
       const newType = assetType && nextAssetType(holding.asset_type, assetType);
       if (newType && newType !== holding.asset_type) {
-        typeUpdates.push({ isin: holding.isin, asset_type: newType });
+        typeUpdates.push({ user_id: holding.user_id, isin: holding.isin, asset_type: newType });
       }
     } catch (err) {
       console.error(`Failed to price holding ${i + 1}/${holdings.length}: ${errorTag(err)}`);
     }
   }
+  return { rows, typeUpdates };
+}
+
+async function main() {
+  const holdings = await fetchHoldings();
+  const today = new Date().toISOString().slice(0, 10);
+  const { rows, typeUpdates } = await priceHoldings(holdings, fetchQuote, getLatestFxRate, today);
 
   for (const update of typeUpdates) {
     const { error } = await supabase
       .from('portfolio_holdings')
       .update({ asset_type: update.asset_type })
-      .eq('user_id', USER_ID)
+      .eq('user_id', update.user_id)
       .eq('isin', update.isin);
     if (error) console.error(`Failed to update asset_type for a holding: ${errorTag(error)}`);
   }
@@ -91,7 +96,11 @@ async function main() {
   console.log(`\nSaved ${rows.length} snapshot(s) for ${today}.`);
 }
 
-main().catch((err) => {
-  console.error(`Failed: ${errorTag(err)}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`Failed: ${errorTag(err)}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { priceHoldings };

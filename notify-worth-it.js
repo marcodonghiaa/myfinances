@@ -48,31 +48,24 @@ function buildPayload(transactions) {
   };
 }
 
-async function main() {
-  require('dotenv').config();
-  const USER_ID = process.env.USER_ID;
-  if (!USER_ID) throw new Error('USER_ID missing from .env');
-  if (!process.env.VAPID_PRIVATE_KEY) throw new Error('VAPID_PRIVATE_KEY missing from .env');
-  const { createClient } = require('@supabase/supabase-js');
-  const { fetchSubscriptions, sendToAllSubscriptions } = require('./push');
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+// Users with at least one push subscription: only they can get a prompt.
+async function userIdsWithSubscriptions(supabase) {
+  const { data, error } = await supabase.from('push_subscriptions').select('user_id');
+  if (error) throw error;
+  return [...new Set((data || []).map((r) => r.user_id))];
+}
 
-  const transactions = await fetchEligibleTransactions(supabase, USER_ID, new Date());
-  if (transactions.length === 0) {
-    console.log('No eligible transactions to prompt.');
-    return;
-  }
+async function notifyUser(supabase, userId, push) {
+  const transactions = await fetchEligibleTransactions(supabase, userId, new Date());
+  if (transactions.length === 0) return 0;
 
-  const subscriptions = await fetchSubscriptions(supabase, USER_ID);
-  if (subscriptions.length === 0) {
-    console.log(`${transactions.length} eligible transaction(s) but no push subscription on file.`);
-    return;
-  }
+  const subscriptions = await push.fetchSubscriptions(supabase, userId);
+  if (subscriptions.length === 0) return 0;
 
-  const delivered = await sendToAllSubscriptions(supabase, subscriptions, buildPayload(transactions));
+  const delivered = await push.sendToAllSubscriptions(supabase, subscriptions, buildPayload(transactions));
   if (!delivered) {
-    console.error('Push delivery failed for every subscription -- not marking prompted, will retry next run.');
-    return;
+    console.error('Push delivery failed for every subscription of a user -- will retry next run.');
+    return 0;
   }
 
   const now = new Date().toISOString();
@@ -86,7 +79,30 @@ async function main() {
     if (error) failed++;
   }
   if (failed > 0) console.error(`Failed to mark ${failed} transaction(s) prompted.`);
-  console.log(`Prompted ${transactions.length} transaction(s).`);
+  return transactions.length;
+}
+
+// Every user who turned notifications on gets their own prompts, not only the owner (USER_ID).
+// One user's failure doesn't stop the others.
+async function main() {
+  require('dotenv').config();
+  if (!process.env.VAPID_PRIVATE_KEY) throw new Error('VAPID_PRIVATE_KEY missing from .env');
+  const { createClient } = require('@supabase/supabase-js');
+  const push = require('./push');
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+
+  let prompted = 0;
+  let failedUsers = 0;
+  for (const userId of await userIdsWithSubscriptions(supabase)) {
+    try {
+      prompted += await notifyUser(supabase, userId, push);
+    } catch (err) {
+      failedUsers++;
+      console.error(`Prompts failed for a user: ${errorTag(err)}`);
+    }
+  }
+  console.log(`Prompted ${prompted} transaction(s).`);
+  if (failedUsers > 0) process.exitCode = 1;
 }
 
 if (require.main === module) {
@@ -96,4 +112,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { fetchEligibleTransactions, buildPayload };
+module.exports = { fetchEligibleTransactions, buildPayload, userIdsWithSubscriptions, notifyUser };
