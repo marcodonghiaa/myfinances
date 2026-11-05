@@ -2,24 +2,24 @@
 
 Pulling new code does not update your database. Migrations are not applied automatically, and the sync scripts only change once you redeploy them. Find your version below and do what each change asks.
 
-For every release: `git pull`, then `supabase db push` for new migrations, then rebuild or restart the sync jobs (`docker compose up -d --build`, or nothing for cron or launchd, which run the new files on their next run).
+For every release: `git pull`, then `supabase db push --linked` for new migrations (keep `--linked`: since Supabase CLI v3 a plain `db push` targets a local database, not your project), then rebuild or restart the sync jobs (`docker compose up -d --build`, or nothing for cron or launchd, which run the new files on their next run).
 
 ## Release notes, newest first
 
 ### Net worth keeps a bank that didn't sync, and counts deposits
-- **Migration:** `20261114000000_net_worth_bank_carry_and_deposits`. You apply it with `supabase db push`. No dashboard change needed.
+- **Migration:** `20261114000000_net_worth_bank_carry_and_deposits`. You apply it with `supabase db push --linked`. No dashboard change needed.
 - A bank whose sync failed on a day (an expired consent, say) dropped out of that day's net worth. Each account now keeps its last balance for up to 30 days.
 - Deposits (CDs) now count in net worth, inside cash, from their start until they mature.
 - **Roll back:** `supabase/rollbacks/20261114000000_net_worth_bank_carry_and_deposits.down.sql`.
 
 ### Spending and subscription view fixes
-- **Migration:** `20261113000000_spend_and_subscription_views`. You apply it with `supabase db push`. No dashboard change needed.
+- **Migration:** `20261113000000_spend_and_subscription_views`. You apply it with `supabase db push --linked`. No dashboard change needed.
 - Spending: a month with imported totals and Splitwise shares listed each category twice; now once, with the same total.
 - Subscriptions: a shared plan counted at full price; it now counts your share when one is set.
 - **Roll back:** `supabase/rollbacks/20261113000000_spend_and_subscription_views.down.sql`.
 
 ### Selling or changing a holding moves net worth at once
-- **Migration:** `20261112000000_set_holding_quantity`. You apply it with `supabase db push`. Until then the dashboard changes the quantity as before, and net worth follows at the next price sync.
+- **Migration:** `20261112000000_set_holding_quantity`. You apply it with `supabase db push --linked`. Until then the dashboard changes the quantity as before, and net worth follows at the next price sync.
 - Adds `set_holding_quantity`: changing a quantity (or Mark as sold) also writes today's value from the latest price. Before, net worth kept the old value until the price sync ran, and for good where it doesn't.
 - **Roll back:** `supabase/rollbacks/20261112000000_set_holding_quantity.down.sql`.
 ### Import a statement PDF
@@ -29,13 +29,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - Needs the manual transactions migration (`20261111000000_manual_transactions`) applied.
 
 ### Add transactions by hand
-- **Migration:** `20261111000000_manual_transactions`. You apply it with `supabase db push`. Apply it before deploying the dashboard with the "+" button; until then adding says the update is missing.
+- **Migration:** `20261111000000_manual_transactions`. You apply it with `supabase db push --linked`. Apply it before deploying the dashboard with the "+" button; until then adding says the update is missing.
 - **Sync:** pull the new code too. The bank sync now skips manual accounts. An older sync would try to fetch them from Enable Banking and log errors.
 - Adds `add_manual_transaction` and a `manual` flag on accounts: each source you name ("Fineco", "Cash") gets a hidden manual account. The amount, date and description of a manual transaction can be edited; bank rows stay read-only. Manual accounts don't appear in the accounts list or in net worth.
 - **Roll back:** revert the dashboard and the sync first, then `supabase/rollbacks/20261111000000_manual_transactions.down.sql`. This deletes every transaction you added by hand.
 
 ### Delete a holding
-- **Migration:** `20261110000000_delete_holding`. You apply it with `supabase db push`. Apply it before deploying the dashboard that has the Delete button; until then deleting says the update is missing.
+- **Migration:** `20261110000000_delete_holding`. You apply it with `supabase db push --linked`. Apply it before deploying the dashboard that has the Delete button; until then deleting says the update is missing.
 - Adds `delete_holding`, which deletes one of your investments or crypto holdings for good, with its price history and trades. Its value also leaves your past net worth. Use "Mark as sold" instead for something you really sold.
 - **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261110000000_delete_holding.down.sql`. Holdings already deleted stay deleted.
 
@@ -48,7 +48,7 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - **No migration, no deploy:** `fx-sync.js` now stores every currency Frankfurter publishes (about 30 rows a day) instead of USD, GBP and CHF. A holding that showed 0 because its currency had no rate, CAD for example, gets its value at the next sync.
 
 ### Splitwise corrections
-- **Migration:** `20261109000000_splitwise_corrections`. You apply it with `supabase db push`. Apply it before using corrections in the dashboard; until then that screen says the update is missing, and importing still works.
+- **Migration:** `20261109000000_splitwise_corrections`. You apply it with `supabase db push --linked`. Apply it before using corrections in the dashboard; until then that screen says the update is missing, and importing still works.
 - Adds `apply_splitwise_corrections`, which applies the rows you tick: added late, edited or removed in Splitwise. A removed row linked to a bank transaction clears its personal amount; an edited one recalculates it. Undo does not cover corrections.
 - **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261109000000_splitwise_corrections.down.sql`. Corrections already applied stay.
 
@@ -58,32 +58,32 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - **Roll back:** revert the code.
 
 ### Your trades, for real performance (database part)
-- **Migration:** `20261108000000_holding_trades`. You apply it with `supabase db push`. Apply it before deploying the dashboard that uses it; until then that dashboard says the update is missing.
+- **Migration:** `20261108000000_holding_trades`. You apply it with `supabase db push --linked`. Apply it before deploying the dashboard that uses it; until then that dashboard says the update is missing.
 - Adds the `holding_trades` table (your buys and sells, only you can see or change them). `holding_performance` now also returns holdings sold to zero that have trades.
 - **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261108000000_holding_trades.down.sql`. This deletes your trades, so export them first.
 
 ### Past prices for price returns (backfill)
-- **No migration of its own; needs `20261107000000_price_history_and_holding_performance`.** Apply that with `supabase db push` first. Until then the new step prints `price_history not found: apply the latest migration` and does nothing; the rest of the sync is unaffected.
+- **No migration of its own; needs `20261107000000_price_history_and_holding_performance`.** Apply that with `supabase db push --linked` first. Until then the new step prints `price_history not found: apply the latest migration` and does nothing; the rest of the sync is unaffected.
 - New `backfill-price-history.js`: fetches up to a year of past daily prices (Yahoo for stocks and funds, CoinGecko for coins) into `price_history`, only for holdings that have little of it. It runs as the last step of the daily sync, so a holding you add gets its history on the next sync. To fill everything now, run `node backfill-price-history.js` once (`--force` refetches all). Safe to re-run.
 - A symbol Yahoo or CoinGecko will not answer for is counted as failed (`Price history: N filled, M failed, K already complete`) and retried next sync; the dashboard shows "since <date>" for it. CoinGecko's free tier is slow and rate limited (about 8 seconds between coins). An optional free demo key in `COINGECKO_DEMO_API_KEY` (see `.env.example`) helps.
 - Nothing is written to `portfolio_snapshots` or `crypto_snapshots`, so net worth history is unchanged.
 - **Roll back:** revert the code. The table stays until you run the migration's rollback.
 
 ### Price return for Portfolio and Crypto (database part)
-- **Migration:** `20261107000000_price_history_and_holding_performance`. You apply it with `supabase db push`; nothing applies it for you. Safe to apply before or after updating the dashboard.
+- **Migration:** `20261107000000_price_history_and_holding_performance`. You apply it with `supabase db push --linked`; nothing applies it for you. Safe to apply before or after updating the dashboard.
 - Adds the `price_history` table (past market prices, readable when signed in, written only by the sync) and the `holding_performance(p_from, p_last_move)` function the dashboard will call for price returns. It reads your holdings and prices only and writes nothing. `price_history` is never used by net worth.
 - Until the price backfill ships (next release) the function works from your snapshots alone: ranges that start before your first snapshot show "since <date>".
 - **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261107000000_price_history_and_holding_performance.down.sql` (drops the function and the table; backfilled prices are lost and can be fetched again).
 
 ### Setup no longer asks for the dashboard address
-- **No migration beyond `20261106000000_dashboard_origins`** (apply with `supabase db push` first, then `supabase functions deploy`).
+- **No migration beyond `20261106000000_dashboard_origins`** (apply with `supabase db push --linked` first, then `supabase functions deploy`).
 - `./setup.sh` has no "Dashboard address" question any more. Your dashboard registers its own address in `dashboard_origins` when the owner signs in, the Edge Functions allow those addresses in CORS, and a bank link returns to the address that started it. For GitHub installs setup prints the three Vercel values, then waits for that first sign-in and ends with `Done! Open <address>, sign in as <email>`.
 - Existing installs: nothing breaks. `FRONTEND_URL` stays set and is still accepted; your dashboard registers itself on the next sign-in once it runs the matching my-wealth-view version. `./setup.sh --dashboard-url https://...` still works if bank linking ever returns to the wrong address.
 - To forget a registered address (an old domain): in the Supabase SQL editor, `delete from dashboard_origins where origin = 'https://old.example.com';`.
 - **Roll back:** revert the code first, then `supabase/rollbacks/20261106000000_dashboard_origins.down.sql`.
 
 ### Accounts show the bank's name and logo
-- **Migration:** `20261105000000_account_bank`. Apply it with `supabase db push` BEFORE redeploying `bank-consent-callback` (`supabase functions deploy bank-consent-callback`), then update the dashboard. A callback deployed before the migration fails every bank link, because it writes columns that don't exist yet.
+- **Migration:** `20261105000000_account_bank`. Apply it with `supabase db push --linked` BEFORE redeploying `bank-consent-callback` (`supabase functions deploy bank-consent-callback`), then update the dashboard. A callback deployed before the migration fails every bank link, because it writes columns that don't exist yet.
 - `accounts` gains `bank_name`, `bank_country` and `bank_logo`, and `v_bank_accounts_latest` exposes `bank_name`, `bank_logo` and `bank_country`. Before, an account was named after the holder name Enable Banking returns.
 - Banks you already connected keep their current name until their next Renew access, which fills in the bank.
 - **Roll back:** revert the code first, then `supabase/rollbacks/20261105000000_account_bank.down.sql`.
@@ -97,7 +97,7 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - **No migration. No action.** The push now also fires 14 days before access ends, the day the Accounts banner appears.
 
 ### Banks keep syncing after Renew access
-- **Migration:** `20261104000000_account_eb_uid`. Apply it with `supabase db push`, then redeploy `bank-consent-callback` (`supabase functions deploy bank-consent-callback`). Until the migration is applied the sync logs a warning and keeps using the old ids, so a renewed bank still stops when its old consent ends.
+- **Migration:** `20261104000000_account_eb_uid`. Apply it with `supabase db push --linked`, then redeploy `bank-consent-callback` (`supabase functions deploy bank-consent-callback`). Until the migration is applied the sync logs a warning and keeps using the old ids, so a renewed bank still stops when its old consent ends.
 - Enable Banking gives an account a new id when you renew access. The old id stops working when the old consent ends, so a renewed bank silently stopped updating. The new id is now stored in `accounts.eb_account_uid` and the sync uses it; history stays on the same account.
 - The balance sync fills in a missing bank id (`identification_hash`) once per older account, so a later renewal finds it instead of adding a duplicate account.
 - The sync log ends with `EB refused N account(s)` when the bank rejects an account id.
@@ -125,7 +125,7 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - Nothing to move by hand: the next sync reads your existing `last-sync.json` and copies it into the table. The file is still written as a local copy, and the sync keeps working from it if the migration isn't applied yet (with a warning in the log).
 
 ### Add investments and crypto from the dashboard
-- **Migration:** `20261101000000_holdings_self_service`. Apply with `supabase db push`. **Deploy the new function:** `supabase functions deploy add-holding`.
+- **Migration:** `20261101000000_holdings_self_service`. Apply with `supabase db push --linked`. **Deploy the new function:** `supabase functions deploy add-holding`.
 - Before, `portfolio_holdings` and `crypto_holdings` could only be filled in SQL. The migration lets a signed-in user add, edit and delete their own rows (prices stay read-only), allows `Manual` as a crypto source, and removes the `Trade Republic` default broker.
 - The new `add-holding` Edge Function searches Yahoo Finance and CoinGecko and saves a holding with today's price. The dashboard screen that uses it ships in my-wealth-view.
 - A holding added by name or ticker has no ISIN; its Yahoo symbol is stored in the `isin` column instead.
@@ -180,13 +180,13 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - `setup.sh` now creates your login and `USER_ID` for you and walks you through this step. `start-bank-consent` and `list-banks` also validate their input, and `start-bank-consent` refuses a sixth open consent request per user (redeploy with `supabase functions deploy`).
 
 ### Re-importing Splitwise keeps your edits
-- **Migration:** `20261031000000_splitwise_import_keeps_edits`. Apply with `supabase db push`.
+- **Migration:** `20261031000000_splitwise_import_keeps_edits`. Apply with `supabase db push --linked`.
 - **Why:** importing the same group and date range again deleted every row in the range and reinserted it from the file, so a description or category you had edited was lost.
 - **Effect:** rows already stored (matched by fingerprint) keep their edited description and category; an empty category is filled from the file. New rows are inserted and rows the file no longer has are deleted. An expense you change in Splitwise itself gets a new fingerprint, so edits on it are still lost.
 - **Roll back:** the matching file in `supabase/rollbacks/`.
 
 ### EUR views keep every row, net worth no longer dips
-- **Migrations:** `20261029000000_fx_eur_fallback`, `20261030000000_net_worth_carry_forward`. Apply with `supabase db push`.
+- **Migrations:** `20261029000000_fx_eur_fallback`, `20261030000000_net_worth_carry_forward`. Apply with `supabase db push --linked`.
 - **Why:** an EUR row dated before the first stored FX rate used to vanish from every euro view. A holding with no price on the latest day made that whole day's net worth dip.
 - **Effect:** EUR rows always stay. A non-EUR currency with no rate now shows a NULL euro amount instead of disappearing. A holding keeps its last known value until it is priced again; a sold holding drops out the day after its last snapshot.
 - **Roll back:** the matching files in `supabase/rollbacks/`.
@@ -200,8 +200,8 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 - Before, an account that dropped to exactly 0 was skipped, so its old amount stayed in `crypto_holdings` and kept being priced. Now its amount is set to 0 on the next Coinbase sync. A missing or malformed balance is still skipped, never read as zero.
 
 ### Schema files cleanup (existing installs read this)
-- Rollback files moved from `supabase/migrations/` to `supabase/rollbacks/`, so `supabase db push` no longer trips over them.
-- `merchant_aliases` (`20261027000000`) and `net_worth_daily_bonds` (`20261028000000`) were added to this repo. If you already created them by hand or from the frontend repo, `supabase db push` fails with `Found local migration files to be inserted before the last migration on remote database` and suggests `--include-all`. Do not use `--include-all`: it would re-run the `create table` and fail with "already exists". Mark them applied instead: `supabase migration repair --status applied 20261027000000 20261028000000`, then `supabase db push` again. (Tested on a local Supabase: after the repair, push reports the database is up to date.)
+- Rollback files moved from `supabase/migrations/` to `supabase/rollbacks/`, so `supabase db push --linked` no longer trips over them.
+- `merchant_aliases` (`20261027000000`) and `net_worth_daily_bonds` (`20261028000000`) were added to this repo. If you already created them by hand or from the frontend repo, `supabase db push --linked` fails with `Found local migration files to be inserted before the last migration on remote database` and suggests `--include-all`. Do not use `--include-all`: it would re-run the `create table` and fail with "already exists". Mark them applied instead: `supabase migration repair --status applied 20261027000000 20261028000000`, then `supabase db push --linked` again. (Tested on a local Supabase: after the repair, push reports the database is up to date.)
 
 ## Known limits
 - Portfolio, crypto and notification scripts are single-user (`USER_ID`). Bank sync is multi-user.
