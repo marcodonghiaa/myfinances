@@ -72,17 +72,34 @@ async function syncAccountBalance({ fetch, supabase }, token, account, userId, t
     }
     const row = {
       account_uid: account.uid,
-      currency: balance.balance_amount.currency,
-      amount: parseFloat(balance.balance_amount.amount),
+      currency: balance.balance_amount?.currency,
+      amount: parseFloat(balance.balance_amount?.amount),
       snapshot_date: today,
       user_id: userId,
     };
+    // An unreadable balance would fail the whole day's save for every account; skip just this one.
+    if (!Number.isFinite(row.amount) || !row.currency) {
+      console.error('Balance unreadable, skipped for this account.');
+      return { row: null, rejected: null };
+    }
     return { row, rejected: null };
   } catch (err) {
     console.error(`Failed to fetch balance: ${errorTag(err)}`);
     const renewed = await markForRenewal(supabase, account, err, today);
     return { row: null, rejected: EB_REJECTED_STATUSES.has(err.status) ? err.status : null, renewed };
   }
+}
+
+async function saveOneByOne(supabase, rows) {
+  let saved = 0;
+  for (const row of rows) {
+    const { error } = await supabase
+      .from('net_worth_snapshots')
+      .upsert(row, { onConflict: 'account_uid,snapshot_date' });
+    if (error) console.error(`Snapshot not saved: ${errorTag(error)}`);
+    else saved++;
+  }
+  return saved;
 }
 
 async function main() {
@@ -123,10 +140,14 @@ async function main() {
       .from('net_worth_snapshots')
       .upsert(rows, { onConflict: 'account_uid,snapshot_date' });
 
-    if (error) {
-      console.error(`Supabase insert error: ${errorTag(error)}`);
-    } else {
+    if (!error) {
       console.log(`\nSaved ${rows.length} snapshot(s) for ${today}.`);
+    } else {
+      // One bad row fails the whole statement: save one by one so the others still land.
+      console.error(`Supabase insert error, saving one by one: ${errorTag(error)}`);
+      const saved = await saveOneByOne(supabase, rows);
+      console.log(`\nSaved ${saved}/${rows.length} snapshot(s) for ${today}.`);
+      if (saved < rows.length) process.exitCode = 1;
     }
   }
 }
@@ -138,4 +159,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { syncAccountBalance };
+module.exports = { syncAccountBalance, saveOneByOne };
