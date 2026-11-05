@@ -4,7 +4,7 @@ const { classifyWithGemini } = require('./gemini-classify');
 const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
-const { CATEGORIES } = require('./categories');
+const { CATEGORIES, categoriesFor } = require('./categories');
 const { buildCategorizePrompt } = require('./categorize-prompt');
 const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
 const { fetchLearned, applyLearned, learnedUpdate, planRelearn } = require('./learned-categories');
@@ -35,24 +35,35 @@ async function fetchRules() {
   return data;
 }
 
-async function classifyBatch(rows) {
+// The user's own list (see user_categories). Before that migration, or if it can't be read,
+// everyone gets the built-in list, as before.
+async function fetchUserCategories(userId) {
+  const { data, error } = await supabase.from('user_categories').select('name, hidden').eq('user_id', userId);
+  if (error) {
+    if (!['42P01', 'PGRST205'].includes(error.code)) console.warn(`Using the built-in categories: ${errorTag(error)}`);
+    return CATEGORIES;
+  }
+  return categoriesFor(data);
+}
+
+async function classifyBatch(rows, categories) {
   return classifyWithGemini({
-    prompt: buildCategorizePrompt(rows),
+    prompt: buildCategorizePrompt(rows, categories),
     resultKey: 'category',
-    resultEnum: CATEGORIES,
+    resultEnum: categories,
     apiKey: GEMINI_API_KEY,
     model: GEMINI_MODEL,
   });
 }
 
-async function applyCategories(results, rows) {
+async function applyCategories(results, rows, categories) {
   const accountByRef = new Map(rows.map((r) => [r.entry_reference, r.account_uid]));
   const items = [];
   let invalid = 0;
   for (const { entry_reference, category } of results) {
     const account_uid = accountByRef.get(entry_reference);
     if (!account_uid) continue; // model echoed a reference we never sent
-    if (!CATEGORIES.includes(category)) {
+    if (!categories.includes(category)) {
       invalid++;
       continue;
     }
@@ -209,8 +220,9 @@ async function categorizeWithAi(rules) {
     const unmatched = await learnFrom(afterRules);
     if (unmatched.length > 0) {
       console.log(`Categorizing ${unmatched.length} transaction(s) via AI...`);
-      const results = await classifyBatch(unmatched);
-      await applyCategories(results, unmatched);
+      const categories = await fetchUserCategories(unmatched[0].user_id);
+      const results = await classifyBatch(unmatched, categories);
+      await applyCategories(results, unmatched, categories);
     }
 
     totalCategorized += rows.length;
