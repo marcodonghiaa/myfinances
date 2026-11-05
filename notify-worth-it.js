@@ -12,7 +12,7 @@ async function fetchEligibleTransactions(supabase, userId, now) {
   const bookingFloor = new Date(now.getTime() - MAX_BOOKING_AGE_DAYS * 86400 * 1000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, account_uid, creditor_name, amount, currency, category')
+    .select('entry_reference, account_uid, creditor_name, amount, currency, category, flow_type, deleted_at')
     .eq('user_id', userId)
     .eq('credit_debit_indicator', 'DBIT')
     .in('category', DISCRETIONARY_CATEGORIES)
@@ -23,7 +23,8 @@ async function fetchEligibleTransactions(supabase, userId, now) {
     .gte('created_at', new Date(now.getTime() - MAX_AGE_HOURS * 3600 * 1000).toISOString())
     .or(`booking_date.gte.${bookingFloor},booking_date.is.null`);
   if (error) throw error;
-  return data;
+  // A refunded, deleted or transfer row isn't a purchase to ask about.
+  return data.filter((t) => !t.deleted_at && t.flow_type !== 'refunded' && t.flow_type !== 'transfer');
 }
 
 // One transaction: the specific deep-link prompt. Several at once (e.g. an hour

@@ -23,7 +23,9 @@ permissions:
 
 # One run at a time per job: a slow sync is never overlapped by the next one.
 concurrency:
-  group: sync-${{ github.event.schedule || inputs.job }}
+  # Keyed on the job itself, so a manual sync and the scheduled one share a group (they
+  # used to get different keys and could run together, doubling bank calls).
+  group: sync-${{ github.event.schedule == '42 * * * *' && 'notify' || github.event.schedule == '3 8 * * *' && 'consent' || github.event.schedule == '17 */6 * * *' && 'sync' || inputs.job || 'sync' }}
   cancel-in-progress: false
 
 jobs:
