@@ -2,13 +2,14 @@
 //
 // P2 spike: the Node sync-networth + sync-transactions, for ONE account per call, so a
 // slow bank can't push the whole run past the 150 s wall clock. Body: { "account_uid": "..." }.
-// Only the service role may call it (pg_cron fans out one call per account): every call
-// spends Enable Banking requests, and banks allow ~4 unattended calls a day per account.
+// Only our own backend may call it, with a project secret key on the apikey header (pg_cron
+// fans out one call per account): every call spends Enable Banking requests, and banks allow
+// ~4 unattended calls a day per account. verify_jwt is off: secret keys are not JWTs.
 // Never run it beside the launchd sync for the same reason.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { signEnableBankingJwt } from "../_shared/enable-banking.ts";
-import { isServiceRole } from "../_shared/service-role.ts";
+import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import {
   ACCOUNT_COLUMNS,
   errorTag,
@@ -17,7 +18,12 @@ import {
   syncAccountTransactions,
 } from "../_shared/bank-sync.ts";
 
-const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+// A project without secret keys (Settings -> API Keys) gets 401 on every call: create them first.
+const SECRET_KEYS = parseSecretKeys(Deno.env.get("SUPABASE_SECRET_KEYS"));
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  SECRET_KEYS.default ?? Object.values(SECRET_KEYS)[0] ?? "",
+);
 
 // All bank calls of one invocation share this budget, leaving time under the 150 s
 // wall clock to save the cursor and snapshot. An aborted run keeps the old cursor.
@@ -27,7 +33,7 @@ const fail = (status: number, error: string) => Response.json({ error }, { statu
 
 Deno.serve(async (req) => {
   const started = Date.now();
-  if (!isServiceRole(req)) return fail(401, "service role required");
+  if (!hasSecretKey(req, SECRET_KEYS)) return fail(401, "secret key required");
   const body = await req.json().catch(() => null);
   const accountUid = body?.account_uid;
   if (typeof accountUid !== "string" || !accountUid) return fail(400, "account_uid required");

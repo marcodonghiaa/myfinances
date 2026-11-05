@@ -24,5 +24,6 @@ verify_jwt = false
 [functions.add-holding]
 verify_jwt = true
 
+# sync-bank checks the project secret key (apikey header) itself: secret keys are not JWTs.
 [functions.sync-bank]
-verify_jwt = true
+verify_jwt = false
