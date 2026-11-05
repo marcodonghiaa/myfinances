@@ -29,7 +29,8 @@ async function fetchRules() {
     .from('category_rules')
     .select('user_id, match_field, match_text, set_category, set_transaction_type')
     .not('set_category', 'is', null)
-    .order('priority', { ascending: true });
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: true }); // every rule has priority 100: oldest first, as listed
   if (error) throw error;
   return data;
 }

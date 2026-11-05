@@ -5,6 +5,7 @@ const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
 const { errorTag } = require('./log-safe');
+const { applyRules } = require('./rules');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -46,6 +47,36 @@ async function applyTransferDefault(rows) {
       guardColumn: 'transaction_type',
     })),
   );
+}
+
+// Rules that set only a type ("spotify -> Subscription") never ran: categorize.js, which applies
+// rules, reads only rules with a category. They are applied here, before the AI.
+async function fetchTypeRules() {
+  const { data, error } = await supabase
+    .from('category_rules')
+    .select('user_id, match_field, match_text, set_transaction_type')
+    .not('set_transaction_type', 'is', null)
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+async function applyTypeRules(rows, rules) {
+  const { matched, unmatched } = applyRules(rows, rules);
+  if (matched.length > 0) {
+    console.log(`Applying ${matched.length} type rule match(es)...`);
+    await applyGroupedUpdates(
+      supabase,
+      matched.map(({ row, rule }) => ({
+        account_uid: row.account_uid,
+        entry_reference: row.entry_reference,
+        update: { transaction_type: rule.set_transaction_type },
+        guardColumn: 'transaction_type',
+      })),
+    );
+  }
+  return unmatched;
 }
 
 async function classifyBatch(rows) {
@@ -96,7 +127,7 @@ async function applyTypes(results, rows) {
   await applyGroupedUpdates(supabase, items);
 }
 
-async function classifyWithAi() {
+async function classifyWithAi(typeRules) {
   let totalClassified = 0;
   const stalls = createStallGuard();
   while (true) {
@@ -108,8 +139,9 @@ async function classifyWithAi() {
       continue;
     }
 
-    const transferRows = rows.filter((r) => isTransferCode(r.bank_transaction_code));
-    const otherRows = rows.filter((r) => !isTransferCode(r.bank_transaction_code));
+    const afterRules = await applyTypeRules(rows, typeRules);
+    const transferRows = afterRules.filter((r) => isTransferCode(r.bank_transaction_code));
+    const otherRows = afterRules.filter((r) => !isTransferCode(r.bank_transaction_code));
 
     if (transferRows.length > 0) {
       console.log(`Setting ${transferRows.length} transfer(s) to One-time...`);
@@ -129,36 +161,42 @@ async function classifyWithAi() {
   console.log(`Done. Classified ${totalClassified} transaction(s).`);
 }
 
-// Transfers only, over every unclassified row: used without a Gemini key, or after the
+// Type rules and transfers, over every unclassified row: used without a Gemini key, or after the
 // AI fails. The rest stays unclassified until the AI can run.
-async function applyTransferDefaultOnly() {
+async function applyTransferDefaultOnly(typeRules) {
   const filled = await walkNullRows(supabase, {
-    select: 'account_uid, entry_reference, bank_transaction_code',
+    select: 'user_id, account_uid, entry_reference, bank_transaction_code, creditor_name, remittance_info',
     nullColumn: 'transaction_type',
     handlePage: async (rows) => {
-      const transfers = rows.filter((r) => isTransferCode(r.bank_transaction_code));
+      const afterRules = await applyTypeRules(rows, typeRules);
+      const transfers = afterRules.filter((r) => isTransferCode(r.bank_transaction_code));
       if (transfers.length > 0) await applyTransferDefault(transfers);
-      return transfers.length;
+      return rows.length - afterRules.length + transfers.length;
     },
   });
-  console.log(`Set ${filled} transfer(s) to One-time.`);
+  console.log(`Set the type of ${filled} transaction(s) by rule or as transfers.`);
 }
 
 async function main() {
+  const typeRules = await fetchTypeRules();
   if (!GEMINI_API_KEY) {
-    console.warn('GEMINI_API_KEY is not set: only transfers are marked One-time. Add a key to .env to detect subscriptions.');
-    return applyTransferDefaultOnly();
+    console.warn('GEMINI_API_KEY is not set: only your type rules and transfers are applied. Add a key to .env to detect subscriptions.');
+    return applyTransferDefaultOnly(typeRules);
   }
   try {
-    await classifyWithAi();
+    await classifyWithAi(typeRules);
   } catch (err) {
-    console.error(`AI classification failed, marking transfers only: ${errorTag(err)}`);
-    await applyTransferDefaultOnly();
+    console.error(`AI classification failed, applying rules and transfers only: ${errorTag(err)}`);
+    await applyTransferDefaultOnly(typeRules);
     process.exitCode = 1;
   }
 }
 
-main().catch((err) => {
-  console.error(`Failed: ${errorTag(err)}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`Failed: ${errorTag(err)}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { isTransferCode };
