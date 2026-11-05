@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push` for new migrations, then 
 
 ## Release notes, newest first
 
+### Selling or changing a holding moves net worth at once
+- **Migration:** `20261112000000_set_holding_quantity`. You apply it with `supabase db push`. Until then the dashboard changes the quantity as before, and net worth follows at the next price sync.
+- Adds `set_holding_quantity`: changing a quantity (or Mark as sold) also writes today's value from the latest price. Before, net worth kept the old value until the price sync ran, and for good where it doesn't.
+- **Roll back:** `supabase/rollbacks/20261112000000_set_holding_quantity.down.sql`.
+
 ### Add transactions by hand
 - **Migration:** `20261111000000_manual_transactions`. You apply it with `supabase db push`. Apply it before deploying the dashboard with the "+" button; until then adding says the update is missing.
 - **Sync:** pull the new code too. The bank sync now skips manual accounts. An older sync would try to fetch them from Enable Banking and log errors.
