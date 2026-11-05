@@ -1,10 +1,11 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { classifyWithGemini, UNTRUSTED_TEXT_NOTE } = require('./gemini-classify');
+const { classifyWithGemini } = require('./gemini-classify');
 const { fetchBatchForOneUser, walkNullRows } = require('./user-batch');
 const { createStallGuard } = require('./stall-guard');
 const { applyGroupedUpdates } = require('./batch-update');
-const { CATEGORIES, guideFor } = require('./categories');
+const { CATEGORIES } = require('./categories');
+const { buildCategorizePrompt } = require('./categorize-prompt');
 const { applyRules, planRuleReapply, REAPPLY_SOURCES } = require('./rules');
 const { errorTag } = require('./log-safe');
 
@@ -33,29 +34,8 @@ async function fetchRules() {
 }
 
 async function classifyBatch(rows) {
-  const prompt = `You are categorizing personal bank transactions into exactly one of these categories: ${CATEGORIES.join(', ')}.
-
-Category guide:
-${guideFor(CATEGORIES)}
-
-Base your judgement on creditor_name and remittance_info — merchant/reference text that may be messy, abbreviated, or in a foreign language. This matters especially for P2P/bank transfers to a person: creditor_name alone (a person's name) tells you nothing, but remittance_info often does — e.g. a transfer to a friend with remittance_info mentioning "spotify" or "netflix" should be categorized by that actual purpose (Entertainment), not filed under Transfer just because the payment method was a person-to-person transfer. Only use Transfer when nothing in remittance_info indicates a real purpose.
-
-${UNTRUSTED_TEXT_NOTE}
-
-Transactions (JSON array):
-${JSON.stringify(rows.map((r) => ({
-  entry_reference: r.entry_reference,
-  creditor_name: r.creditor_name,
-  remittance_info: r.remittance_info,
-  amount: r.amount,
-  currency: r.currency,
-  direction: r.credit_debit_indicator,
-})), null, 2)}
-
-Return a JSON array of {"entry_reference": string, "category": string} for every transaction above, same order, one entry each. category must be exactly one of the allowed categories.`;
-
   return classifyWithGemini({
-    prompt,
+    prompt: buildCategorizePrompt(rows),
     resultKey: 'category',
     resultEnum: CATEGORIES,
     apiKey: GEMINI_API_KEY,
