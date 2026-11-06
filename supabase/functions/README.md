@@ -34,8 +34,9 @@ plain deploy from this repo reproduces the same gating described below.
 
 - **post-sync** — what the sync pipeline runs after the bank sync, moved into
   Supabase: categories for new rows (your rules, your past choices, then Gemini;
-  port of `categorize.js`), then `flow_type` and refund pairs (`classify-flow.js`).
-  Transaction types and Splitwise follow. No bank calls; it only fills empty
+  port of `categorize.js`), transaction types (`classify-type.js`), Splitwise
+  share categories (`categorize-splitwise.js`), then `flow_type` and refund
+  pairs (`classify-flow.js`). No bank calls; it only fills empty
   values, so it can run beside the launchd/Docker sync. Same auth as
   `sync-bank` (secret key on `apikey`, `verify_jwt: false`).
 
