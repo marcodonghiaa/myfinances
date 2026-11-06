@@ -10,6 +10,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
+import { retryRejectedToken } from "../_shared/postgrest-retry.ts";
 import {
   ACCOUNT_COLUMNS,
   errorTag,
@@ -23,6 +24,7 @@ const SECRET_KEYS = parseSecretKeys(Deno.env.get("SUPABASE_SECRET_KEYS"));
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   SECRET_KEYS.default ?? Object.values(SECRET_KEYS)[0] ?? "",
+  { global: { fetch: retryRejectedToken(fetch) } },
 );
 
 // All bank calls of one invocation share this budget, leaving time under the 150 s
