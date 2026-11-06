@@ -46,6 +46,10 @@ plain deploy from this repo reproduces the same gating described below.
   configured: port of `fx-sync.js`, `sync-portfolio-prices.js`,
   `sync-crypto-coinbase.js` and `sync-crypto-prices.js`. No bank calls; one step failing doesn't stop the
   others. Same auth as `sync-bank`.
+- **notify** — push notifications: `{"job":"worth-it"}` sends the "Worth it?"
+  prompts (hourly), `{"job":"consent"}` the bank-access reminders
+  (daily). Port of `notify-worth-it.js`, `consent-notice.js` and `push.js`
+  (web-push via npm). Same auth as `sync-bank`.
 
 ## Secrets
 
@@ -63,6 +67,8 @@ Functions → Secrets). Never committed anywhere:
 - `COINBASE_API_KEY_NAME`, `COINBASE_API_PRIVATE_KEY`, `COINBASE_USER_ID` —
   optional, for `sync-prices` to sync one user's Coinbase balances (the user id
   is whose holdings they are).
+- `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` — for `notify` to
+  send push notifications; without them nothing is sent.
 - `FRONTEND_URL` (optional) — an extra allowed dashboard origin, kept for older setups and
   `./setup.sh --dashboard-url`. Normally unneeded: the dashboard registers its own address
   (table `dashboard_origins`) when you sign in, and the functions allow those origins in CORS.
