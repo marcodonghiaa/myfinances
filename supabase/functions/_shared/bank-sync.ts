@@ -2,6 +2,7 @@
 // Kept free of Deno.env so the tests run with fakes: fetch and supabase come in as deps.
 
 import { buildRows } from "./transaction-rows.ts";
+import { errorTag } from "./log-safe.ts";
 
 // deno-lint-ignore no-explicit-any
 type Db = { from(table: string): any };
@@ -27,15 +28,7 @@ const EB_REJECTED_STATUSES = new Set([401, 403, 404, 422]);
 
 type EbError = Error & { status?: number; code?: string };
 
-// What may be logged about an error: a code, an HTTP status or a class name. Never the
-// message: it can carry names, IBANs, amounts or a raw response body.
-export function errorTag(err: unknown): string {
-  const e = err as { code?: unknown; status?: unknown; name?: unknown } | null;
-  if (typeof e?.code === "string" && e.code) return e.code;
-  if (typeof e?.status === "number") return `HTTP ${e.status}`;
-  if (typeof e?.name === "string") return e.name;
-  return "Error";
-}
+export { errorTag };
 
 // The id Enable Banking answers to now: a renewed consent can give the same bank
 // account a new id (eb_account_uid); null means uid is still it.

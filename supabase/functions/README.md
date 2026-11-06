@@ -32,6 +32,12 @@ plain deploy from this repo reproduces the same gating described below.
   call gets 401. Never run it beside the
   launchd/Docker sync: banks allow ~4 unattended calls a day per account.
 
+- **post-sync** — what the sync pipeline runs after the bank sync, moved into
+  Supabase. Today: `flow_type` for new rows and refund pairs (port of
+  `classify-flow.js`); categories and types follow. No bank calls; it only fills
+  empty values, so it can run beside the launchd/Docker sync. Same auth as
+  `sync-bank` (secret key on `apikey`, `verify_jwt: false`).
+
 ## Secrets
 
 Set once via `supabase secrets set --project-ref <ref> KEY=value` (what
