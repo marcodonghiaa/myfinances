@@ -42,8 +42,9 @@ plain deploy from this repo reproduces the same gating described below.
 
 - **sync-prices** — today's exchange rates (Frankfurter, with a 100-day backfill
   on a fresh install), then a price snapshot for every stock/ETF (Yahoo) and coin
-  (CoinGecko) holding: port of `fx-sync.js`, `sync-portfolio-prices.js` and
-  `sync-crypto-prices.js`. No bank calls; one step failing doesn't stop the
+  (CoinGecko) holding, with the owner's Coinbase balances synced first when
+  configured: port of `fx-sync.js`, `sync-portfolio-prices.js`,
+  `sync-crypto-coinbase.js` and `sync-crypto-prices.js`. No bank calls; one step failing doesn't stop the
   others. Same auth as `sync-bank`.
 
 ## Secrets
@@ -59,6 +60,9 @@ Functions → Secrets). Never committed anywhere:
 - `GEMINI_API_KEY`, optional `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) —
   used by `post-sync` to categorize; without them only your rules and past
   choices categorize.
+- `COINBASE_API_KEY_NAME`, `COINBASE_API_PRIVATE_KEY`, `COINBASE_USER_ID` —
+  optional, for `sync-prices` to sync one user's Coinbase balances (the user id
+  is whose holdings they are).
 - `FRONTEND_URL` (optional) — an extra allowed dashboard origin, kept for older setups and
   `./setup.sh --dashboard-url`. Normally unneeded: the dashboard registers its own address
   (table `dashboard_origins`) when you sign in, and the functions allow those origins in CORS.
