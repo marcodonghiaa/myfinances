@@ -40,6 +40,12 @@ plain deploy from this repo reproduces the same gating described below.
   values, so it can run beside the launchd/Docker sync. Same auth as
   `sync-bank` (secret key on `apikey`, `verify_jwt: false`).
 
+- **sync-prices** — today's exchange rates (Frankfurter, with a 100-day backfill
+  on a fresh install), then a price snapshot for every stock/ETF (Yahoo) and coin
+  (CoinGecko) holding: port of `fx-sync.js`, `sync-portfolio-prices.js` and
+  `sync-crypto-prices.js`. No bank calls; one step failing doesn't stop the
+  others. Same auth as `sync-bank`.
+
 ## Secrets
 
 Set once via `supabase secrets set --project-ref <ref> KEY=value` (what

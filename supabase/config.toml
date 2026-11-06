@@ -34,3 +34,7 @@ verify_jwt = false
 # post-sync checks the project secret key (apikey header) itself, like sync-bank.
 [functions.post-sync]
 verify_jwt = false
+
+# sync-prices checks the project secret key (apikey header) itself, like sync-bank.
+[functions.sync-prices]
+verify_jwt = false
