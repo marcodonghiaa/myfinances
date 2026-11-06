@@ -33,9 +33,10 @@ plain deploy from this repo reproduces the same gating described below.
   launchd/Docker sync: banks allow ~4 unattended calls a day per account.
 
 - **post-sync** — what the sync pipeline runs after the bank sync, moved into
-  Supabase. Today: `flow_type` for new rows and refund pairs (port of
-  `classify-flow.js`); categories and types follow. No bank calls; it only fills
-  empty values, so it can run beside the launchd/Docker sync. Same auth as
+  Supabase: categories for new rows (your rules, your past choices, then Gemini;
+  port of `categorize.js`), then `flow_type` and refund pairs (`classify-flow.js`).
+  Transaction types and Splitwise follow. No bank calls; it only fills empty
+  values, so it can run beside the launchd/Docker sync. Same auth as
   `sync-bank` (secret key on `apikey`, `verify_jwt: false`).
 
 ## Secrets
@@ -48,6 +49,9 @@ Functions → Secrets). Never committed anywhere:
 - `ENABLE_BANKING_PRIVATE_KEY` (the full PEM, same key the local CLI scripts use)
 - `GEMINI_API_KEY` (for parse-statement; the same key as the sync's `.env`). Optional
   `GEMINI_MODEL`.
+- `GEMINI_API_KEY`, optional `GEMINI_MODEL` (default `gemini-3.5-flash-lite`) —
+  used by `post-sync` to categorize; without them only your rules and past
+  choices categorize.
 - `FRONTEND_URL` (optional) — an extra allowed dashboard origin, kept for older setups and
   `./setup.sh --dashboard-url`. Normally unneeded: the dashboard registers its own address
   (table `dashboard_origins`) when you sign in, and the functions allow those origins in CORS.
