@@ -47,17 +47,20 @@ export async function runDetection(
   rpc: Rpc,
   today: string,
   timeLeft: () => boolean,
-): Promise<{ users: number; streams: number; failed: number }> {
+): Promise<{ users: number; streams: number; failed: number; skipped: number }> {
   const { data, error } = await db.from("accounts").select("user_id").order("user_id").limit(PAGE_SIZE);
   if (error) {
     console.error(`detect-recurring: accounts read failed: ${errorTag(error)}`);
-    return { users: 0, streams: 0, failed: 1 };
+    return { users: 0, streams: 0, failed: 1, skipped: 0 };
   }
   // shortcut: one page of accounts (1000), plenty for a handful of users.
   const ids = [...new Set((data as Row[]).map((r) => r.user_id as string))];
-  let users = 0, streams = 0, failed = 0;
-  for (const user of ids) {
-    if (!timeLeft()) break;
+  let users = 0, streams = 0, failed = 0, skipped = 0;
+  for (const [i, user] of ids.entries()) {
+    if (!timeLeft()) {
+      skipped = ids.length - i; // not started: the next run picks them up
+      break;
+    }
     try {
       const found = detectStreams(await userCharges(db, user), today);
       const rows = [...new Map(found.map((s) => [s.stream_key, s])).values()];
@@ -72,5 +75,5 @@ export async function runDetection(
       console.error(`detect-recurring: a user failed: ${errorTag(err)}`);
     }
   }
-  return { users, streams, failed };
+  return { users, streams, failed, skipped };
 }

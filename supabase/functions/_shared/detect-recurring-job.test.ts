@@ -43,7 +43,7 @@ function recorder(failFor?: string) {
 Deno.test("processes each user separately, with the user's EUR share", async () => {
   const { calls, rpc } = recorder();
   const result = await runDetection(memoryDb(build(["u1", "u2"])), rpc, "2026-10-20", always);
-  assertEquals(result, { users: 2, streams: 2, failed: 0 });
+  assertEquals(result, { users: 2, streams: 2, failed: 0, skipped: 0 });
   assertEquals(calls.map((c) => c.p_user), ["u1", "u2"]);
   assertEquals(calls[0].p_rows.length, 1);
   assertEquals(calls[0].p_rows[0].account_uid, "a-u1");
@@ -54,7 +54,7 @@ Deno.test("processes each user separately, with the user's EUR share", async () 
 Deno.test("a failing user does not stop the other", async () => {
   const { calls, rpc } = recorder("u1");
   const result = await runDetection(memoryDb(build(["u1", "u2"])), rpc, "2026-10-20", always);
-  assertEquals(result, { users: 1, streams: 1, failed: 1 });
+  assertEquals(result, { users: 1, streams: 1, failed: 1, skipped: 0 });
   assertEquals(calls.map((c) => c.p_user), ["u2"]);
 });
 
@@ -63,17 +63,17 @@ Deno.test("a read failure counts as failed for that user only", async () => {
   const db = memoryDb(tables);
   const broken = { from: (t: string) => t === "v_transactions_eur" ? { select: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ order: () => ({ order: () => ({ range: () => Promise.resolve({ data: null, error: { code: "42P01" } }) }) }) }) }) }) }) } : db.from(t) };
   const { rpc } = recorder();
-  assertEquals(await runDetection(broken, rpc, "2026-10-20", always), { users: 0, streams: 0, failed: 1 });
+  assertEquals(await runDetection(broken, rpc, "2026-10-20", always), { users: 0, streams: 0, failed: 1, skipped: 0 });
 });
 
 Deno.test("accounts read failure is reported, not thrown", async () => {
   const db = { from: () => ({ select: () => ({ order: () => ({ limit: () => Promise.resolve({ data: null, error: { code: "XX000" } }) }) }) }) };
-  assertEquals(await runDetection(db, recorder().rpc, "2026-10-20", always), { users: 0, streams: 0, failed: 1 });
+  assertEquals(await runDetection(db, recorder().rpc, "2026-10-20", always), { users: 0, streams: 0, failed: 1, skipped: 0 });
 });
 
 Deno.test("stops starting users when time is up", async () => {
   const { calls, rpc } = recorder();
-  assertEquals(await runDetection(memoryDb(build(["u1"])), rpc, "2026-10-20", () => false), { users: 0, streams: 0, failed: 0 });
+  assertEquals(await runDetection(memoryDb(build(["u1"])), rpc, "2026-10-20", () => false), { users: 0, streams: 0, failed: 0, skipped: 1 });
   assertEquals(calls, []);
 });
 
@@ -81,7 +81,7 @@ Deno.test("skips the rpc when nothing is detected", async () => {
   const { calls, rpc } = recorder();
   const tables = build(["u1"]);
   tables.transactions = tables.transactions.slice(0, 1);
-  assertEquals(await runDetection(memoryDb(tables), rpc, "2026-10-20", always), { users: 1, streams: 0, failed: 0 });
+  assertEquals(await runDetection(memoryDb(tables), rpc, "2026-10-20", always), { users: 1, streams: 0, failed: 0, skipped: 0 });
   assertEquals(calls, []);
 });
 
