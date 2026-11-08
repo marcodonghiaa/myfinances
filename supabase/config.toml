@@ -35,6 +35,10 @@ verify_jwt = false
 [functions.post-sync]
 verify_jwt = false
 
+# detect-recurring checks the project secret key (apikey header) itself, like post-sync.
+[functions.detect-recurring]
+verify_jwt = false
+
 # sync-prices checks the project secret key (apikey header) itself, like sync-bank.
 [functions.sync-prices]
 verify_jwt = false
