@@ -36,11 +36,12 @@ export function normalizeMerchant(
     out.push(t);
   }
 
+  // Known limitation: a bare "<name> <name> <CC>" (e.g. "Amazon Prime LU") loses the second word as a city.
   if (COUNTRIES.has(out[out.length - 1])) {
     out.pop();
     if (out.length > 1) out.pop(); // city
   }
   while (LEGAL_FORMS.has(out[out.length - 1])) out.pop();
 
-  return { key: out.join(" ").trim() || raw, aggregator: null };
+  return { key: out.join(" ").trim() || raw.replace(/\s+/g, " "), aggregator: null };
 }

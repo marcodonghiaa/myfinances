@@ -18,6 +18,7 @@
   {"in":"Acmeai* Trial Over","key":"acmeai"},
   {"in":"APPLE.COM/BILL 800000000 IE","key":"apple","aggregator":"apple"},
   {"in":"APPLE.COM/BILL ITUNES.COM IE","key":"apple","aggregator":"apple"},
+  {"in":"GOOGLE *Acme Storage","key":"google","aggregator":"google"},
   {"in":"PAYPAL *P1A2B3C4D5 35314369001 SE","key":"paypal","aggregator":"paypal"},
   {"in":"PAYPAL *jdoe1990 Visa Direct LU","key":"paypal","aggregator":"paypal"},
   {"in":"Amazon Prime amazon.it/prm LU","key":"amazon prime"},

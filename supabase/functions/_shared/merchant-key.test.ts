@@ -11,3 +11,7 @@ for (const c of cases as { in: string | null; key: string | null; aggregator?: s
 Deno.test("falls back to the trimmed input when every token is stripped", () => {
   assertEquals(normalizeMerchant(" IT "), { key: "it", aggregator: null });
 });
+
+Deno.test("fallback collapses whitespace", () => {
+  assertEquals(normalizeMerchant("  PAYPAL *   IT "), { key: "paypal * it", aggregator: null });
+});
