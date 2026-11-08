@@ -2,7 +2,7 @@
 type Aggregator = "paypal" | "apple" | "google";
 
 const COUNTRIES = new Set("it de lu ie se gb nl lt es be fr pl us".split(" "));
-const LEGAL_FORMS = new Set("spa srl srls snc sas ltd inc gmbh".split(" "));
+const LEGAL_FORMS = new Set("spa srl srls snc sas ltd inc gmbh doo pte".split(" "));
 // A domain token, also with an id glued on ("bolt.euo2601011200").
 const DOMAIN = /^[a-z0-9-]+\.(com|it|io|eu|net|org|co|uk|de|fr|es|nl|dev|app|in|me|tv)(\b|[a-z]*\d)/;
 const GENERIC = new Set(
@@ -29,14 +29,18 @@ export function normalizeMerchant(
 
   const s = raw.replace(/^(paypal|pp|sumup|sq|tst|py|mgp|ubr|eb|mne|nyx)\s*\*/, "").replace(/^www\./, "");
 
-  // A token with a digit or "/" (id, url) after the first, or a domain anywhere, ends the name; other dots stay.
+  // A domain ends the name; after the first token, so does a token with a digit, "/" or "." (id, url, "S.R.L.").
   const out: string[] = [];
+  let dotCut = false;
   for (const [i, t] of s.split("*")[0].split(" - ")[0].trim().split(/\s+/).entries()) {
     if (DOMAIN.test(t)) {
       if (i === 0) out.push(t.split(".")[0]);
       break;
     }
-    if (i > 0 && /[\d/]/.test(t)) break;
+    if (i > 0 && /[\d/.]/.test(t)) {
+      dotCut = t.includes(".");
+      break;
+    }
     out.push(t);
   }
 
@@ -46,14 +50,14 @@ export function normalizeMerchant(
     if (out.length > 1) out.pop(); // city
   }
   const key = trimTail(out).join(" ").replace(/\.$/, "");
-  // "Bar 2000 Milano" and "Bar Roma" must not both become "bar": keep every token instead.
-  const full = GENERIC.has(key) || key.length <= 2 ? s.trim().split(/\s+/) : null;
+  // "Bar 2000 Milano" and "Bar Roma" must not both become "bar", nor "Mario D.Rossi" "mario": keep every token instead.
+  const full = GENERIC.has(key) || key.length <= 2 || (dotCut && out.length === 1) ? s.trim().split(/\s+/) : null;
   if (full && COUNTRIES.has(full[full.length - 1])) full.pop();
 
-  return { key: (full ? trimTail(full).join(" ") : key).trim() || raw.replace(/\s+/g, " "), aggregator: null };
+  return { key: (full ? trimTail(full).join(" ").replace(/\.$/, "") : key).trim() || raw.replace(/\s+/g, " "), aggregator: null };
 }
 
 function trimTail(tokens: string[]) {
-  while (LEGAL_FORMS.has(tokens[tokens.length - 1])) tokens.pop();
+  while (tokens.length && LEGAL_FORMS.has(tokens[tokens.length - 1].replaceAll(".", ""))) tokens.pop();
   return tokens;
 }
