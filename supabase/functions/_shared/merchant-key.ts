@@ -20,7 +20,7 @@ export function normalizeMerchant(
   if (aggregator) return { key: aggregator, aggregator };
 
   const s = raw
-    .replace(/^(paypal|sumup|[a-z0-9]{1,4}) ?\*/, "")
+    .replace(/^(paypal|pp|sumup|sq|tst|py|mgp|ubr|eb) ?\*/, "")
     .replace(/^www\./, "")
     .split("*")[0]
     .split(" - ")[0];

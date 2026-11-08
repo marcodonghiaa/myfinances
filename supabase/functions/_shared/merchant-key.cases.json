@@ -33,6 +33,10 @@
   {"in":"SUMUP *MARIO ROSSI TORINO IT","key":"mario rossi"},
   {"in":"Canone Mensile Conto","key":"canone mensile conto"},
   {"in":"1+1 TORINO IT","key":"1+1"},
+  {"in":"BOLT *RIDE","key":"bolt"},
+  {"in":"UBER *EATS","key":"uber"},
+  {"in":"IKEA*MILANO","key":"ikea"},
+  {"in":"SQ *ACME CAFE","key":"acme cafe"},
   {"in":"   ","key":null},
   {"in":null,"key":null}
 ]

@@ -4,7 +4,8 @@
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
 
-export function memoryDb(tables: Record<string, Row[]>) {
+// failWrite: make every delete or update return a DB error without applying it.
+export function memoryDb(tables: Record<string, Row[]>, failWrite?: "delete" | "update") {
   return {
     tables,
     from(table: string) {
@@ -32,6 +33,9 @@ export function memoryDb(tables: Record<string, Row[]>) {
         range: (a: number, b: number) => ((window = [a, b]), q),
         then(resolve: (v: unknown) => void) {
           const rows = (tables[table] ??= []).filter((r) => filters.every((f) => f(r)));
+          if ((remove && failWrite === "delete") || (patch && failWrite === "update")) {
+            return resolve({ data: null, error: { code: "XX000", message: "private name" } });
+          }
           if (remove) {
             tables[table] = tables[table].filter((r) => !rows.includes(r));
             return resolve({ data: null, error: null });

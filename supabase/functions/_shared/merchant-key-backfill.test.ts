@@ -91,3 +91,29 @@ Deno.test("a read error logs and returns zeros instead of throwing", async () =>
     console.error = errors;
   }
 });
+
+// protects=a failed alias write is logged by code only and never aborts; fails_when=the message (names) leaks or the step throws
+async function logsOf(run: () => Promise<unknown>): Promise<string[]> {
+  const errors = console.error;
+  const logged: string[] = [];
+  console.error = (m: string) => void logged.push(m);
+  try {
+    await run();
+  } finally {
+    console.error = errors;
+  }
+  return logged;
+}
+
+Deno.test("a failed duplicate-alias delete logs the count and code only", async () => {
+  const db = memoryDb({
+    transactions: [],
+    merchant_aliases: [alias("Lidl 4521", "A", "2026-01-01"), alias("LIDL 4521 MILANO IT", "B", "2026-06-01")],
+  }, "delete");
+  assertEquals(await logsOf(() => fillMerchantKeys(db, always)), ["Failed to remove 1 duplicate alias(es): XX000"]);
+});
+
+Deno.test("a failed alias key update logs the code only", async () => {
+  const db = memoryDb({ transactions: [], merchant_aliases: [alias("Lidl 4521", "A", "2026-01-01")] }, "update");
+  assertEquals(await logsOf(() => fillMerchantKeys(db, always)), ["Failed to key an alias: XX000"]);
+});
