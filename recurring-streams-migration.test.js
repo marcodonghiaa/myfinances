@@ -53,12 +53,20 @@ test('override migration is idempotent and keeps dismissals', () => {
 });
 
 test('override migration handles aggregators, deleted/credit rows, duplicates; set_cadence validates', () => {
-  assert.match(up, /n\.merchant_key in \('paypal', 'apple', 'google'\) then '\|' \|\| \(\s+select round\(min\(abs\(m\.amount\)\), 2\)::text from public\.transactions m[\s\S]*?m\.account_uid = n\.account_uid and m\.currency = n\.currency\s+and m\.deleted_at is null and m\.credit_debit_indicator = 'DBIT'\)/);
+  assert.match(up, /select round\(abs\(m\.amount\), 2\) as amt|select distinct round\(abs\(m\.amount\), 2\) as amt/);
+  assert.match(up, /order by a\.amt\s+limit case when o\.dismissed then null else 1 end/);
+  assert.match(up, /abs\(n\.amount\), n\.booking_date/);
+  assert.match(up, /display_name, typical_amount, last_charged/);
+  assert.match(up, /user_id uuid not null references auth\.users \(id\) on delete cascade/);
   assert.match(up, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
   assert.match(up, /order by o\.dismissed desc/);
   const fn = fnBody('stream_action');
   assert.match(fn, /raise exception 'Invalid cadence args'/);
   assert.match(fn, /custom_value'\)::int > 0/);
+});
+
+test('schedule comment says 15 minutes after post-sync', () => {
+  assert.match(fs.readFileSync('supabase/migrations/20261120000001_schedule_detect_recurring.sql', 'utf8'), /^-- [^\n]*15 minutes after post-sync/);
 });
 
 test('rollback drops the functions and the table', () => {
