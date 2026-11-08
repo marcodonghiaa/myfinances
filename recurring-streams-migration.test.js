@@ -53,7 +53,7 @@ test('override migration is idempotent and keeps dismissals', () => {
 });
 
 test('override migration handles aggregators, deleted/credit rows, duplicates; set_cadence validates', () => {
-  assert.match(up, /n\.merchant_key in \('paypal', 'apple', 'google'\) then '\|' \|\| round\(abs\(n\.amount\), 2\)::text/);
+  assert.match(up, /n\.merchant_key in \('paypal', 'apple', 'google'\) then '\|' \|\| \(\s+select round\(min\(abs\(m\.amount\)\), 2\)::text from public\.transactions m[\s\S]*?m\.account_uid = n\.account_uid and m\.currency = n\.currency\s+and m\.deleted_at is null and m\.credit_debit_indicator = 'DBIT'\)/);
   assert.match(up, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
   assert.match(up, /order by o\.dismissed desc/);
   const fn = fnBody('stream_action');

@@ -119,7 +119,12 @@ insert into public.recurring_streams (
   user_id, stream_key, merchant_key, account_uid, currency, display_name,
   user_status, user_cadence, custom_interval_value, custom_interval_unit, source, updated_at)
 select o.user_id, n.merchant_key || '|' || n.account_uid || '|' || n.currency
-    || case when n.merchant_key in ('paypal', 'apple', 'google') then '|' || round(abs(n.amount), 2)::text else '' end,
+    || case when n.merchant_key in ('paypal', 'apple', 'google') then '|' || (
+      select round(min(abs(m.amount)), 2)::text from public.transactions m
+      where m.user_id = o.user_id and m.creditor_name = o.creditor_name
+        and m.account_uid = n.account_uid and m.currency = n.currency
+        and m.deleted_at is null and m.credit_debit_indicator = 'DBIT')
+    else '' end,
   n.merchant_key, n.account_uid, n.currency, o.creditor_name,
   case when o.dismissed then 'dismissed' else 'confirmed' end,
   case when o.dismissed then null
@@ -130,7 +135,7 @@ select o.user_id, n.merchant_key || '|' || n.account_uid || '|' || n.currency
   'override', now()
 from public.subscription_billing_overrides o
   join lateral (
-    select t.merchant_key, t.account_uid, t.currency, t.amount
+    select t.merchant_key, t.account_uid, t.currency
     from public.transactions t
     where t.user_id = o.user_id and t.creditor_name = o.creditor_name
       and t.merchant_key is not null and t.account_uid is not null
