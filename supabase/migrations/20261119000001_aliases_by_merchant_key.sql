@@ -41,7 +41,7 @@ begin
 end;
 $$;
 
--- Same contract as before; renames every row with the clicked row's key (or name, when it has none).
+-- Same contract as before; renames every row with the clicked row's key, plus unkeyed rows with its name.
 -- The alias is stored once per key, under the clicked row's name.
 create or replace function public.rename_merchant(
   p_entry_reference text, p_account_uid uuid, p_name text
@@ -79,7 +79,7 @@ begin
   end if;
 
   update transactions set custom_name = v_new
-  where (merchant_key = v_key or (v_key is null and creditor_name = v_source))
+  where (merchant_key = v_key or (merchant_key is null and creditor_name = v_source))
     and (custom_name is null or custom_name = v_old
          or (entry_reference = p_entry_reference and account_uid is not distinct from p_account_uid));
   get diagnostics v_count = row_count;
