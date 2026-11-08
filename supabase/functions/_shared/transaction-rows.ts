@@ -2,6 +2,8 @@
 // The derived entry_reference must stay byte-identical to the Node one (same key, SHA-1),
 // or the switch from the Node sync would insert every reference-less transaction twice.
 
+import { normalizeMerchant } from "./merchant-key.ts";
+
 type Json = Record<string, unknown>;
 // deno-lint-ignore no-explicit-any
 export type EbTransaction = Record<string, any>;
@@ -27,6 +29,7 @@ async function entryReferenceFor(tx: EbTransaction, seen: Map<string, number>): 
 }
 
 function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryReference: string): Json {
+  const creditorName = (tx.credit_debit_indicator === "CRDT" && tx.debtor?.name) || tx.creditor?.name || null;
   return {
     entry_reference: entryReference,
     account_uid: accountUid,
@@ -34,7 +37,8 @@ function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryRe
     currency: tx.transaction_amount.currency,
     credit_debit_indicator: tx.credit_debit_indicator,
     // The dashboard shows creditor_name as the row's name, so for money coming in it is the payer.
-    creditor_name: (tx.credit_debit_indicator === "CRDT" && tx.debtor?.name) || tx.creditor?.name || null,
+    creditor_name: creditorName,
+    merchant_key: normalizeMerchant(creditorName).key,
     debtor_name: tx.debtor?.name || null,
     remittance_info: (tx.remittance_information || []).join(" "),
     booking_date: tx.booking_date,
