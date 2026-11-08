@@ -38,7 +38,7 @@ export function normalizeMerchant(
     .replace(/^([^*\s]{1,3})\s*\*\s*(?=\p{L}{3})/u, "$1 ")
     .replace(/^www\./, "");
 
-  // A domain ends the name; after the first token, so does a token with a digit, "/" or "." (id, url, "S.R.L.").
+  // A domain ends the name; after the first token, so does a legal form or a token with a digit, "/" or "." (id, url).
   const out: string[] = [];
   let dotCut = false;
   for (const [i, t] of s.split("*")[0].split(" - ")[0].trim().split(/\s+/).entries()) {
@@ -46,6 +46,7 @@ export function normalizeMerchant(
       if (i === 0) out.push(t.split(".")[0]);
       break;
     }
+    if (i > 0 && LEGAL_FORMS.has(t.replaceAll(".", ""))) break;
     // A branch number ("forno 2") is part of the name; longer or mixed ones are ids.
     if (i > 0 && /[\d/.]/.test(t) && !/^\d{1,3}$/.test(t)) {
       dotCut = t.includes(".");
@@ -54,22 +55,17 @@ export function normalizeMerchant(
     out.push(t);
   }
 
-  // Known limitation: a bare "<name> <name> <CC>" (e.g. "Amazon Prime LU") loses the second word as a city.
-  if (COUNTRIES.has(out[out.length - 1])) {
-    out.pop();
-    if (out.length > 1) out.pop(); // city
-  }
-  const key = trimTail(out).join(" ").replace(/\.$/, "");
-  // "Bar Sport Milano" and "Bar Sport Roma" must not merge, nor "Mario D.Rossi" become "mario": keep every token instead.
+  // The city stays: dropping it merged different shops ("da mario milano" / "da mario roma").
+  if (COUNTRIES.has(out[out.length - 1])) out.pop();
+  const key = out.join(" ").replace(/\.$/, "");
+  // A cut must not merge shops ("bar sport 2000" / "bar sport 3000") nor make "Mario D.Rossi" "mario": keep every token.
   // "market" is also a brand word ("acme market"), so it counts only first.
-  const generic = out.some((t, i) => GENERIC.has(t) && (i === 0 || t !== "market"));
+  const generic = out.some((t, i) =>
+    t.replaceAll("'", "").split("-").some((w) => GENERIC.has(w) && (i === 0 || w !== "market"))
+  );
   const full = generic || key.length <= 2 || (dotCut && out.length === 1) ? s.trim().split(/\s+/) : null;
   if (full && COUNTRIES.has(full[full.length - 1])) full.pop();
+  while (full?.length && LEGAL_FORMS.has(full[full.length - 1].replaceAll(".", ""))) full.pop();
 
-  return { key: (full ? trimTail(full).join(" ").replace(/\.$/, "") : key).trim() || raw.replace(/\s+/g, " "), aggregator: null };
-}
-
-function trimTail(tokens: string[]) {
-  while (tokens.length && LEGAL_FORMS.has(tokens[tokens.length - 1].replaceAll(".", ""))) tokens.pop();
-  return tokens;
+  return { key: (full ? full.join(" ").replace(/\.$/, "") : key).trim() || raw.replace(/\s+/g, " "), aggregator: null };
 }

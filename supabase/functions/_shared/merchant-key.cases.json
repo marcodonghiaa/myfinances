@@ -30,9 +30,9 @@
   {"in":"Glovo 01JAN ABCD1234X Milano ES","key":"glovo"},
   {"in":"ATM SPA MILANO IT","key":"atm"},
   {"in":"Atm Spa","key":"atm"},
-  {"in":"SUMUP *MARIO ROSSI TORINO IT","key":"mario rossi"},
+  {"in":"SUMUP *MARIO ROSSI TORINO IT","key":"mario rossi torino"},
   {"in":"Canone Mensile Conto","key":"canone mensile conto"},
-  {"in":"1+1 TORINO IT","key":"1+1"},
+  {"in":"1+1 TORINO IT","key":"1+1 torino"},
   {"in":"BOLT *RIDE","key":"bolt"},
   {"in":"UBER *EATS","key":"uber"},
   {"in":"IKEA*MILANO","key":"ikea"},
@@ -73,6 +73,10 @@
   {"in":"ACME T-3222 MILANO IT","key":"acme"},
   {"in":"ACME BAR 2000 MILANO IT","key":"acme bar 2000 milano"},
   {"in":"ACME OTTICA 2000 MILANO IT","key":"acme ottica 2000 milano"},
+  {"in":"BAR-TABACCHI ROSSI 2000 MILANO IT","key":"bar-tabacchi rossi 2000 milano"},
+  {"in":"ACME SRL MILANO IT","key":"acme"},
+  {"in":"BAR ROSSI S.R.L. MILANO IT","key":"bar rossi s.r.l. milano"},
+  {"in":"BAR ROSSI SRL","key":"bar rossi"},
   {"in":"   ","key":null},
   {"in":null,"key":null}
 ]

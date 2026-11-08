@@ -38,6 +38,11 @@ Deno.test("different shops of one type, or behind one processor, never share a k
       ["VIVA*ROSSI", "VIVA*VERDI"],
       ["IL FORNO 2", "IL FORNO 3"],
       ["LA BOTTEGA ACME 2", "LA BOTTEGA ACME 3"],
+      ["CAFFE' ROSSI MILANO IT", "CAFFE' ROSSI ROMA IT"],
+      ["BAR-TABACCHI ROSSI MILANO IT", "BAR-TABACCHI ROSSI ROMA IT"],
+      ["DA MARIO MILANO IT", "DA MARIO ROMA IT"],
+      ["IL GIARDINO MILANO IT", "IL GIARDINO ROMA IT"],
+      ["ACME MARKET MILANO IT", "ACME MARKET ROMA IT"],
     ]
   ) assertNotEquals(normalizeMerchant(a).key, normalizeMerchant(b).key, `${a} vs ${b}`);
 });
