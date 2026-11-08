@@ -59,7 +59,8 @@ async function fetchUnkeyed(db: Db, limit: number): Promise<TxRow[]> {
       .from("transactions")
       .select("user_id, account_uid, entry_reference, creditor_name, custom_name")
       .is("merchant_key", null)
-      .not("creditor_name", "is", null)
+      .filter("creditor_name", "match", "\\S") // blank names have no key; refetching them would block the rest
+      .order("account_uid")
       .order("entry_reference")
       .range(from, Math.min(from + PAGE_SIZE, limit) - 1);
     if (error) throw error;
@@ -69,12 +70,21 @@ async function fetchUnkeyed(db: Db, limit: number): Promise<TxRow[]> {
   return rows;
 }
 
+// Never throws: a failed read logs and skips the step, so the steps after it still run.
 export async function fillMerchantKeys(db: Db, timeLeft: () => boolean, limit = 2000) {
+  try {
+    return await fill(db, timeLeft, limit);
+  } catch (err) {
+    console.error(`merchant key backfill failed: ${errorTag(err)}`);
+    return { keys: 0, aliases: 0 };
+  }
+}
+
+async function fill(db: Db, timeLeft: () => boolean, limit: number) {
   if (!timeLeft()) return { keys: 0, aliases: 0 };
   const { count: aliases, byKey } = await keyAliases(db);
   if (!timeLeft()) return { keys: 0, aliases };
 
-  // shortcut: a name that normalizes to no key (punctuation only) is refetched every run; harmless until thousands pile up.
   const updates = (await fetchUnkeyed(db, limit)).flatMap((row) => {
     const { key, aggregator } = normalizeMerchant(row.creditor_name);
     if (!key) return [];

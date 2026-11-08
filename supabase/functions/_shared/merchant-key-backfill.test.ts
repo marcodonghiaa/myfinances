@@ -70,3 +70,24 @@ Deno.test("stops when time is up", async () => {
   assertEquals(await fillMerchantKeys(db, () => false), { keys: 0, aliases: 0 });
   assertEquals([byRef(db, "r1").merchant_key, db.tables.merchant_aliases[0].merchant_key], [null, null]);
 });
+
+// protects=blank names never block the backfill; fails_when=rows without a possible key are refetched ahead of real ones
+Deno.test("blank names are skipped, so they never starve real rows", async () => {
+  const db = memoryDb({ transactions: [tx("a1", ""), tx("a2", "   "), tx("z", "Lidl 4521")], merchant_aliases: [] });
+  assertEquals(await fillMerchantKeys(db, always, 1), { keys: 1, aliases: 0 });
+  assertEquals(byRef(db, "z").merchant_key, "lidl");
+});
+
+// protects=a failing first step never takes down categorize and flows; fails_when=a select error throws out of post-sync
+Deno.test("a read error logs and returns zeros instead of throwing", async () => {
+  const errors = console.error;
+  const logged: string[] = [];
+  console.error = (m: string) => void logged.push(m);
+  const failing = { from: () => ({ select: () => ({ order: () => ({ order: () => Promise.resolve({ data: null, error: { message: "boom" } }) }) }) }) };
+  try {
+    assertEquals(await fillMerchantKeys(failing, always), { keys: 0, aliases: 0 });
+    assertEquals(logged.length, 1);
+  } finally {
+    console.error = errors;
+  }
+});
