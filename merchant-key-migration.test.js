@@ -36,7 +36,7 @@ test('editing creditor_name drops the stale merchant_key', () => {
 test('apply_merchant_alias matches by merchant_key, newest alias first', () => {
   const fn = fnBody(read(aliasesPath), 'apply_merchant_alias');
   assert.match(fn, /merchant_key = new\.merchant_key/);
-  assert.match(fn, /order by created_at desc/);
+  assert.match(fn, /order by created_at desc, source_name/);
   assert.match(fn, /source_name = new\.creditor_name/);
 });
 
@@ -45,6 +45,16 @@ test('rename_merchant stores and renames by merchant_key', () => {
   assert.match(fn, /insert into merchant_aliases \(user_id, source_name, alias, merchant_key\)/);
   assert.match(fn, /where \(\(v_key is not null and merchant_key = v_key\) or creditor_name = v_source\)/);
   assert.match(fn, /custom_name is null or custom_name = v_old/);
+});
+
+test('aggregator keys never drive aliases', () => {
+  const sql = read(aliasesPath);
+  const apply = fnBody(sql, 'apply_merchant_alias');
+  const rename = fnBody(sql, 'rename_merchant');
+  assert.match(apply, /new\.merchant_key is not null and new\.merchant_key not in \('paypal', 'apple', 'google'\)/);
+  assert.match(rename, /if v_key in \('paypal', 'apple', 'google'\) then\s+v_key := null;\s+end if;/);
+  assert.match(rename, /order by created_at desc, source_name/);
+  assert.doesNotMatch(sql, /order by created_at desc\s*\n/);
 });
 
 test('aliases rollback restores the 20261027 functions and drops the reset trigger', () => {

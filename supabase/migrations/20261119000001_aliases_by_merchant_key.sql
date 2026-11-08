@@ -22,15 +22,18 @@ create trigger trg_reset_merchant_key
 revoke execute on function public.reset_merchant_key() from public, anon, authenticated;
 
 -- New rows pick up the newest alias for their key, else the alias for their exact name.
+-- Aggregator keys (PayPal, Apple, Google) cover unrelated payees, so they match by name only.
 create or replace function public.apply_merchant_alias() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.custom_name is null and new.creditor_name is not null then
-    select alias into new.custom_name
-    from public.merchant_aliases
-    where user_id = new.user_id and merchant_key = new.merchant_key
-    order by created_at desc
-    limit 1;
+    if new.merchant_key is not null and new.merchant_key not in ('paypal', 'apple', 'google') then
+      select alias into new.custom_name
+      from public.merchant_aliases
+      where user_id = new.user_id and merchant_key = new.merchant_key
+      order by created_at desc, source_name
+      limit 1;
+    end if;
     if new.custom_name is null then
       select alias into new.custom_name
       from public.merchant_aliases
@@ -57,6 +60,10 @@ begin
   select creditor_name, merchant_key into v_source, v_key from transactions
   where entry_reference = p_entry_reference
     and account_uid is not distinct from p_account_uid;
+  -- An aggregator key spans unrelated payees: rename by exact name instead.
+  if v_key in ('paypal', 'apple', 'google') then
+    v_key := null;
+  end if;
   if v_source is null then
     -- No bank name to key on: rename just this row.
     update transactions set custom_name = v_new
@@ -68,7 +75,7 @@ begin
 
   select alias into v_old from merchant_aliases
   where user_id = auth.uid() and (merchant_key = v_key or source_name = v_source)
-  order by created_at desc
+  order by created_at desc, source_name
   limit 1;
 
   delete from merchant_aliases
