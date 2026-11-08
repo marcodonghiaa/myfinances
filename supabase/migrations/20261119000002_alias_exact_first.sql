@@ -20,7 +20,7 @@ begin
 end;
 $$;
 
--- Same contract as before; renames every row with the clicked row's key or name.
+-- Same contract as before; renames the clicked name's rows and the key's unnamed rows.
 -- Stores the alias under the clicked row's name only, refreshed so it is the newest for its key;
 -- other names' aliases that share the key are kept.
 create or replace function public.rename_merchant(
@@ -50,9 +50,10 @@ begin
     return v_count;
   end if;
 
+  -- The name's own alias first: another name on the key may carry a different one.
   select alias into v_old from merchant_aliases
   where user_id = auth.uid() and (merchant_key = v_key or source_name = v_source)
-  order by created_at desc, source_name
+  order by (source_name = v_source) desc, created_at desc, source_name
   limit 1;
 
   if v_new is null then
@@ -64,10 +65,11 @@ begin
       set alias = excluded.alias, merchant_key = excluded.merchant_key, created_at = now();
   end if;
 
+  -- Other names on the key change only while unnamed, so their own aliases stay on their rows.
   update transactions set custom_name = v_new
-  where ((v_key is not null and merchant_key = v_key) or creditor_name = v_source)
-    and (custom_name is null or custom_name = v_old
-         or (entry_reference = p_entry_reference and account_uid is not distinct from p_account_uid));
+  where (creditor_name = v_source and (custom_name is null or custom_name = v_old))
+     or (v_key is not null and merchant_key = v_key and custom_name is null)
+     or (entry_reference = p_entry_reference and account_uid is not distinct from p_account_uid);
   get diagnostics v_count = row_count;
   return v_count;
 end;

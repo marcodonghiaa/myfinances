@@ -85,9 +85,17 @@ test('rename_merchant upserts only the clicked name and deletes no other alias',
   assert.match(fn, /on conflict \(user_id, source_name\) do update\s+set alias = excluded\.alias, merchant_key = excluded\.merchant_key, created_at = now\(\)/);
   assert.doesNotMatch(fn, /delete from merchant_aliases\s+where user_id = auth\.uid\(\) and \(merchant_key = v_key/);
   assert.match(fn, /delete from merchant_aliases where user_id = auth\.uid\(\) and source_name = v_source;/);
-  assert.match(fn, /where \(\(v_key is not null and merchant_key = v_key\) or creditor_name = v_source\)/);
-  assert.match(fn, /custom_name is null or custom_name = v_old/);
   assert.match(fn, /language plpgsql set search_path = public/);
+});
+
+// protects=renaming one name never relabels another name's aliased rows; fails_when=rows of a sibling name on the key are overwritten
+test('rename_merchant changes rows of other names on the key only when they have no name', () => {
+  const fn = fnBody(read(exactPath), 'rename_merchant');
+  assert.match(fn, /order by \(source_name = v_source\) desc, created_at desc, source_name/);
+  assert.match(fn, /\(creditor_name = v_source and \(custom_name is null or custom_name = v_old\)\)/);
+  assert.match(fn, /\(v_key is not null and merchant_key = v_key and custom_name is null\)/);
+  assert.match(fn, /\(entry_reference = p_entry_reference and account_uid is not distinct from p_account_uid\)/);
+  assert.doesNotMatch(fn, /or creditor_name = v_source\)/);
 });
 
 test('exact-first rollback restores the 20261119000001 functions', () => {

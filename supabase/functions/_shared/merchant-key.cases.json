@@ -56,6 +56,12 @@
   {"in":"Acme Rossi Srl Sempl.","key":"acme rossi"},
   {"in":"Acme S.Rossi","key":"acme s.rossi"},
   {"in":"Alimentari Acme.","key":"alimentari acme"},
+  {"in":"SATISPAY*ACME CAFE","key":"acme cafe"},
+  {"in":"NEXI*ROSSI SHOP","key":"rossi shop"},
+  {"in":"XYZ*ACME STUDIO","key":"acme studio"},
+  {"in":"ZETTLE_*BAR ROSSI","key":"bar rossi"},
+  {"in":"BAR SPORT MILANO IT","key":"bar sport milano"},
+  {"in":"FORNO 2 MILANO","key":"forno 2 milano"},
   {"in":"   ","key":null},
   {"in":null,"key":null}
 ]

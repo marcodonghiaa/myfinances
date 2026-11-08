@@ -19,3 +19,17 @@ Deno.test("fallback collapses whitespace", () => {
 Deno.test("two different bars never share a key", () => {
   assertNotEquals(normalizeMerchant("BAR 2000 MILANO IT").key, normalizeMerchant("BAR ROMA IT").key);
 });
+
+// protects=two shops of one type never share a key; fails_when=a processor code or shop-type word becomes the key
+Deno.test("different shops of one type, or behind one processor, never share a key", () => {
+  for (
+    const [a, b] of [
+      ["ZETTLE_*BAR ROSSI", "ZETTLE_*BAR VERDI"],
+      ["BAR SPORT MILANO IT", "BAR SPORT ROMA IT"],
+      ["BAR SPORT 2000", "BAR SPORT 3000"],
+      ["FORNO 2 MILANO", "FORNO 5 ROMA"],
+      ["TRATTORIA DA MARIO 2", "TRATTORIA DA MARIO 3"],
+      ["PIZZERIA ROSSI S.A.S. DI VERDI", "PIZZERIA ROSSI S.A.S. DI BIANCHI"],
+    ]
+  ) assertNotEquals(normalizeMerchant(a).key, normalizeMerchant(b).key, `${a} vs ${b}`);
+});
