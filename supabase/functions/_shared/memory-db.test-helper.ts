@@ -1,23 +1,27 @@
 // In-memory stand-in for the supabase query builder, for tests: honors the filters the
-// post-sync steps use (is/eq/in/not/gte, order, limit, range) and applies updates to the
+// post-sync steps use (is/eq/in/not/gte, filter match, order, limit, range) and applies updates and deletes to the
 // matching rows, so tests check data, not call shapes.
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
 
-export function memoryDb(tables: Record<string, Row[]>) {
+// failWrite: make every delete or update return a DB error without applying it.
+export function memoryDb(tables: Record<string, Row[]>, failWrite?: "delete" | "update") {
   return {
     tables,
     from(table: string) {
       const filters: Array<(r: Row) => boolean> = [];
       const orders: Array<[string, boolean]> = [];
       let patch: Row | null = null;
+      let remove = false;
       let window: [number, number] = [0, Infinity];
       const q = {
         select: () => q,
         update: (u: Row) => ((patch = u), q),
+        delete: () => ((remove = true), q),
         is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), q),
         eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), q),
         in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), q),
+        filter: (c: string, op: "match", v: string) => (filters.push((r) => r[c] != null && new RegExp(v).test(r[c])), q),
         gte: (c: string, v: string) => (filters.push((r) => r[c] >= v), q),
         not: (c: string, op: string, v: unknown) => {
           if (op === "is") filters.push((r) => (r[c] ?? null) !== v);
@@ -29,6 +33,13 @@ export function memoryDb(tables: Record<string, Row[]>) {
         range: (a: number, b: number) => ((window = [a, b]), q),
         then(resolve: (v: unknown) => void) {
           const rows = (tables[table] ??= []).filter((r) => filters.every((f) => f(r)));
+          if ((remove && failWrite === "delete") || (patch && failWrite === "update")) {
+            return resolve({ data: null, error: { code: "XX000", message: "private name" } });
+          }
+          if (remove) {
+            tables[table] = tables[table].filter((r) => !rows.includes(r));
+            return resolve({ data: null, error: null });
+          }
           if (patch) {
             for (const r of rows) Object.assign(r, patch);
             return resolve({ data: null, error: null });

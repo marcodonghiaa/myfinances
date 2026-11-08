@@ -59,3 +59,13 @@ Deno.test("pending transactions are left out until the bank books them", async (
   );
   assertEquals(rows.map((r) => (r as { entry_reference: string }).entry_reference), ["b1"]);
 });
+
+Deno.test("merchant_key is the normalized creditor_name the row shows", async () => {
+  const [out] = await buildRows([tx({ creditor: { name: "LIDL 4521 MILANO IT" } })], "acc", "user");
+  assertEquals(out.merchant_key, "lidl");
+  const [inc] = await buildRows(
+    [tx({ credit_debit_indicator: "CRDT", debtor: { name: "Mario Rossi" } })], "acc", "user");
+  assertEquals(inc.merchant_key, "mario rossi");
+  const [none] = await buildRows([tx()], "acc", "user");
+  assertEquals(none.merchant_key, null);
+});
