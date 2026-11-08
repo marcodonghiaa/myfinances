@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
 import { normalizeMerchant } from "./merchant-key.ts";
 import cases from "./merchant-key.cases.json" with { type: "json" };
 
@@ -14,4 +14,8 @@ Deno.test("falls back to the trimmed input when every token is stripped", () => 
 
 Deno.test("fallback collapses whitespace", () => {
   assertEquals(normalizeMerchant("  PAYPAL *   IT "), { key: "paypal * it", aggregator: null });
+});
+
+Deno.test("two different bars never share a key", () => {
+  assertNotEquals(normalizeMerchant("BAR 2000 MILANO IT").key, normalizeMerchant("BAR ROMA IT").key);
 });

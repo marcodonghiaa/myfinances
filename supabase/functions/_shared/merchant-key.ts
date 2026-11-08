@@ -3,6 +3,14 @@ type Aggregator = "paypal" | "apple" | "google";
 
 const COUNTRIES = new Set("it de lu ie se gb nl lt es be fr pl us".split(" "));
 const LEGAL_FORMS = new Set("spa srl srls snc sas ltd inc gmbh".split(" "));
+// A domain token, also with an id glued on ("bolt.euo2601011200").
+const DOMAIN = /^[a-z0-9-]+\.(com|it|io|eu|net|org|co|uk|de|fr|es|nl|dev|app|in|me|tv)(\b|[a-z]*\d)/;
+const GENERIC = new Set(
+  ("bar caffe caffetteria cafe coffee gelateria cremeria pizzeria ristorante trattoria osteria hotel albergo hostel " +
+    "farmacia tabaccheria tabacchi alimentari supermercato market minimarket pub bistrot panificio pasticceria " +
+    "macelleria piadineria kebab sushi mensa kiosco edicola barbiere barber cinema taxi parcheggio parking " +
+    "distributore lavanderia ristobar snack enoteca").split(" "),
+);
 
 export function normalizeMerchant(
   creditorName: string | null,
@@ -19,20 +27,16 @@ export function normalizeMerchant(
     : null;
   if (aggregator) return { key: aggregator, aggregator };
 
-  const s = raw
-    .replace(/^(paypal|pp|sumup|sq|tst|py|mgp|ubr|eb) ?\*/, "")
-    .replace(/^www\./, "")
-    .split("*")[0]
-    .split(" - ")[0];
+  const s = raw.replace(/^(paypal|pp|sumup|sq|tst|py|mgp|ubr|eb|mne|nyx)\s*\*/, "").replace(/^www\./, "");
 
-  // A later token with a digit, "/" or "." (id, url, domain) ends the name; a dotted first token is a domain.
+  // A token with a digit or "/" (id, url) after the first, or a domain anywhere, ends the name; other dots stay.
   const out: string[] = [];
-  for (const [i, t] of s.trim().split(/\s+/).entries()) {
-    if (i > 0 && /[\d/.]/.test(t)) break;
-    if (i === 0 && t.includes(".")) {
-      out.push(t.split(".")[0]);
+  for (const [i, t] of s.split("*")[0].split(" - ")[0].trim().split(/\s+/).entries()) {
+    if (DOMAIN.test(t)) {
+      if (i === 0) out.push(t.split(".")[0]);
       break;
     }
+    if (i > 0 && /[\d/]/.test(t)) break;
     out.push(t);
   }
 
@@ -41,7 +45,15 @@ export function normalizeMerchant(
     out.pop();
     if (out.length > 1) out.pop(); // city
   }
-  while (LEGAL_FORMS.has(out[out.length - 1])) out.pop();
+  const key = trimTail(out).join(" ").replace(/\.$/, "");
+  // "Bar 2000 Milano" and "Bar Roma" must not both become "bar": keep every token instead.
+  const full = GENERIC.has(key) || key.length <= 2 ? s.trim().split(/\s+/) : null;
+  if (full && COUNTRIES.has(full[full.length - 1])) full.pop();
 
-  return { key: out.join(" ").trim() || raw.replace(/\s+/g, " "), aggregator: null };
+  return { key: (full ? trimTail(full).join(" ") : key).trim() || raw.replace(/\s+/g, " "), aggregator: null };
+}
+
+function trimTail(tokens: string[]) {
+  while (LEGAL_FORMS.has(tokens[tokens.length - 1])) tokens.pop();
+  return tokens;
 }
