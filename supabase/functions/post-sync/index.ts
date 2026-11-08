@@ -1,6 +1,7 @@
 // Supabase Edge Function: post-sync
 //
-// What the launchd pipeline runs after the bank sync, moved into Supabase: categories for new
+// What the launchd pipeline runs after the bank sync, moved into Supabase: merchant keys and
+// alias dedupe for rows the sync didn't key (merchant-key-backfill.ts), categories for new
 // rows (your rules, your past choices, then Gemini; port of categorize.js), then flow_type
 // (spend / income / transfer) and refund pairs (classify-flow.js). Categories go first: a row
 // that takes Transfer from your past choices also becomes a transfer. Then transaction types
@@ -19,6 +20,7 @@ import { buildCategorizePrompt } from "../_shared/categorize-prompt.ts";
 import { type Ask, classifyWithGemini } from "../_shared/gemini.ts";
 import { classifyTypes } from "../_shared/classify-type.ts";
 import { categorizeSplitwise } from "../_shared/splitwise.ts";
+import { fillMerchantKeys } from "../_shared/merchant-key-backfill.ts";
 
 const SECRET_KEYS = parseSecretKeys(Deno.env.get("SUPABASE_SECRET_KEYS"));
 const supabase = createClient(
@@ -51,12 +53,13 @@ Deno.serve(async (req) => {
   const aiTimeLeft = () => Date.now() - started < AI_BUDGET_MS;
 
   try {
+    const keys = timeLeft() ? await fillMerchantKeys(supabase, timeLeft) : { keys: 0, aliases: 0 };
     const categories = await categorize(supabase, classify, aiTimeLeft);
     const types = await classifyTypes(supabase, ask, aiTimeLeft);
     const splitwise = await categorizeSplitwise(supabase, ask, aiTimeLeft);
     const flows = await classifyFlows(supabase, timeLeft);
     const refunds = timeLeft() ? await markRefunds(supabase) : 0;
-    const result = { ...categories, ...types, ...splitwise, flows: flows.total, refunds, stuck: flows.stuck, ms: Date.now() - started };
+    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, refunds, stuck: flows.stuck, ms: Date.now() - started };
     console.log(`post-sync: ${JSON.stringify(result)}`);
     const failed = flows.stuck || categories.aiFailed || types.typeAiFailed || splitwise.splitwiseAiFailed;
     return Response.json(result, { status: failed ? 500 : 200 });
