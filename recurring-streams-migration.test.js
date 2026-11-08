@@ -16,7 +16,8 @@ test('table is unique per stream, RLS on, select-only for users', () => {
   assert.match(up, /alter table public\.recurring_streams enable row level security/);
   assert.match(up, /create policy "[^"]+" on public\.recurring_streams\s+for select to authenticated/);
   assert.doesNotMatch(up, /create policy[^;]*on public\.recurring_streams\s+for (insert|update|delete|all)/);
-  assert.match(up, /revoke insert, update, delete, truncate on public\.recurring_streams from anon, authenticated/);
+  assert.match(up, /revoke all on public\.recurring_streams from anon, authenticated/);
+  assert.match(up, /grant select on public\.recurring_streams to authenticated/);
   assert.doesNotMatch(up, /grant (insert|update|delete|all)[^;]*recurring_streams/);
 });
 
@@ -49,6 +50,15 @@ test('override migration is idempotent and keeps dismissals', () => {
   assert.match(up, /lower\(o\.billing_frequency\)/);
   assert.match(m, /order by t\.booking_date desc\s+limit 1/);
   assert.match(m, /t\.merchant_key is not null/);
+});
+
+test('override migration handles aggregators, deleted/credit rows, duplicates; set_cadence validates', () => {
+  assert.match(up, /n\.merchant_key in \('paypal', 'apple', 'google'\) then '\|' \|\| round\(abs\(n\.amount\), 2\)::text/);
+  assert.match(up, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
+  assert.match(up, /order by o\.dismissed desc/);
+  const fn = fnBody('stream_action');
+  assert.match(fn, /raise exception 'Invalid cadence args'/);
+  assert.match(fn, /custom_value'\)::int > 0/);
 });
 
 test('rollback drops the functions and the table', () => {

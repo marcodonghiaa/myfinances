@@ -36,7 +36,8 @@ create index recurring_streams_user_idx on public.recurring_streams (user_id);
 alter table public.recurring_streams enable row level security;
 create policy "Users view own streams" on public.recurring_streams
   for select to authenticated using ((select auth.uid()) = user_id);
-revoke insert, update, delete, truncate on public.recurring_streams from anon, authenticated;
+revoke all on public.recurring_streams from anon, authenticated;
+grant select on public.recurring_streams to authenticated;
 
 -- Detector write path. Never deletes, never touches the user columns, so a dismissed stream stays dismissed.
 create or replace function public.upsert_detected_streams(p_user uuid, p_rows jsonb)
@@ -96,11 +97,13 @@ begin
       set user_cadence = p_args->>'cadence', custom_interval_value = null, custom_interval_unit = null,
           user_status = 'confirmed', updated_at = now()
       where id = p_stream;
-    else
+    elsif (p_args->>'custom_value')::int > 0 and p_args->>'custom_unit' is not null then
       update public.recurring_streams
       set user_cadence = 'custom', custom_interval_value = (p_args->>'custom_value')::int,
           custom_interval_unit = p_args->>'custom_unit', user_status = 'confirmed', updated_at = now()
       where id = p_stream;
+    else
+      raise exception 'Invalid cadence args';
     end if;
   else
     raise exception 'Unknown stream action: %', p_action;
@@ -115,7 +118,8 @@ grant execute on function public.stream_action(uuid, text, jsonb) to authenticat
 insert into public.recurring_streams (
   user_id, stream_key, merchant_key, account_uid, currency, display_name,
   user_status, user_cadence, custom_interval_value, custom_interval_unit, source, updated_at)
-select o.user_id, n.merchant_key || '|' || n.account_uid || '|' || n.currency,
+select o.user_id, n.merchant_key || '|' || n.account_uid || '|' || n.currency
+    || case when n.merchant_key in ('paypal', 'apple', 'google') then '|' || round(abs(n.amount), 2)::text else '' end,
   n.merchant_key, n.account_uid, n.currency, o.creditor_name,
   case when o.dismissed then 'dismissed' else 'confirmed' end,
   case when o.dismissed then null
@@ -126,12 +130,14 @@ select o.user_id, n.merchant_key || '|' || n.account_uid || '|' || n.currency,
   'override', now()
 from public.subscription_billing_overrides o
   join lateral (
-    select t.merchant_key, t.account_uid, t.currency
+    select t.merchant_key, t.account_uid, t.currency, t.amount
     from public.transactions t
     where t.user_id = o.user_id and t.creditor_name = o.creditor_name
       and t.merchant_key is not null and t.account_uid is not null
+      and t.deleted_at is null and t.credit_debit_indicator = 'DBIT'
     order by t.booking_date desc
     limit 1
   ) n on true
 where o.dismissed or o.billing_frequency is not null or o.custom_interval_value is not null
+order by o.dismissed desc -- when two overrides map to one stream, dismissal wins
 on conflict (user_id, stream_key) do nothing;
