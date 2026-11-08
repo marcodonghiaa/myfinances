@@ -65,3 +65,43 @@ test('aliases rollback restores the 20261027 functions and drops the reset trigg
   assert.match(down, /drop trigger trg_reset_merchant_key on public\.transactions;/);
   assert.match(down, /drop function public\.reset_merchant_key\(\);/);
 });
+
+const exactPath = 'supabase/migrations/20261119000002_alias_exact_first.sql';
+const exactDownPath = 'supabase/rollbacks/20261119000002_alias_exact_first.down.sql';
+
+test('apply_merchant_alias tries the exact source_name before the key', () => {
+  const fn = fnBody(read(exactPath), 'apply_merchant_alias');
+  const exact = fn.indexOf('source_name = new.creditor_name');
+  const byKey = fn.indexOf('merchant_key = new.merchant_key');
+  assert.ok(exact > 0 && byKey > exact, 'exact match comes first');
+  assert.match(fn, /new\.custom_name is null and new\.merchant_key is not null and new\.merchant_key not in \('paypal', 'apple', 'google'\)/);
+  assert.match(fn, /order by created_at desc, source_name/);
+  assert.match(fn, /language plpgsql security definer set search_path = public/);
+});
+
+// protects=renaming never deletes another name's alias; fails_when=two names of one vendor share a key and one alias is lost
+test('rename_merchant upserts only the clicked name and deletes no other alias', () => {
+  const fn = fnBody(read(exactPath), 'rename_merchant');
+  assert.match(fn, /on conflict \(user_id, source_name\) do update\s+set alias = excluded\.alias, merchant_key = excluded\.merchant_key, created_at = now\(\)/);
+  assert.doesNotMatch(fn, /delete from merchant_aliases\s+where user_id = auth\.uid\(\) and \(merchant_key = v_key/);
+  assert.match(fn, /delete from merchant_aliases where user_id = auth\.uid\(\) and source_name = v_source;/);
+  assert.match(fn, /language plpgsql set search_path = public/);
+});
+
+// protects=renaming one name never relabels another name's aliased rows; fails_when=rows of a sibling name on the key are overwritten
+test('rename_merchant changes rows of other names on the key only when they have no name', () => {
+  const fn = fnBody(read(exactPath), 'rename_merchant');
+  assert.match(fn, /order by \(source_name = v_source\) desc, created_at desc, source_name/);
+  assert.match(fn, /\(creditor_name = v_source and \(custom_name is null or custom_name = v_old\)\)/);
+  assert.match(fn, /\(v_key is not null and merchant_key = v_key and custom_name is null\)/);
+  assert.match(fn, /\(entry_reference = p_entry_reference and account_uid is not distinct from p_account_uid\)/);
+  assert.doesNotMatch(fn, /or creditor_name = v_source\)/);
+});
+
+test('exact-first rollback restores the 20261119000001 functions', () => {
+  const down = read(exactDownPath);
+  const prev = read(aliasesPath);
+  for (const name of ['apply_merchant_alias', 'rename_merchant']) {
+    assert.strictEqual(fnBody(down, name), fnBody(prev, name), name);
+  }
+});

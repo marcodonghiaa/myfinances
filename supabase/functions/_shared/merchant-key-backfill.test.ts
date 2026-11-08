@@ -29,22 +29,41 @@ Deno.test("applies an existing alias to a newly keyed row", async () => {
   assertEquals([byRef(db, "named").custom_name, byRef(db, "named").merchant_key], ["Mine", "lidl"]);
 });
 
-Deno.test("dedupes aliases that collapse to one key, newest wins", async () => {
+Deno.test("dedupes identical alias text, newest wins", async () => {
   const db = memoryDb({
     transactions: [],
-    merchant_aliases: [alias("Lidl 4521", "Supermarket", "2026-01-01"), alias("LIDL 4521 MILANO IT", "Lidl", "2026-06-01")],
+    merchant_aliases: [alias("Lidl 4521", " lidl ", "2026-01-01"), alias("LIDL 4521 MILANO IT", "Lidl", "2026-06-01")],
   });
   await fillMerchantKeys(db, always);
   assertEquals(db.tables.merchant_aliases.map((a) => [a.alias, a.merchant_key]), [["Lidl", "lidl"]]);
 });
 
+// protects=a user alias is never deleted for sharing a key; fails_when=two names of one vendor collapse and the older alias is lost
+Deno.test("keeps aliases with different text sharing a key", async () => {
+  const db = memoryDb({
+    transactions: [],
+    merchant_aliases: [alias("ACME* Pro Sub", "Acme Pro", "2026-01-01"), alias("Acme", "Acme Credits", "2026-06-01")],
+  });
+  await fillMerchantKeys(db, always);
+  assertEquals(db.tables.merchant_aliases.map((a) => [a.alias, a.merchant_key]), [["Acme Pro", "acme"], ["Acme Credits", "acme"]]);
+});
+
+Deno.test("exact source name beats key", async () => {
+  const db = memoryDb({
+    transactions: [tx("exact", "ACME* Pro Sub"), tx("other", "ACME 4521")],
+    merchant_aliases: [alias("ACME* Pro Sub", "Acme Pro", "2026-01-01"), alias("Acme", "Acme Credits", "2026-06-01")],
+  });
+  await fillMerchantKeys(db, always);
+  assertEquals([byRef(db, "exact").custom_name, byRef(db, "other").custom_name], ["Acme Pro", "Acme Credits"]);
+});
+
 Deno.test("same created_at: the first source_name wins, like the SQL", async () => {
   const db = memoryDb({
     transactions: [],
-    merchant_aliases: [alias("Lidl 4521 Milano IT", "Second", "2026-01-01"), alias("Lidl 4521", "First", "2026-01-01")],
+    merchant_aliases: [alias("Lidl 4521 Milano IT", "Lidl", "2026-01-01"), alias("Lidl 4521", "Lidl", "2026-01-01")],
   });
   await fillMerchantKeys(db, always);
-  assertEquals(db.tables.merchant_aliases.map((a) => a.alias), ["First"]);
+  assertEquals(db.tables.merchant_aliases.map((a) => a.source_name), ["Lidl 4521"]);
 });
 
 Deno.test("a PayPal row does not get another PayPal payee's alias", async () => {
@@ -108,7 +127,7 @@ async function logsOf(run: () => Promise<unknown>): Promise<string[]> {
 Deno.test("a failed duplicate-alias delete logs the count and code only", async () => {
   const db = memoryDb({
     transactions: [],
-    merchant_aliases: [alias("Lidl 4521", "A", "2026-01-01"), alias("LIDL 4521 MILANO IT", "B", "2026-06-01")],
+    merchant_aliases: [alias("Lidl 4521", "A", "2026-01-01"), alias("LIDL 4521 MILANO IT", "a", "2026-06-01")],
   }, "delete");
   assertEquals(await logsOf(() => fillMerchantKeys(db, always)), ["Failed to remove 1 duplicate alias(es): XX000"]);
 });
