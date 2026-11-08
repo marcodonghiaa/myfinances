@@ -1,5 +1,12 @@
 // Normalizes a bank creditor name into a stable grouping key (see merchant-key.cases.json).
-type Aggregator = "paypal" | "apple" | "google";
+export const AGGREGATORS = ["paypal", "apple", "google"] as const;
+export type Aggregator = typeof AGGREGATORS[number];
+
+const AGGREGATOR_MATCH: Record<Aggregator, (raw: string) => boolean> = {
+  paypal: (raw) => /^paypal \*(p[0-9a-f]{6,}\b|.*visa direct)/.test(raw),
+  apple: (raw) => raw.startsWith("apple.com/bill"),
+  google: (raw) => raw.startsWith("google *"),
+};
 
 const COUNTRIES = new Set("it de lu ie se gb nl lt es be fr pl us".split(" "));
 const LEGAL_FORMS = new Set("spa srl srls snc sas ltd inc gmbh doo pte".split(" "));
@@ -20,13 +27,7 @@ export function normalizeMerchant(
   const raw = (creditorName ?? "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().trim();
   if (!raw) return { key: null, aggregator: null };
 
-  const aggregator: Aggregator | null = raw.startsWith("apple.com/bill")
-    ? "apple"
-    : raw.startsWith("google *")
-    ? "google"
-    : /^paypal \*(p[0-9a-f]{6,}\b|.*visa direct)/.test(raw)
-    ? "paypal"
-    : null;
+  const aggregator = AGGREGATORS.find((a) => AGGREGATOR_MATCH[a](raw)) ?? null;
   if (aggregator) return { key: aggregator, aggregator };
 
   const s = raw
