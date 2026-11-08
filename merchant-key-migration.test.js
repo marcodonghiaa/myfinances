@@ -43,7 +43,7 @@ test('apply_merchant_alias matches by merchant_key, newest alias first', () => {
 test('rename_merchant stores and renames by merchant_key', () => {
   const fn = fnBody(read(aliasesPath), 'rename_merchant');
   assert.match(fn, /insert into merchant_aliases \(user_id, source_name, alias, merchant_key\)/);
-  assert.match(fn, /where \(merchant_key = v_key or \(merchant_key is null and creditor_name = v_source\)\)/);
+  assert.match(fn, /where \(\(v_key is not null and merchant_key = v_key\) or creditor_name = v_source\)/);
   assert.match(fn, /custom_name is null or custom_name = v_old/);
 });
 
