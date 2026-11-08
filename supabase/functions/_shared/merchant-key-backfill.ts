@@ -1,5 +1,5 @@
 // Fills merchant_key where it is missing (rows from before the sync wrote it, or whose
-// creditor_name changed) and folds aliases that now share a key into the newest one.
+// creditor_name changed) and drops aliases that repeat the newest alias text for their key.
 // Aggregator keys (PayPal, Apple, Google) span unrelated payees: rows store them, but they
 // never pick up an alias by key, and aliases named after them stay unkeyed and are never merged.
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
@@ -11,8 +11,8 @@ const PAGE_SIZE = 1000; // PostgREST caps a response at 1000 rows
 type Alias = { user_id: string; source_name: string; alias: string; merchant_key: string | null; created_at: string };
 type TxRow = { user_id: string; account_uid: string; entry_reference: string; creditor_name: string; custom_name: string | null };
 
-// Returns the surviving aliases, newest first per (user, key), keyed as "user|key".
-async function keyAliases(db: Db): Promise<{ count: number; byKey: Map<string, Alias> }> {
+// Returns the newest alias per "user|key" and every alias text per "user|source_name".
+async function keyAliases(db: Db): Promise<{ count: number; byKey: Map<string, Alias>; bySource: Map<string, string> }> {
   // shortcut: one page of aliases (1000), plenty for one person; page it if users ever add more.
   const { data, error } = await db
     .from("merchant_aliases")
@@ -22,16 +22,21 @@ async function keyAliases(db: Db): Promise<{ count: number; byKey: Map<string, A
   if (error) throw error;
 
   const byKey = new Map<string, Alias>();
+  const bySource = new Map<string, string>();
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   const losers = new Map<string, string[]>();
   const toKey: Alias[] = [];
   for (const a of data as Alias[]) {
+    bySource.set(`${a.user_id}|${a.source_name}`, a.alias);
     const n = normalizeMerchant(a.source_name);
     const key = a.merchant_key ?? (n.aggregator ? null : n.key);
     if (!key || n.aggregator) continue;
     const id = `${a.user_id}|${key}`;
-    if (byKey.has(id)) losers.set(a.user_id, [...(losers.get(a.user_id) ?? []), a.source_name]);
+    const newest = byKey.get(id);
+    // Only an exact repeat of the newest text is redundant; a different alias is the user's and stays.
+    if (newest && same(newest.alias, a.alias)) losers.set(a.user_id, [...(losers.get(a.user_id) ?? []), a.source_name]);
     else {
-      byKey.set(id, { ...a, merchant_key: key });
+      if (!newest) byKey.set(id, { ...a, merchant_key: key });
       if (!a.merchant_key) toKey.push({ ...a, merchant_key: key });
     }
   }
@@ -49,7 +54,7 @@ async function keyAliases(db: Db): Promise<{ count: number; byKey: Map<string, A
       .is("merchant_key", null);
     if (error) console.error(`Failed to key an alias: ${errorTag(error)}`);
   }
-  return { count: toKey.length, byKey };
+  return { count: toKey.length, byKey, bySource };
 }
 
 async function fetchUnkeyed(db: Db, limit: number): Promise<TxRow[]> {
@@ -82,13 +87,14 @@ export async function fillMerchantKeys(db: Db, timeLeft: () => boolean, limit = 
 
 async function fill(db: Db, timeLeft: () => boolean, limit: number) {
   if (!timeLeft()) return { keys: 0, aliases: 0 };
-  const { count: aliases, byKey } = await keyAliases(db);
+  const { count: aliases, byKey, bySource } = await keyAliases(db);
   if (!timeLeft()) return { keys: 0, aliases };
 
   const updates = (await fetchUnkeyed(db, limit)).flatMap((row) => {
     const { key, aggregator } = normalizeMerchant(row.creditor_name);
     if (!key) return [];
-    const alias = !aggregator && row.custom_name === null ? byKey.get(`${row.user_id}|${key}`)?.alias : undefined;
+    const alias = row.custom_name !== null ? undefined : bySource.get(`${row.user_id}|${row.creditor_name}`) ??
+      (aggregator ? undefined : byKey.get(`${row.user_id}|${key}`)?.alias);
     return [{
       account_uid: row.account_uid,
       entry_reference: row.entry_reference,
