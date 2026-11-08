@@ -86,7 +86,10 @@
   {"name":"monthly next_expected clamps to the month's last day","base":{"merchant_key":"cloudbox","amount":2.99},
    "dates":["2025-11-30","2025-12-31","2026-01-31"],
    "expect":[{"cadence":"monthly","next_expected":"2026-02-28"}]},
-  {"name":"aggregator stream_key suffix is the median with toFixed(2)","base":{"merchant_key":"google","amount":10},
-   "dates":["2026-09-12","2026-10-12"],
-   "expect":[{"stream_key":"google|acc-1|EUR|10.00","typical_amount":10}]}
+  {"name":"aggregator stream_key suffix is the cluster minimum with toFixed(2)","base":{"merchant_key":"google"},
+   "charges":[{"booking_date":"2026-08-12","amount":10},{"booking_date":"2026-09-12","amount":10.5},{"booking_date":"2026-10-12","amount":10.5}],
+   "expect":[{"stream_key":"google|acc-1|EUR|10.00","typical_amount":10.5}]},
+  {"name":"same-day duplicates do not kill a stream","base":{"merchant_key":"streamflix","amount":12.99},
+   "dates":["2026-08-05","2026-08-05","2026-09-05","2026-10-05"],
+   "expect":[{"cadence":"monthly","charge_count":4,"first_charged":"2026-08-05"}]}
 ]

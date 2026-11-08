@@ -96,7 +96,9 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
       isTransferCode(c.bank_transaction_code) || c.booking_date > today
     ) continue;
     const key = `${c.merchant_key}|${c.account_uid}|${c.currency}`;
-    groups.set(key, [...(groups.get(key) ?? []), c]);
+    let g = groups.get(key);
+    if (!g) groups.set(key, g = []);
+    g.push(c);
   }
 
   const out: DetectedStream[] = [];
@@ -105,7 +107,10 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
     for (const cluster of clusters(group, aggregator)) {
       if (cluster.length < 2) continue;
       const sorted = [...cluster].sort((a, b) => a.booking_date.localeCompare(b.booking_date));
-      const gaps = sorted.slice(1).map((c, i) => toDays(c.booking_date) - toDays(sorted[i].booking_date));
+      // Same-day duplicates count as charges but not as intervals.
+      const days = [...new Set(sorted.map((c) => toDays(c.booking_date)))];
+      if (days.length < 2) continue;
+      const gaps = days.slice(1).map((d, i) => d - days[i]);
       const picked = pickCadence(gaps);
       if (!picked) continue;
       const [cadence, period] = picked;
@@ -113,7 +118,8 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
       const typical = median(cluster.map((c) => c.amount));
       const isDirectDebit = cluster.some((c) => /sdd/i.test(c.bank_transaction_code ?? ""));
       out.push({
-        stream_key: aggregator ? `${groupKey}|${typical.toFixed(2)}` : groupKey,
+        // The anchor (cluster minimum) stays put when the price rises; the median would drift run to run.
+        stream_key: aggregator ? `${groupKey}|${Math.min(...cluster.map((c) => c.amount)).toFixed(2)}` : groupKey,
         merchant_key: newest.merchant_key!,
         account_uid: newest.account_uid,
         currency: newest.currency,

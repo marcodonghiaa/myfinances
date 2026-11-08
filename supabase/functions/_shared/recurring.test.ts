@@ -94,3 +94,19 @@ Deno.test("stream_key is unique within one result", () => {
     assertEquals(new Set(k).size, k.length, c.name);
   }
 });
+
+// protects=user choices on an aggregator stream; fails_when=the key follows the median as prices rise
+Deno.test("an aggregator price rise keeps the same stream_key across runs", () => {
+  const history = [
+    ["2026-06-03", 9.99],
+    ["2026-07-03", 9.99],
+    ["2026-08-03", 10.49],
+    ["2026-09-03", 10.49],
+    ["2026-10-03", 10.49],
+  ].map(([d, amount]) => charge({ merchant_key: "apple", booking_date: d as string, amount: amount as number }));
+  for (let n = 2; n <= history.length; n++) {
+    assertEquals(detectStreams(history.slice(0, n), "2026-11-08").map((r) => r.stream_key), [
+      "apple|acc-1|EUR|9.99",
+    ]);
+  }
+});
