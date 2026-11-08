@@ -10,7 +10,8 @@ const GENERIC = new Set(
     "farmacia tabaccheria tabacchi alimentari supermercato market minimarket pub bistrot panificio pasticceria " +
     "macelleria piadineria kebab sushi mensa kiosco edicola barbiere barber cinema taxi parcheggio parking " +
     "distributore lavanderia ristobar snack enoteca forno panetteria palestra parrucchiere rosticceria birreria " +
-    "paninoteca focacceria friggitoria creperia bakery deli diner restaurant").split(" "),
+    "paninoteca focacceria friggitoria creperia bakery deli diner restaurant profumeria ottica ferramenta libreria " +
+    "cartoleria tabacchino bottega servizio").split(" "),
 );
 
 export function normalizeMerchant(
@@ -29,8 +30,12 @@ export function normalizeMerchant(
   if (aggregator) return { key: aggregator, aggregator };
 
   const s = raw
-    .replace(/^(paypal|pp|sumup|sq|tst|py|mgp|ubr|eb|mne|nyx|zettle_|iz|satispay|nexi|stripe|square)\s*\*/, "")
-    .replace(/^[^*\s]{1,3}\s*\*\s*(?=\p{L}{3})/u, "") // unknown short processor code ("xyz*acme studio")
+    .replace(
+      /^(squ\*sq|paypal|pp|sumup|sq|tst|py|mgp|ubr|eb|mne|nyx|zettle_|iz|satispay|nexi|stripe|square|nayax|mypos|viva)\s*\*/,
+      "",
+    )
+    // An unknown short code may be part of the name ("bar*rossi"): keep it as a word.
+    .replace(/^([^*\s]{1,3})\s*\*\s*(?=\p{L}{3})/u, "$1 ")
     .replace(/^www\./, "");
 
   // A domain ends the name; after the first token, so does a token with a digit, "/" or "." (id, url, "S.R.L.").
@@ -41,7 +46,8 @@ export function normalizeMerchant(
       if (i === 0) out.push(t.split(".")[0]);
       break;
     }
-    if (i > 0 && /[\d/.]/.test(t)) {
+    // A branch number ("forno 2") is part of the name; longer or mixed ones are ids.
+    if (i > 0 && /[\d/.]/.test(t) && !/^\d{1,3}$/.test(t)) {
       dotCut = t.includes(".");
       break;
     }
@@ -55,7 +61,9 @@ export function normalizeMerchant(
   }
   const key = trimTail(out).join(" ").replace(/\.$/, "");
   // "Bar Sport Milano" and "Bar Sport Roma" must not merge, nor "Mario D.Rossi" become "mario": keep every token instead.
-  const full = GENERIC.has(out[0]) || key.length <= 2 || (dotCut && out.length === 1) ? s.trim().split(/\s+/) : null;
+  // "market" is also a brand word ("acme market"), so it counts only first.
+  const generic = out.some((t, i) => GENERIC.has(t) && (i === 0 || t !== "market"));
+  const full = generic || key.length <= 2 || (dotCut && out.length === 1) ? s.trim().split(/\s+/) : null;
   if (full && COUNTRIES.has(full[full.length - 1])) full.pop();
 
   return { key: (full ? trimTail(full).join(" ").replace(/\.$/, "") : key).trim() || raw.replace(/\s+/g, " "), aggregator: null };
