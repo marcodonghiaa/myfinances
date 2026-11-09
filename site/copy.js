@@ -7,3 +7,5 @@ document.querySelectorAll("[data-copy]").forEach(b=>{
     navigator.clipboard.writeText(b.dataset.copy).then(()=>show("Copied!",1)).catch(()=>show("Copy failed",0));
   });
 });
+
+document.querySelectorAll(".marq ul").forEach(u=>{[...u.children].forEach(li=>{const c=li.cloneNode(true);c.setAttribute("aria-hidden","true");u.appendChild(c)});u.classList.add("loop")});

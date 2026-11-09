@@ -245,9 +245,10 @@ section>h2{font-size:clamp(1.8rem,1.3rem + 1.6vw,2.6rem)}
 .marq{margin:var(--s5) 0 0;text-align:center}
 .marq p{font-size:14px;color:var(--muted);margin:0 0 18px}
 .marq .track{overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
-.marq ul{display:flex;gap:44px;width:max-content;margin:0;padding:0;list-style:none;font-size:1.15rem;font-weight:500;letter-spacing:-.02em;color:var(--muted);animation:marq 60s linear infinite}
+.marq ul{display:flex;gap:44px;width:max-content;margin:0;padding:0;list-style:none;font-size:1.15rem;font-weight:500;letter-spacing:-.02em;color:var(--muted);}
+.marq ul.loop{animation:marq 60s linear infinite}
 @keyframes marq{to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.marq ul{animation:none}}
+@media (prefers-reduced-motion:reduce){.marq ul.loop{animation:none}}
 .tabs{margin-top:var(--s4)}
 .tabs input{position:absolute;opacity:0;pointer-events:none}
 .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:var(--s3)}
@@ -360,7 +361,7 @@ table.vs td.n{color:var(--muted)}
   <div class="stage"><figure class="frame"><div class="bar"><i></i><i></i><i></i><span>alopex.finance</span></div>
     <picture><source media="(max-width:640px)" srcset="/img/mobile.webp" width="600" height="1298"><img src="/img/net-worth.webp" width="1600" height="1000" alt="Alopex net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></picture>
   </figure></div>
-  <div class="marq"><p>Bank sync in 31 European countries</p><div class="track"><ul><li>Austria</li><li>Belgium</li><li>Bulgaria</li><li>Croatia</li><li>Cyprus</li><li>Czechia</li><li>Denmark</li><li>Estonia</li><li>Finland</li><li>France</li><li>Germany</li><li>Greece</li><li>Hungary</li><li>Iceland</li><li>Ireland</li><li>Italy</li><li>Latvia</li><li>Liechtenstein</li><li>Lithuania</li><li>Luxembourg</li><li>Malta</li><li>Netherlands</li><li>Norway</li><li>Poland</li><li>Portugal</li><li>Romania</li><li>Slovakia</li><li>Slovenia</li><li>Spain</li><li>Sweden</li><li>UK</li><li aria-hidden="true">Austria</li><li aria-hidden="true">Belgium</li><li aria-hidden="true">Bulgaria</li><li aria-hidden="true">Croatia</li><li aria-hidden="true">Cyprus</li><li aria-hidden="true">Czechia</li><li aria-hidden="true">Denmark</li><li aria-hidden="true">Estonia</li><li aria-hidden="true">Finland</li><li aria-hidden="true">France</li><li aria-hidden="true">Germany</li><li aria-hidden="true">Greece</li><li aria-hidden="true">Hungary</li><li aria-hidden="true">Iceland</li><li aria-hidden="true">Ireland</li><li aria-hidden="true">Italy</li><li aria-hidden="true">Latvia</li><li aria-hidden="true">Liechtenstein</li><li aria-hidden="true">Lithuania</li><li aria-hidden="true">Luxembourg</li><li aria-hidden="true">Malta</li><li aria-hidden="true">Netherlands</li><li aria-hidden="true">Norway</li><li aria-hidden="true">Poland</li><li aria-hidden="true">Portugal</li><li aria-hidden="true">Romania</li><li aria-hidden="true">Slovakia</li><li aria-hidden="true">Slovenia</li><li aria-hidden="true">Spain</li><li aria-hidden="true">Sweden</li><li aria-hidden="true">UK</li></ul></div></div>
+  <div class="marq"><p>Syncs 2000+ European banks, including</p><div class="track"><ul><li>Revolut</li><li>Wise</li><li>N26</li><li>FinecoBank</li><li>Intesa Sanpaolo</li><li>UniCredit</li><li>ING</li><li>BBVA</li><li>Santander</li><li>CaixaBank</li><li>BNP Paribas</li><li>Crédit Agricole</li><li>Deutsche Bank</li><li>Commerzbank</li><li>Sparkasse</li><li>ABN AMRO</li><li>Rabobank</li><li>KBC</li><li>Nordea</li><li>Danske Bank</li><li>SEB</li><li>Swedbank</li><li>Handelsbanken</li><li>Barclays</li><li>HSBC</li><li>Monzo</li></ul></div></div>
 </div>
 
 <section id="privacy">
