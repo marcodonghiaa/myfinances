@@ -8,7 +8,7 @@ Key facts:
 - Investments: holdings entered by the user, priced via Yahoo Finance; crypto via CoinGecko and a read-only Coinbase key.
 - Currencies: EUR, USD or GBP, daily ECB rates.
 - Categorization: user rules first, optional Google Gemini for the rest.
-- Also: subscription detection, transfer and refund pairing, "worth it?" Web Push prompts, installable PWA, CSV import.
+- Also: Splitwise shared costs, reports, income vs expenses, subscription detection, transfer and refund pairing, "worth it?" Web Push prompts, installable PWA, CSV import.
 - Hosting: runs on the user's own Supabase, GitHub Actions and Vercel (free tiers), or Docker. Setup about 30 minutes in the browser via GitHub Codespaces.
 - Not included: budgets, savings goals, forecasts, broker sync.
 - Not financial advice.
