@@ -1,5 +1,5 @@
 import { assertEquals, assertObjectMatch } from "jsr:@std/assert@1";
-import { type Charge, detectStreams } from "./recurring.ts";
+import { type Charge, detectStreams, RHYTHM_ONLY_DENY } from "./recurring.ts";
 import cases from "./recurring.cases.json" with { type: "json" };
 
 const DEFAULTS: Charge = {
@@ -48,12 +48,18 @@ for (const c of cases as Case[]) {
 Deno.test("detectStreams emits exactly the detector columns", () => {
   const rows = detectStreams(
     ["2026-08-05", "2026-09-05", "2026-10-05"].map((d) =>
-      charge({ booking_date: d, amount: 12.99, amount_eur: 12.99, creditor_name: "STREAMFLIX" })
+      charge({
+        booking_date: d,
+        amount: 12.99,
+        amount_eur: 12.99,
+        creditor_name: "STREAMFLIX",
+        transaction_type: "Subscription",
+      })
     ),
     "2026-11-08",
   );
   assertEquals(rows, [{
-    stream_key: "streamflix|acc-1|EUR",
+    stream_key: "streamflix|acc-1",
     merchant_key: "streamflix",
     account_uid: "acc-1",
     currency: "EUR",
@@ -103,10 +109,23 @@ Deno.test("an aggregator price rise keeps the same stream_key across runs", () =
     ["2026-08-03", 10.49],
     ["2026-09-03", 10.49],
     ["2026-10-03", 10.49],
-  ].map(([d, amount]) => charge({ merchant_key: "apple", booking_date: d as string, amount: amount as number }));
+  ].map(([d, amount]) =>
+    charge({ merchant_key: "apple", booking_date: d as string, amount: amount as number, transaction_type: "Subscription" })
+  );
   for (let n = 2; n <= history.length; n++) {
     assertEquals(detectStreams(history.slice(0, n), "2026-11-08").map((r) => r.stream_key), [
-      "apple|acc-1|EUR|9.99",
+      "apple|acc-1|9.99",
     ]);
+  }
+});
+
+// protects=R3 rhythm-only deny list; fails_when=a category is dropped from the list or the list stops applying
+Deno.test("rhythm alone never proposes an everyday category", () => {
+  assertEquals([...RHYTHM_ONLY_DENY].sort(), ["Dine Out", "Experiences", "Groceries", "Shopping", "Transports"]);
+  for (const category of RHYTHM_ONLY_DENY) {
+    const charges = ["2026-08-05", "2026-09-05", "2026-10-05"].map((d) => charge({ booking_date: d, category }));
+    assertEquals(detectStreams(charges, "2026-11-08"), [], category);
+    const tagged = charges.map((c) => ({ ...c, transaction_type: "Subscription" }));
+    assertEquals(detectStreams(tagged, "2026-11-08").map((r) => r.detected_status), ["active"], category);
   }
 });

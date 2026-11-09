@@ -40,6 +40,8 @@ export type DetectedStream = {
 };
 
 const EXCLUDED_CATEGORIES = new Set(["Transfer", "Taxes", "Income"]);
+// R3: a rhythm alone never proposes these everyday categories (bakeries, bars, commutes).
+export const RHYTHM_ONLY_DENY = new Set(["Groceries", "Dine Out", "Transports", "Shopping", "Experiences"]);
 // [cadence, period days, tolerance days]
 const CADENCES: [Cadence, number, number][] = [["weekly", 7, 2], ["monthly", 30, 4], ["quarterly", 91, 10], [
   "yearly",
@@ -47,7 +49,7 @@ const CADENCES: [Cadence, number, number][] = [["weekly", 7, 2], ["monthly", 30,
   21,
 ]];
 const DAY = 86_400_000;
-// The AI "Subscription" tag alone proposes a stream, only if charged within this many days (spec: Gemini shortcut).
+// R2: the AI "Subscription" tag without a rhythm proposes a stream only if charged within this many days.
 const TAG_RECENT_DAYS = 400;
 
 const toDays = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / DAY;
@@ -75,16 +77,15 @@ function addMonth(d: string): string {
   return new Date(Date.UTC(y, m, Math.min(+d.slice(8, 10), last))).toISOString().slice(0, 10);
 }
 
-// Ruling 3: normal keys keep charges within ±10% of the median; aggregators split greedily by amount.
+const eurOf = (c: Charge) => c.amount_eur ?? c.amount;
+
+// R4: a normal key is one stream (price changes included); aggregators split greedily by EUR amount.
 function clusters(group: Charge[], aggregator: boolean): Charge[][] {
-  if (!aggregator) {
-    const med = median(group.map((c) => c.amount));
-    return [group.filter((c) => Math.abs(c.amount - med) <= med * 0.1)];
-  }
+  if (!aggregator) return [group];
   const out: Charge[][] = [];
-  for (const c of [...group].sort((a, b) => a.amount - b.amount)) {
+  for (const c of [...group].sort((a, b) => eurOf(a) - eurOf(b))) {
     const cur = out[out.length - 1];
-    if (cur && c.amount <= cur[0].amount * 1.1) cur.push(c);
+    if (cur && eurOf(c) <= eurOf(cur[0]) * 1.1) cur.push(c);
     else out.push([c]);
   }
   return out;
@@ -96,9 +97,10 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
     if (
       c.credit_debit_indicator !== "DBIT" || c.flow_type !== "spend" || c.deleted_at !== null ||
       c.merchant_key === null || EXCLUDED_CATEGORIES.has(c.category ?? "") ||
-      isTransferCode(c.bank_transaction_code) || c.booking_date > today
+      isTransferCode(c.bank_transaction_code) || c.booking_date > today || Number(c.amount) === 0
     ) continue;
-    const key = `${c.merchant_key}|${c.account_uid}|${c.currency}`;
+    // R1: currency is not part of the key, so a currency switch stays one stream.
+    const key = `${c.merchant_key}|${c.account_uid}`;
     let g = groups.get(key);
     if (!g) groups.set(key, g = []);
     g.push(c);
@@ -108,28 +110,38 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
   for (const [groupKey, group] of groups) {
     const aggregator = (AGGREGATORS as readonly string[]).includes(group[0].merchant_key!);
     for (const cluster of clusters(group, aggregator)) {
-      const sorted = [...cluster].sort((a, b) => a.booking_date.localeCompare(b.booking_date));
+      // Same-day ties: the larger amount counts as newest, so input order never matters.
+      const sorted = [...cluster].sort((a, b) => a.booking_date.localeCompare(b.booking_date) || a.amount - b.amount);
       const newest = sorted[sorted.length - 1];
       // Same-day duplicates count as charges but not as intervals.
       const days = [...new Set(sorted.map((c) => toDays(c.booking_date)))];
       const picked = days.length >= 2 ? pickCadence(days.slice(1).map((d, i) => d - days[i])) : null;
-      // No rhythm: the AI tag still proposes it (suggested, cadence unknown) when it is recent.
-      const tagged = cluster.some((c) => c.transaction_type === "Subscription") &&
-        toDays(today) - toDays(newest.booking_date) <= TAG_RECENT_DAYS;
-      if (!picked && !tagged) continue;
+      // R2: the AI tag decides; a rhythm makes it active, no rhythm makes it suggested while recent.
+      // An aggregator's tag counts per cluster, so one tagged PayPal plan does not promote every PayPal purchase.
+      const tagged = cluster.some((c) => c.transaction_type === "Subscription");
+      let status: "suggested" | "active";
+      if (tagged) {
+        if (!picked && toDays(today) - toDays(newest.booking_date) > TAG_RECENT_DAYS) continue;
+        status = picked ? "active" : "suggested";
+      } else {
+        // R3: rhythm alone completes the list, never auto-active.
+        if (
+          !picked || picked[0] === "weekly" || cluster.length < 3 || RHYTHM_ONLY_DENY.has(newest.category ?? "")
+        ) continue;
+        status = "suggested";
+      }
       const [cadence, period] = picked ?? [null, null];
-      const typical = median(cluster.map((c) => c.amount));
-      const isDirectDebit = cluster.some((c) => /sdd/i.test(c.bank_transaction_code ?? ""));
       out.push({
-        // The anchor (cluster minimum) stays put when the price rises; the median would drift run to run.
-        stream_key: aggregator ? `${groupKey}|${Math.min(...cluster.map((c) => c.amount)).toFixed(2)}` : groupKey,
+        // R4/R5: the aggregator anchor (cluster minimum) stays put when the price rises.
+        stream_key: aggregator ? `${groupKey}|${Math.min(...cluster.map(eurOf)).toFixed(2)}` : groupKey,
         merchant_key: newest.merchant_key!,
         account_uid: newest.account_uid,
         currency: newest.currency,
         display_name: newest.custom_name || newest.creditor_name,
         category: newest.category,
         cadence,
-        typical_amount: typical,
+        // R4: the current price, not an average.
+        typical_amount: newest.amount,
         typical_amount_eur: newest.amount_eur,
         charge_count: cluster.length,
         first_charged: sorted[0].booking_date,
@@ -139,11 +151,8 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
           : period === null
           ? null
           : fromDays(toDays(newest.booking_date) + period),
-        // Rulings 1 and 5: weekly and SDD streams are never auto-active; nor is one without a rhythm.
-        detected_status: cluster.length >= 3 && cadence !== null && cadence !== "weekly" && !isDirectDebit
-          ? "active"
-          : "suggested",
-        is_direct_debit: isDirectDebit,
+        detected_status: status,
+        is_direct_debit: cluster.some((c) => /sdd/i.test(c.bank_transaction_code ?? "")),
       });
     }
   }
