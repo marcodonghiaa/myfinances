@@ -128,10 +128,41 @@ test('v2: typical_amount_eur backfill only fills nulls, from the newest live deb
   assert.match(e, /select abs\(v\.personal_signed_amount_eur\)/);
   assert.match(e, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
   assert.match(e, /order by t\.booking_date desc\s+limit 1\)\s+where r\.typical_amount_eur is null/);
-  assert.match(v2, /drop table v2_old_keys;\s*$/);
+  assert.match(v2, /drop table v2_old_keys;/);
 });
 
-test('v2 rollback is a stated no-op (data-only migration)', () => {
-  assert.match(v2down, /^-- No-op on purpose/);
-  assert.doesNotMatch(v2down.replace(/--.*$/gm, ''), /\b(update|delete|insert|drop|alter)\b/i);
+test('v2 rollback restores both functions and states the data steps are a no-op', () => {
+  assert.match(v2down, /data steps are a no-op on purpose/);
+  const code = v2down.replace(/--.*$/gm, '');
+  assert.equal(code.match(/create or replace function public\.(upsert_detected_streams|stream_action)\(/g).length, 2);
+  assert.doesNotMatch(code, /\bdelete\b/i); // the restored upsert never deletes
+  assert.match(code, /p_action = 'undismiss' then\s+update public\.recurring_streams set user_status = null/);
+  assert.doesNotMatch(code, /\b(drop|alter)\b|delete from|insert into public\.recurring_streams \(\s+user_id, stream_key, merchant_key, account_uid, currency, display_name, typical_amount/i);
+});
+
+const v2fn = (name) => {
+  const i = v2.indexOf(`function public.${name}(`);
+  assert.notEqual(i, -1, name);
+  return v2.slice(i, v2.indexOf('$$;', v2.indexOf('$$', i) + 2) + 3);
+};
+
+test('v2 upsert_detected_streams removes stale detector-only rows, never user choices; service role only', () => {
+  const fn = v2fn('upsert_detected_streams');
+  assert.match(fn, /security definer set search_path = public/);
+  assert.doesNotMatch(fn.slice(fn.indexOf('do update set'), fn.indexOf('get diagnostics')), /user_status|user_cadence|custom_interval|source/);
+  assert.match(fn, /delete from public\.recurring_streams s\s+where s\.user_id = p_user and s\.user_status is null and s\.source = 'bank'\s+and not exists \(select 1 from jsonb_array_elements\(p_rows\) e where e->>'stream_key' = s\.stream_key\)/);
+  assert.match(v2, /revoke execute on function public\.upsert_detected_streams\(uuid, jsonb\) from public, anon, authenticated/);
+  assert.match(v2, /grant execute on function public\.upsert_detected_streams\(uuid, jsonb\) to service_role/);
+});
+
+test('v2 stream_action: undismiss confirms a row the detector never filled, keeps ownership check and grants', () => {
+  const fn = v2fn('stream_action');
+  assert.match(fn, /security definer set search_path = public/);
+  assert.match(fn, /user_id = auth\.uid\(\)/);
+  for (const a of ['confirm', 'dismiss', 'undismiss', 'set_cadence']) assert.match(fn, new RegExp(`p_action = '${a}'`));
+  assert.match(fn, /p_action = 'undismiss' then\s+update public\.recurring_streams\s+set user_status = case when detected_status is null then 'confirmed' end, updated_at = now\(\)/);
+  assert.match(fn, /raise exception 'Unknown stream action/);
+  assert.match(fn, /raise exception 'Invalid cadence args'/);
+  assert.match(v2, /revoke execute on function public\.stream_action\(uuid, text, jsonb\) from public, anon/);
+  assert.match(v2, /grant execute on function public\.stream_action\(uuid, text, jsonb\) to authenticated/);
 });

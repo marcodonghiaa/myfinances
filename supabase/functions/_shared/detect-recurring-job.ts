@@ -64,10 +64,9 @@ export async function runDetection(
     try {
       const found = detectStreams(await userCharges(db, user), today);
       const rows = [...new Map(found.map((s) => [s.stream_key, s])).values()];
-      if (rows.length) {
-        const { error } = await rpc("upsert_detected_streams", { p_user: user, p_rows: rows });
-        if (error) throw error;
-      }
+      // Always called, even with no rows: the RPC also removes this user's stale detector-only rows.
+      const { error } = await rpc("upsert_detected_streams", { p_user: user, p_rows: rows });
+      if (error) throw error;
       users++;
       streams += rows.length;
     } catch (err) {
