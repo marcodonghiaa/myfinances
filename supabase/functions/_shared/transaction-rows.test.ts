@@ -69,3 +69,17 @@ Deno.test("merchant_key is the normalized creditor_name the row shows", async ()
   const [none] = await buildRows([tx()], "acc", "user");
   assertEquals(none.merchant_key, null);
 });
+
+// protects=counterparties' IBANs; fails_when=raw keeps creditor_account or debtor_account.
+Deno.test("raw drops the counterparty account numbers, keeps the rest", async () => {
+  const [row] = await buildRows([tx({
+    creditor_account: { iban: "DE89370400440532013000" },
+    debtor_account: { iban: "IT60X0542811101000000123456" },
+    creditor: { name: "Shop" },
+  })], "acc", "user");
+  const raw = row.raw as EbTransaction;
+  assertEquals("creditor_account" in raw, false);
+  assertEquals("debtor_account" in raw, false);
+  assertEquals(raw.creditor, { name: "Shop" });
+  assertEquals(raw.entry_reference, "r1");
+});

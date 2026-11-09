@@ -17,6 +17,13 @@ function entryReferenceFor(tx, seen) {
   return `h:${crypto.createHash('sha1').update(`${key}|${n}`).digest('hex').slice(0, 24)}`;
 }
 
+// The bank payload is kept for support and export, minus the counterparty's account number
+// (IBAN): nothing reads it, and it is someone else's data.
+function rawWithoutAccounts(tx) {
+  const { creditor_account: _c, debtor_account: _d, ...rest } = tx;
+  return rest;
+}
+
 function mapToRow(tx, accountUid, userId, entryReference) {
   return {
     entry_reference: entryReference,
@@ -31,7 +38,7 @@ function mapToRow(tx, accountUid, userId, entryReference) {
     booking_date: tx.booking_date,
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
-    raw: tx,
+    raw: rawWithoutAccounts(tx),
     user_id: userId,
   };
 }

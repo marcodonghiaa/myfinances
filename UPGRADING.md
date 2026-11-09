@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Bank payloads no longer keep other people's IBANs
+- **Migration:** `20261126000000_raw_without_accounts`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions.
+- `transactions.raw` (the bank's payload, kept for support and export) stored the counterparty's account number on transfers. The sync now leaves it out, and the migration removes it from stored rows. Nothing in the app used it; every other field stays.
+- **Not reversible:** the removed numbers can't be restored. Want them? Download the export (Settings → Your data) before you apply it.
+
 ### Delete your account from Settings
 - **Migration:** `20261125000000_account_deletion`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions and the dashboard.
 - Deleting a user used to fail: most tables pointed at the user with no delete rule. They now cascade, so deleting a user (Settings → Delete account, or Supabase Auth → Users) removes all their rows, and deleting an account removes its transactions.

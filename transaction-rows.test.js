@@ -63,3 +63,14 @@ test('pending transactions are left out until the bank books them', () => {
   );
   assert.deepStrictEqual(rows.map((r) => r.entry_reference), ['b1', 'b2']);
 });
+
+test('raw drops the counterparty account numbers, keeps the rest', () => {
+  const [row] = buildRows([tx({
+    creditor_account: { iban: 'DE89370400440532013000' },
+    debtor_account: { iban: 'IT60X0542811101000000123456' },
+    creditor: { name: 'Shop' },
+  })], 'acc', 'user');
+  assert.equal('creditor_account' in row.raw, false);
+  assert.equal('debtor_account' in row.raw, false);
+  assert.deepEqual(row.raw.creditor, { name: 'Shop' });
+});
