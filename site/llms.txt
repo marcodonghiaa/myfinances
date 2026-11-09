@@ -13,8 +13,27 @@ Key facts:
 - Not included: budgets, savings goals, forecasts, broker sync.
 - Not financial advice.
 
+## Compared with
+| | Alopex | Monarch Money | Finary |
+|---|---|---|---|
+| Price | Free (MIT) | $99.99/year | Free for 2 accounts, paid from €54.99/year |
+| European banks | 2000+ over PSD2 | No (US and Canada) | Yes |
+| Where data lives | User's own Supabase | Monarch servers | Finary servers |
+| Open source | Yes | No | No |
+Prices checked 2026-11-09: https://www.monarchmoney.com/pricing , https://finary.com/en/pricing
+
+## FAQ
+- Is there an open-source alternative to Monarch Money for European banks? Yes: Alopex, MIT-licensed and self-hosted, with PSD2 sync for 2000+ European banks.
+- Is it free? Yes. It runs on the free tiers of Supabase, Vercel and Enable Banking. The trade-off is that the user hosts it and renews bank consent every 180 days.
+- How long does bank access last? 180 days of PSD2 consent (Delegated Regulation (EU) 2022/2360), then a one-click renewal without losing history.
+- Can it move money? No. Access is read-only.
+
 ## Links
 - [Live demo (fake data, no sign-up)](https://app.alopex.finance/demo)
 - [Backend repo, start here: sync, Edge Functions, setup](https://github.com/marcodonghiaa/alopex)
 - [Dashboard repo](https://github.com/marcodonghiaa/alopex-web)
 - [Landing page](https://alopex.finance/)
+- [Comparison table](https://alopex.finance/#switch)
+- [FAQ](https://alopex.finance/#faq)
+
+Last updated: 2026-11-09
