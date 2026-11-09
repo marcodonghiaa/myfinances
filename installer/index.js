@@ -16,9 +16,12 @@ const lib = require('./lib');
 const APP = 'Alopex';
 const BACKEND_REPO = process.env.ALOPEX_BACKEND_REPO || 'marcodonghiaa/myfinances';
 const DASHBOARD_REPO = process.env.ALOPEX_DASHBOARD_REPO || 'marcodonghiaa/my-wealth-view';
-const REF = process.env.ALOPEX_REF || 'main';
-const SUPABASE = 'supabase@3';
-const VERCEL = 'vercel@latest';
+// Each installer release downloads the matching release tag of both repos (tag both before
+// publishing), never a moving branch: what runs is what was released. ALOPEX_REF=main to test.
+const REF = process.env.ALOPEX_REF || `v${require('./package.json').version}`;
+// Exact CLI versions, so a new CLI release can't change what setup does. Bump them on release.
+const SUPABASE = 'supabase@3.1.0';
+const VERCEL = 'vercel@65.12.1';
 const WIN = process.platform === 'win32';
 
 const bold = (s) => console.log(`\x1b[1m${s}\x1b[0m`);
@@ -82,7 +85,7 @@ function openBrowser(url) {
 // --- steps ---------------------------------------------------------------------------------------
 async function download(repo, dir) {
   const res = await fetch(lib.tarballUrl(repo, REF));
-  if (!res.ok) die(`Could not download ${repo} (HTTP ${res.status}).`);
+  if (!res.ok) die(`Could not download ${repo} at ${REF} (HTTP ${res.status}).`);
   const file = path.join(os.tmpdir(), `alopex-${process.pid}-${path.basename(dir)}.tar.gz`);
   fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
   fs.mkdirSync(dir, { recursive: true });
@@ -294,6 +297,10 @@ The APP_ID is the long id shown next to your app.`);
   console.log();
   bold(`Done! ${origin || site || 'Open your Vercel project'} , sign in as ${saved.LOGIN_EMAIL}, then Accounts -> Connect a bank.`);
   console.log(`Your keys are in ${envFile} (keep it private). To update ${APP} later, run the same command in the same folder.`);
+  console.log();
+  bold('Protect the accounts that hold your data: turn on two-factor sign-in at');
+  console.log('  Supabase: https://supabase.com/dashboard/account/security');
+  console.log('  Vercel:   https://vercel.com/account/settings/authentication');
 }
 
 // Switches public sign-ups off (the login exists already) and, once known, points auth emails at the dashboard.

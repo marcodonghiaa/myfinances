@@ -23,7 +23,11 @@ Needs Node 20+. No git, Docker, Homebrew or GitHub account: the Supabase and Ver
 Run the same command in the same folder again to update: it re-downloads the code, keeps
 `backend/.env`, applies new migrations and functions, and redeploys the dashboard.
 
+Each installer version downloads the release tag `v<version>` of both repos and runs exact
+Supabase / Vercel CLI versions, so nothing changes under you between releases.
+Release: tag `v<version>` on both repos, then `npm publish` from `installer/`.
+
 Forks and testing: `ALOPEX_BACKEND_REPO`, `ALOPEX_DASHBOARD_REPO` (owner/name) and
-`ALOPEX_REF` (branch, default `main`) choose what is downloaded.
+`ALOPEX_REF` (tag or branch; `ALOPEX_REF=main` to try unreleased code) choose what is downloaded.
 
 Tests: `node --test installer/` (from the backend repo root).
