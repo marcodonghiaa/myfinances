@@ -243,6 +243,8 @@ The APP_ID is the long id shown next to your app.`);
   if (gemini) console.log('Using the key from your last run.');
   else {
     console.log('Free at https://aistudio.google.com/apikey . Enter skips: then only your own rules categorize.');
+    console.log('Privacy: transaction descriptions are sent to Google. On the free tier Google may use them to improve');
+    console.log('its models; a paid-tier key (billing on) opts you out.');
     for (;;) {
       gemini = await askHidden('GEMINI_API_KEY (not shown; Enter to skip)');
       if (!gemini) {
