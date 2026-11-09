@@ -14,8 +14,8 @@ const readline = require('readline');
 const lib = require('./lib');
 
 const APP = 'Alopex';
-const BACKEND_REPO = process.env.ALOPEX_BACKEND_REPO || 'marcodonghiaa/myfinances';
-const DASHBOARD_REPO = process.env.ALOPEX_DASHBOARD_REPO || 'marcodonghiaa/my-wealth-view';
+const BACKEND_REPO = process.env.ALOPEX_BACKEND_REPO || 'marcodonghiaa/alopex';
+const DASHBOARD_REPO = process.env.ALOPEX_DASHBOARD_REPO || 'marcodonghiaa/alopex-web';
 // Each installer release downloads the matching release tag of both repos (tag both before
 // publishing), never a moving branch: what runs is what was released. ALOPEX_REF=main to test.
 const REF = process.env.ALOPEX_REF || `v${require('./package.json').version}`;
