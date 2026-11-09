@@ -231,6 +231,49 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 .switch p.vs{color:var(--ink)}
 .switch p.vs::before{content:"Alopex";display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:8px}
 @media (max-width:760px){.switch{grid-template-columns:1fr}}
+
+/* turnstone-inspired variant */
+header{top:12px;border:0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;margin-top:12px}
+header .wrap{max-width:980px;height:56px;padding:0 8px 0 20px;border-radius:999px;background:color-mix(in srgb,var(--bg) 82%,transparent);box-shadow:inset 0 0 0 1px var(--line),0 8px 30px -12px rgba(0,0,0,.18);backdrop-filter:saturate(1.8) blur(14px);-webkit-backdrop-filter:saturate(1.8) blur(14px)}
+.btn,header nav .btn.sm{border-radius:999px}
+header nav .btn.sm{height:40px;padding:0 18px}
+.ctas .btn{border:0;background:color-mix(in srgb,var(--ink) 6%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+.cmd{border-radius:999px;padding-left:24px}
+.cmd .cp{border-radius:999px}
+h1{font-size:clamp(2.6rem,1.2rem + 4.6vw,5.2rem);letter-spacing:-.05em;line-height:1;max-width:16ch}
+@media (max-width:480px){h1{font-size:2.35rem;letter-spacing:-.04em;max-width:none;hyphens:none}}
+.hero{padding-top:clamp(56px,8vw,104px)}
+section>h2,section>.lead{margin-left:auto;margin-right:auto;text-align:center}
+section>h2{font-size:clamp(1.8rem,1.3rem + 1.6vw,2.6rem)}
+.flow,.tablewrap,.frame.small{border-radius:24px}
+.flow{background:none;border:0;gap:12px}
+.flow>div{border-radius:24px;box-shadow:inset 0 0 0 1px var(--line);background:var(--soft)}
+.flow .yours{background:var(--bg)}
+.flow>div+div::before{display:none}
+.others{max-width:none;list-style:none;padding:0;text-align:center}
+.marq{margin:var(--s5) 0 0;text-align:center}
+.marq p{font-size:14px;color:var(--muted);margin:0 0 18px}
+.marq .track{overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.marq ul{display:flex;gap:44px;width:max-content;margin:0;padding:0;list-style:none;font-size:1.15rem;font-weight:500;letter-spacing:-.02em;color:var(--muted);animation:marq 60s linear infinite}
+@keyframes marq{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.marq ul{animation:none}}
+.tabs{margin-top:var(--s4)}
+.tabs input{position:absolute;opacity:0;pointer-events:none}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:var(--s3)}
+.chips label{cursor:pointer;height:38px;display:inline-flex;align-items:center;padding:0 16px;border-radius:999px;font-size:14px;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.chips label:hover{color:var(--ink)}
+.panel{display:none;border-radius:24px;box-shadow:inset 0 0 0 1px var(--line);background:var(--soft);padding:8px}
+.panel .frame{border-radius:18px;border:1px solid var(--line);animation:none;box-shadow:none;max-width:none}
+.panel img{aspect-ratio:16/10;object-position:left top}
+.panel img[src$="mobile.webp"]{object-fit:contain;object-position:center top;padding-top:16px;background:var(--bg)}
+.panel p{margin:14px 12px 8px;color:var(--muted);text-align:center}
+.panel p strong{color:var(--ink);font-weight:600}
+#t-nw:checked~.chips label[for=t-nw]{background:var(--ink);color:var(--bg);box-shadow:none}#t-nw:checked~.p-nw{display:block}#t-nw:focus-visible~.chips label[for=t-nw]{outline:2px solid var(--accent);outline-offset:2px}
+#t-tx:checked~.chips label[for=t-tx]{background:var(--ink);color:var(--bg);box-shadow:none}#t-tx:checked~.p-tx{display:block}#t-tx:focus-visible~.chips label[for=t-tx]{outline:2px solid var(--accent);outline-offset:2px}
+#t-pf:checked~.chips label[for=t-pf]{background:var(--ink);color:var(--bg);box-shadow:none}#t-pf:checked~.p-pf{display:block}#t-pf:focus-visible~.chips label[for=t-pf]{outline:2px solid var(--accent);outline-offset:2px}
+#t-sp:checked~.chips label[for=t-sp]{background:var(--ink);color:var(--bg);box-shadow:none}#t-sp:checked~.p-sp{display:block}#t-sp:focus-visible~.chips label[for=t-sp]{outline:2px solid var(--accent);outline-offset:2px}
+#t-su:checked~.chips label[for=t-su]{background:var(--ink);color:var(--bg);box-shadow:none}#t-su:checked~.p-su{display:block}#t-su:focus-visible~.chips label[for=t-su]{outline:2px solid var(--accent);outline-offset:2px}
+#t-mo:checked~.chips label[for=t-mo]{background:var(--ink);color:var(--bg);box-shadow:none}#t-mo:checked~.p-mo{display:block}#t-mo:focus-visible~.chips label[for=t-mo]{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -263,11 +306,12 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <div class="stage"><figure class="frame"><div class="bar"><i></i><i></i><i></i><span>alopex.finance</span></div>
     <picture><source media="(max-width:640px)" srcset="/img/mobile.webp" width="600" height="1298"><img src="/img/net-worth.webp" width="1600" height="1000" alt="Alopex net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></picture>
   </figure></div>
+  <div class="marq"><p>Bank sync in 31 European countries</p><div class="track"><ul><li>Austria</li><li>Belgium</li><li>Bulgaria</li><li>Croatia</li><li>Cyprus</li><li>Czechia</li><li>Denmark</li><li>Estonia</li><li>Finland</li><li>France</li><li>Germany</li><li>Greece</li><li>Hungary</li><li>Iceland</li><li>Ireland</li><li>Italy</li><li>Latvia</li><li>Liechtenstein</li><li>Lithuania</li><li>Luxembourg</li><li>Malta</li><li>Netherlands</li><li>Norway</li><li>Poland</li><li>Portugal</li><li>Romania</li><li>Slovakia</li><li>Slovenia</li><li>Spain</li><li>Sweden</li><li>UK</li><li aria-hidden="true">Austria</li><li aria-hidden="true">Belgium</li><li aria-hidden="true">Bulgaria</li><li aria-hidden="true">Croatia</li><li aria-hidden="true">Cyprus</li><li aria-hidden="true">Czechia</li><li aria-hidden="true">Denmark</li><li aria-hidden="true">Estonia</li><li aria-hidden="true">Finland</li><li aria-hidden="true">France</li><li aria-hidden="true">Germany</li><li aria-hidden="true">Greece</li><li aria-hidden="true">Hungary</li><li aria-hidden="true">Iceland</li><li aria-hidden="true">Ireland</li><li aria-hidden="true">Italy</li><li aria-hidden="true">Latvia</li><li aria-hidden="true">Liechtenstein</li><li aria-hidden="true">Lithuania</li><li aria-hidden="true">Luxembourg</li><li aria-hidden="true">Malta</li><li aria-hidden="true">Netherlands</li><li aria-hidden="true">Norway</li><li aria-hidden="true">Poland</li><li aria-hidden="true">Portugal</li><li aria-hidden="true">Romania</li><li aria-hidden="true">Slovakia</li><li aria-hidden="true">Slovenia</li><li aria-hidden="true">Spain</li><li aria-hidden="true">Sweden</li><li aria-hidden="true">UK</li></ul></div></div>
 </div>
 
 <section id="privacy">
-  <h2>Your bank data never touches an Alopex server</h2>
-  <p class="lead">The last two steps run under your own accounts. Alopex runs nothing in between.</p>
+  <h2>Your bank. Your database. Your data.</h2>
+  <p class="lead">Your bank data never touches an Alopex server. The last two steps run under your own accounts.</p>
   <div class="flow">
     <div><p class="who">Your bank</p><h3>Balances and transactions</h3><p>Shared read-only under PSD2, the EU open-banking law.</p></div>
     <div><p class="who">Enable Banking</p><h3>Regulated bank connector</h3><p>Fetches from your bank and passes the data to your database. Regulated by Finland's FIN-FSA (<a href="https://enablebanking.com/privacy-policy">privacy policy</a>).</p></div>
@@ -282,14 +326,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 
 <section id="features">
   <h2>Every account you own, in one number</h2>
-  <div class="shots">
-    <figure class="shot"><div class="frame small"><img src="/img/net-worth.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex net worth across banks, portfolio and crypto"></div><figcaption><h3>Net worth, every day</h3><p>Banks, portfolio and crypto added up daily, in EUR, USD or GBP.</p></figcaption></figure>
-    <figure class="shot"><div class="frame small"><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex transactions synced from the bank"></div><figcaption><h3>Banks that sync themselves</h3><p>Every 6 hours. Your rules sort transactions first; optional AI sorts the rest.</p></figcaption></figure>
-    <figure class="shot"><div class="frame small"><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex portfolio with stocks and crypto priced automatically"></div><figcaption><h3>Stocks and crypto, priced for you</h3><p>Add holdings by ticker or ISIN; prices update on their own. Coinbase syncs with a read-only key.</p></figcaption></figure>
-    <figure class="shot"><div class="frame small"><img src="/img/spending.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex spending by category"></div><figcaption><h3>See where the month went</h3><p>Spending by category. Transfers and refunds never count as spending.</p></figcaption></figure>
-    <figure class="shot"><div class="frame small"><img src="/img/subscriptions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex subscriptions found for you"></div><figcaption><h3>Subscriptions found for you</h3><p>Every recurring charge and what it costs per month.</p></figcaption></figure>
-    <figure class="shot"><div class="frame small"><img src="/img/mobile.webp" width="600" height="1298" loading="lazy" decoding="async" alt="Alopex on your phone"></div><figcaption><h3>On your phone</h3><p>Install it like an app. Get a reminder before bank access runs out.</p></figcaption></figure>
-  </div>
+  <div class="tabs"><input type="radio" name="feat" id="t-nw" checked><input type="radio" name="feat" id="t-tx"><input type="radio" name="feat" id="t-pf"><input type="radio" name="feat" id="t-sp"><input type="radio" name="feat" id="t-su"><input type="radio" name="feat" id="t-mo"><div class="chips"><label for="t-nw">Net worth, every day</label><label for="t-tx">Banks that sync themselves</label><label for="t-pf">Stocks and crypto, priced for you</label><label for="t-sp">See where the month went</label><label for="t-su">Subscriptions found for you</label><label for="t-mo">On your phone</label></div><div class="panel p-nw"><div class="frame"><img src="/img/net-worth.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex net worth across banks, portfolio and crypto"></div><p><strong>Net worth, every day.</strong> Banks, portfolio and crypto added up daily, in EUR, USD or GBP.</p></div><div class="panel p-tx"><div class="frame"><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex transactions synced from the bank"></div><p><strong>Banks that sync themselves.</strong> Every 6 hours. Your rules sort transactions first; optional AI sorts the rest.</p></div><div class="panel p-pf"><div class="frame"><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex portfolio with stocks and crypto priced automatically"></div><p><strong>Stocks and crypto, priced for you.</strong> Add holdings by ticker or ISIN; prices update on their own. Coinbase syncs with a read-only key.</p></div><div class="panel p-sp"><div class="frame"><img src="/img/spending.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex spending by category"></div><p><strong>See where the month went.</strong> Spending by category. Transfers and refunds never count as spending.</p></div><div class="panel p-su"><div class="frame"><img src="/img/subscriptions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex subscriptions found for you"></div><p><strong>Subscriptions found for you.</strong> Every recurring charge and what it costs per month.</p></div><div class="panel p-mo"><div class="frame"><img src="/img/mobile.webp" width="600" height="1298" loading="lazy" decoding="async" alt="Alopex on your phone"></div><p><strong>On your phone.</strong> Install it like an app. Get a reminder before bank access runs out.</p></div></div>
 </section>
 
 <section id="switch">
