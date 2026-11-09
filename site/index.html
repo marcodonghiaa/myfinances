@@ -3,23 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MyFinances: Self-Hosted Net Worth Tracker for EU Banks</title>
-<meta name="description" content="Open-source (MIT) net worth tracker you host yourself. PSD2 sync with 2000+ European banks, plus stocks and crypto. Your data stays in your own Supabase.">
-<!-- SITE_URL: change every https://myfinances.vercel.app below (and in robots.txt, sitemap.xml, llms.txt) when the domain is chosen -->
-<link rel="canonical" href="https://myfinances.vercel.app/">
-<meta name="theme-color" content="#173F34">
+<title>Alopex: Open-Source Monarch Alternative for European Banks</title>
+<meta name="description" content="The open-source Monarch alternative for European banks: net worth from 2000+ EU banks, stocks and crypto, synced read-only into your own Supabase. MIT.">
+<!-- SITE_URL: https://alopex.finance, also in robots.txt, sitemap.xml, llms.txt -->
+<link rel="canonical" href="https://alopex.finance/">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="MyFinances">
-<meta property="og:title" content="MyFinances: a self-hosted net worth tracker for European banks">
+<meta property="og:locale" content="en_GB">
+<meta property="og:site_name" content="Alopex">
+<meta property="og:title" content="Alopex: the open-source Monarch alternative for European banks">
 <meta property="og:description" content="Bank accounts, investments and crypto in one dashboard, synced read-only from 2000+ European banks into a database you own. MIT licensed.">
-<meta property="og:url" content="https://myfinances.vercel.app/">
-<meta property="og:image" content="https://myfinances.vercel.app/og-image.png">
+<meta property="og:url" content="https://alopex.finance/">
+<meta property="og:image" content="https://alopex.finance/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="MyFinances: net worth, spending, subscriptions and portfolio from your own bank accounts, in your own Supabase project">
+<meta property="og:image:alt" content="Alopex: net worth, spending, subscriptions and portfolio from your own bank accounts, in your own Supabase project">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Alopex: the open-source Monarch alternative for European banks">
+<meta name="twitter:description" content="Bank accounts, investments and crypto in one dashboard, synced read-only from 2000+ European banks into a database you own. MIT licensed.">
+<meta name="twitter:image" content="https://alopex.finance/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap">
@@ -28,16 +33,18 @@
 {
   "@context": "https://schema.org",
   "@graph": [
+    { "@type": "WebSite", "@id": "https://alopex.finance/#website", "url": "https://alopex.finance/", "name": "Alopex", "alternateName": "MyFinances", "inLanguage": "en" },
     {
       "@type": "SoftwareApplication",
-      "@id": "https://myfinances.vercel.app/#app",
-      "name": "MyFinances",
-      "description": "MyFinances is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. MIT license.",
+      "@id": "https://alopex.finance/#app",
+      "name": "Alopex",
+      "alternateName": "MyFinances",
+      "description": "Alopex is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. MIT license.",
       "applicationCategory": "FinanceApplication",
-      "operatingSystem": "Web, Docker",
-      "url": "https://myfinances.vercel.app/",
-      "image": "https://myfinances.vercel.app/og-image.png",
-      "screenshot": "https://myfinances.vercel.app/img/net-worth.webp",
+      "operatingSystem": "Web browser; Linux (Docker)",
+      "url": "https://alopex.finance/",
+      "image": "https://alopex.finance/og-image.png",
+      "screenshot": "https://alopex.finance/img/net-worth.webp",
       "license": "https://opensource.org/licenses/MIT",
       "isAccessibleForFree": true,
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
@@ -49,228 +56,308 @@
     {
       "@type": "FAQPage",
       "mainEntity": [
-        {"@type": "Question", "name": "Is there an open-source alternative to Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. MyFinances is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers."}},
-        {"@type": "Question", "name": "Can I self-host a net worth tracker with European bank sync?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. MyFinances syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces."}},
-        {"@type": "Question", "name": "Is MyFinances free?", "acceptedAnswer": {"@type": "Answer", "text": "The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change."}},
-        {"@type": "Question", "name": "Does MyFinances work with US banks?", "acceptedAnswer": {"@type": "Answer", "text": "No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD."}},
-        {"@type": "Question", "name": "Which banks does MyFinances support?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it."}},
-        {"@type": "Question", "name": "Can MyFinances move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments."}},
-        {"@type": "Question", "name": "Who can see my financial data in MyFinances?", "acceptedAnswer": {"@type": "Answer", "text": "You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection."}},
-        {"@type": "Question", "name": "How is MyFinances different from Firefly III or Actual Budget?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual Budget are budgeting tools; MyFinances is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices."}},
-        {"@type": "Question", "name": "Do I need a server or Docker to run MyFinances?", "acceptedAnswer": {"@type": "Answer", "text": "No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server."}},
-        {"@type": "Question", "name": "Can I try MyFinances without connecting a bank?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The live demo runs on generated fake data in your browser, with no sign-up. It never touches a real account."}},
-        {"@type": "Question", "name": "Can I import CSV history into MyFinances?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank."}},
-        {"@type": "Question", "name": "What happens when the 180-day bank consent expires?", "acceptedAnswer": {"@type": "Answer", "text": "PSD2 consent lasts 180 days. The dashboard shows a Renew access banner two weeks before it ends and sends push reminders, and you renew from the Accounts page without losing history."}}
+        {"@type": "Question", "name": "Is there an open-source alternative to Monarch Money or Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard, with the data in your own Supabase project."}},
+        {"@type": "Question", "name": "How is Alopex different from Firefly III, Actual Budget or Ghostfolio?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual budget; Ghostfolio tracks investments. Alopex does net worth across bank accounts, investments and crypto, with EU bank sync built in."}},
+        {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change."}},
+        {"@type": "Question", "name": "Which banks does Alopex support, and how long does access last?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history."}},
+        {"@type": "Question", "name": "Do I need a server to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sync runs on GitHub Actions and the dashboard on Vercel. Docker is an option for a home server."}},
+        {"@type": "Question", "name": "Can Alopex move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. PSD2 account-information access and the Coinbase key are both read-only."}}
       ]
     }
   ]
 }
 </script>
 <style>
-:root{--forest:#173F34;--mint:#D8ECDD;--bg:#F7F5EE;--ink:#1a2420;--muted:#5f6a65;--line:rgba(26,36,32,.12);--accent:#173F34;--on-accent:#F7F5EE;--soft:#eef0e9;color-scheme:light dark}
-@media (prefers-color-scheme:dark){:root{--bg:#121917;--ink:#eef2ef;--muted:#9ea8a3;--line:rgba(238,242,239,.13);--accent:#D8ECDD;--on-accent:#173F34;--soft:#1b2421}}
+:root{--bg:#fff;--ink:#0a0a0a;--muted:#666;--line:#eaeaea;--accent:#0a0a0a;--on-accent:#fff;--soft:#fafafa;--wrap:1120px;--copy:680px;--s2:16px;--s3:24px;--s4:40px;--s5:64px;--s6:clamp(88px,10vw,136px);--pad:clamp(16px,4vw,32px);color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0a0a0a;--ink:#ededed;--muted:#a1a1a1;--line:#262626;--accent:#ededed;--on-accent:#0a0a0a;--soft:#141414}}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:72px}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Geist",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-feature-settings:"tnum","lnum";-webkit-font-smoothing:antialiased}
-::selection{background:var(--mint);color:var(--forest)}
+::selection{background:var(--ink);color:var(--bg)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}
-.wrap{max-width:880px;margin:0 auto;padding:0 20px}
-header{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 var(--pad)}
+.copy{max-width:var(--copy)}
+header{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(1.8) blur(12px);-webkit-backdrop-filter:saturate(1.8) blur(12px)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;letter-spacing:-.01em}
 .brand svg{width:26px;height:26px}
-header nav a{font-size:14px;color:var(--muted);text-decoration:none;margin-left:20px}
+header nav{display:flex;align-items:center;gap:22px}
+header nav a{font-size:14px;color:var(--muted);text-decoration:none}
 header nav a:hover{color:var(--ink)}
-.hero{padding:72px 0 24px}
-h1{font-size:clamp(2.1rem,1.3rem + 3vw,3.4rem);line-height:1.05;letter-spacing:-.035em;font-weight:600;margin:0 0 20px;max-width:18ch;text-wrap:balance}
-.sub{font-size:1.15rem;color:var(--muted);max-width:52ch;margin:0 0 32px;text-wrap:pretty}
-.ctas{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.btn{display:inline-block;padding:11px 20px;border-radius:999px;text-decoration:none;font-weight:500;font-size:15px;border:1px solid var(--line);transition:background .16s ease,border-color .16s ease}
+header nav .stars{display:inline-flex;align-items:center;gap:6px}
+header nav .stars img{display:block;height:20px;width:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 22px;border-radius:8px;text-decoration:none;font-weight:500;font-size:15px;line-height:1;border:1px solid var(--line);background:var(--bg);color:var(--ink);transition:background .16s ease,border-color .16s ease}
+.btn:hover{background:var(--soft)}
 .btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
-.btn.primary:hover{opacity:.92}
-.btn:not(.primary):hover{border-color:var(--muted)}
-.ctas small{color:var(--muted);font-size:13px;margin-left:4px}
-.shot{margin:48px 0 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;animation:rise .7s cubic-bezier(.16,1,.3,1) both}
-.shot img{display:block;width:100%;height:auto}
+.btn.primary:hover{background:color-mix(in srgb,var(--accent) 86%,var(--bg))}
+header nav .btn.sm{height:34px;padding:0 14px;font-size:14px;color:var(--on-accent)}
+.hero{padding:clamp(48px,7vw,80px) 0 0;text-align:center}
+.kicker{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--s3)}
+h1{font-size:clamp(2.4rem,1.4rem + 3.6vw,4rem);line-height:1.04;letter-spacing:-.04em;font-weight:600;margin:0 auto 20px;max-width:20ch;text-wrap:balance}
+.sub{font-size:clamp(1.05rem,1rem + .4vw,1.3rem);line-height:1.5;color:var(--muted);max-width:50ch;margin:0 auto 32px;text-wrap:pretty}
+.ctas{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center}
+.fine{font-size:13px;color:var(--muted);margin:14px 0 0}
+.facts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 28px;margin:28px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.facts li{display:flex;align-items:center;gap:8px}
+.facts li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ink);opacity:.5}
+.stage{margin:var(--s4) calc(-1*var(--pad)) 0;padding:clamp(16px,3vw,40px) var(--pad) 0;background:linear-gradient(180deg,var(--soft),var(--bg));border-top:1px solid var(--line);position:relative}
+.stage::after{content:"";position:absolute;inset:auto 0 0;height:140px;background:linear-gradient(180deg,transparent,var(--bg));pointer-events:none}
+.frame{margin:0 auto;max-width:1040px;border:1px solid var(--line);border-radius:12px 12px 0 0;border-bottom:0;background:var(--bg);box-shadow:0 24px 60px -24px rgba(0,0,0,.25);overflow:hidden;animation:rise .7s cubic-bezier(.16,1,.3,1) both}
+.frame .bar{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--soft)}
+.frame .bar i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.frame .bar span{margin-left:12px;font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 10px}
+.frame img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;object-position:top}
+@media (max-width:640px){.frame{max-width:320px;border-radius:24px 24px 0 0}.frame .bar{display:none}.frame img{aspect-ratio:600/980}}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.shot{animation:none}}
-section{padding:64px 0 0}
-h2{font-size:1.5rem;letter-spacing:-.025em;line-height:1.2;font-weight:600;margin:0 0 20px}
-.what p{font-size:1.15rem;line-height:1.55;max-width:60ch;margin:0;text-wrap:pretty}
-dl{margin:0;border-top:1px solid var(--line)}
-.row{display:grid;grid-template-columns:200px 1fr;gap:8px 32px;padding:16px 0;border-bottom:1px solid var(--line)}
-.row dt{font-weight:500;margin:0}
-.row dd{margin:0;color:var(--muted);max-width:60ch}
-@media (max-width:600px){.row{grid-template-columns:1fr}}
-ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;border-top:1px solid var(--line)}
-ol.steps li{counter-increment:s;display:grid;grid-template-columns:200px 1fr;gap:8px 32px;padding:16px 0;border-bottom:1px solid var(--line)}
-ol.steps strong{font-weight:500}
-ol.steps strong::before{content:counter(s) ".";color:var(--muted);margin-right:.5em;font-variant-numeric:tabular-nums}
-ol.steps li span{color:var(--muted);max-width:60ch}
-@media (max-width:600px){ol.steps li{grid-template-columns:1fr}}
-.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media (max-width:600px){.gallery{grid-template-columns:1fr}}
-.gallery figure{margin:0}
-.gallery img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
-.gallery figcaption{font-size:13px;color:var(--muted);margin-top:8px}
-.prose p{color:var(--muted);max-width:62ch;margin:0 0 14px}
+@media (prefers-reduced-motion:reduce){.frame{animation:none}}
+section{padding:var(--s6) 0 0}
+h2{font-size:clamp(1.75rem,1.3rem + 1.6vw,2.5rem);letter-spacing:-.03em;line-height:1.1;font-weight:600;margin:0 0 var(--s2);max-width:22ch;text-wrap:balance}
+.lead{font-size:1.15rem;color:var(--muted);max-width:52ch;margin:0 0 var(--s4);text-wrap:pretty}
+.label{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--s2)}
+.quote{text-align:center}
+.quote .label{margin-bottom:var(--s3)}
+.quote p{font-size:clamp(1.5rem,1.1rem + 1.8vw,2.5rem);line-height:1.2;letter-spacing:-.03em;font-weight:500;max-width:28ch;margin:0 auto;text-wrap:balance}
+.quote p span{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cards>div{background:var(--bg);padding:var(--s3) var(--s3) 28px}
+.cards h3,.feat h3,.grid6 h3{font-size:1.05rem;letter-spacing:-.015em;font-weight:600;margin:0 0 8px}
+.cards p,.grid6 p{color:var(--muted);margin:0;font-size:.95rem}
+.cards svg{width:22px;height:22px;display:block;margin-bottom:18px}
+.others{margin:var(--s4) 0 0;padding-left:18px;color:var(--muted);max-width:62ch;font-size:.95rem}
+.others li{margin-bottom:6px}
+ol.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s4);margin:0;padding:0;list-style:none;counter-reset:s}
+ol.steps li{counter-increment:s;padding-top:var(--s3);border-top:1px solid var(--ink)}
+ol.steps li::before{content:counter(s,decimal-leading-zero);display:block;font-size:13px;color:var(--muted);letter-spacing:.04em;margin-bottom:var(--s3);font-variant-numeric:tabular-nums}
+ol.steps strong{display:block;font-weight:600;margin-bottom:6px;letter-spacing:-.01em}
+ol.steps span{color:var(--muted);font-size:.95rem}
+.after{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:var(--s4)}
+.after .fine{margin:0}
+@media (max-width:760px){ol.steps{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){ol.steps{grid-template-columns:1fr}}
+.feat{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--s5);align-items:center;padding:var(--s5) 0;border-top:1px solid var(--line)}
+.feat:nth-of-type(even){grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.feat:nth-of-type(even)>div{order:2}
+.feat h3{font-size:1.5rem;letter-spacing:-.025em;margin-bottom:12px}
+.feat p{color:var(--muted);margin:0 0 12px;max-width:42ch}
+.feat p:last-child{margin:0}
+.frame.small{border-radius:12px;border-bottom:1px solid var(--line);animation:none;box-shadow:0 1px 2px rgba(0,0,0,.04),0 16px 40px -20px rgba(0,0,0,.2)}
+.frame.small img{aspect-ratio:16/10;object-position:left top}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.grid6>div{background:var(--bg);padding:var(--s3)}
+@media (max-width:760px){.feat,.feat:nth-of-type(even){grid-template-columns:1fr;gap:var(--s3)}.feat>div{order:0}.grid6,.cards{grid-template-columns:1fr}}
+.prose p{color:var(--muted);margin:0 0 14px}
 .prose p strong{color:var(--ink);font-weight:500}
-.prose ul{margin:0;padding-left:18px;color:var(--muted);max-width:62ch}
-.prose li{margin-bottom:6px}
-.tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:680px;font-size:.92rem}
-th,td{text-align:left;padding:12px 12px 12px 0;border-bottom:1px solid var(--line);vertical-align:top}
-thead th{font-weight:500;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
-tbody th{font-weight:500;white-space:nowrap}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:.95rem}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td,tr:last-child th{border-bottom:0}
+thead th{font-weight:500;color:var(--muted);font-size:13px;background:var(--soft)}
+thead th:nth-child(2){color:var(--ink);font-weight:600}
+tbody th{font-weight:500;white-space:nowrap;position:sticky;left:0;background:var(--bg)}
 td{color:var(--muted)}
-td.us{color:var(--ink)}
+td.us{color:var(--ink);background:var(--soft)}
 .note{font-size:.88rem;color:var(--muted);margin:14px 0 0;max-width:70ch}
-details{border-bottom:1px solid var(--line);padding:14px 0}
+details{border-bottom:1px solid var(--line);padding:16px 0}
 details:first-of-type{border-top:1px solid var(--line)}
 summary{cursor:pointer;font-weight:500;list-style:none;display:flex;justify-content:space-between;gap:16px}
 summary::-webkit-details-marker{display:none}
 summary::after{content:"+";color:var(--muted);font-weight:400;flex:none}
 details[open] summary::after{content:"\2212"}
 details p{color:var(--muted);margin:10px 0 0;max-width:62ch}
-.final{padding:72px 0 0}
-.final h2{max-width:20ch}
-footer{margin-top:80px;border-top:1px solid var(--line);padding:28px 0 56px;font-size:.85rem;color:var(--muted)}
-footer p{margin:0 0 8px;max-width:78ch}
-code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);padding:1px 5px;border-radius:4px}
+.final .band{border:1px solid var(--line);border-radius:16px;padding:clamp(48px,7vw,88px) var(--s3);text-align:center;background:linear-gradient(180deg,var(--soft),var(--bg))}
+.final .band>svg{width:44px;height:44px;margin:0 auto var(--s3);display:block}
+.final h2{margin:0 auto 12px;max-width:20ch}
+.final .lead{margin:0 auto var(--s4)}
+.by{display:inline-flex;align-items:center;gap:10px;margin-top:var(--s4);padding:6px 14px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--bg);text-decoration:none;font-size:14px;color:var(--muted)}
+.by img{width:28px;height:28px;border-radius:50%;display:block}
+.by strong{color:var(--ink);font-weight:600}
+.by svg{width:14px;height:14px;color:var(--muted)}
+.by:hover{border-color:var(--muted)}
+footer{margin-top:var(--s6);border-top:1px solid var(--line);padding:var(--s4) 0 var(--s5);font-size:.85rem;color:var(--muted)}
+footer .cols{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s3)}
+footer nav{display:flex;gap:20px;flex-wrap:wrap}
+footer nav a{text-decoration:none}
+footer nav a:hover{color:var(--ink)}
+footer .legal{max-width:78ch;border-top:1px solid var(--line);padding-top:var(--s3);margin:0}
+code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);border:1px solid var(--line);padding:1px 6px;border-radius:6px}
+@media (max-width:760px){header nav a:not(.btn):not(.stars){display:none}}
+@media (max-width:480px){.ctas .btn{flex:1 1 100%}}
+@media (prefers-color-scheme:dark){.frame{box-shadow:0 0 0 1px #262626,0 24px 60px -24px rgba(0,0,0,.8)}.frame img{filter:brightness(.94)}.frame .bar i{background:#333}}
+
+.proof{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 28px;margin:28px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.proof li{display:flex;align-items:center;gap:8px}
+.proof li+li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ink);opacity:.4}
+.proof img{display:block;height:20px;width:auto}
+.proof strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.install{display:inline-flex;align-items:center;gap:10px;margin:18px auto 0;font-size:13px;color:var(--muted)}
+.install code{font-size:13px;padding:4px 10px}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--line);gap:1px}
+.flow>div{background:var(--bg);padding:var(--s3);position:relative}
+.flow>div+div::before{content:"\2192";position:absolute;left:-9px;top:var(--s3);width:18px;height:18px;border-radius:50%;background:var(--bg);border:1px solid var(--line);font-size:11px;line-height:16px;text-align:center;color:var(--muted);z-index:1}
+.flow .who{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.flow h3{font-size:1.05rem;letter-spacing:-.015em;font-weight:600;margin:0 0 6px}
+.flow p{color:var(--muted);margin:0;font-size:.92rem}
+.flow .yours{background:var(--soft)}
+.flow .yours .who{color:var(--ink)}
+@media (max-width:760px){.flow{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.flow{grid-template-columns:1fr}}
+.switch{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.switch>div{background:var(--bg);padding:var(--s3) var(--s3) 28px}
+.switch h3{font-size:1.05rem;letter-spacing:-.015em;font-weight:600;margin:0 0 10px}
+.switch p{color:var(--muted);margin:0 0 8px;font-size:.95rem}
+.switch p.vs{color:var(--ink)}
+.switch p.vs::before{content:"Alopex";display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:8px}
+@media (max-width:760px){.switch{grid-template-columns:1fr}}
+.founder{max-width:var(--copy)}
+.founder blockquote{margin:0;padding:0 0 0 var(--s3);border-left:2px solid var(--ink);font-size:1.15rem;line-height:1.55;color:var(--ink);text-wrap:pretty}
+.founder blockquote p{margin:0 0 14px}
+.founder .sig{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);margin-top:var(--s3)}
+.founder .sig img{width:28px;height:28px;border-radius:50%}
+.founder .sig strong{color:var(--ink);font-weight:600}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header>
-  <a class="brand" href="/" aria-label="MyFinances home">
-    <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="220" fill="#173F34"/><rect x="284" y="536" width="108" height="204" rx="54" fill="#D8ECDD"/><rect x="458" y="406" width="108" height="334" rx="54" fill="#D8ECDD"/><rect x="632" y="266" width="108" height="474" rx="54" fill="#D8ECDD"/></svg>
-    MyFinances
-  </a>
-  <nav><a href="#faq">FAQ</a><a href="https://github.com/marcodonghiaa/myfinances">GitHub</a></nav>
-</header>
+<header><div class="wrap">
+  <a class="brand" href="/" aria-label="Alopex home"><svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M23.0 8.3 C22.7 9.0 22.1 9.9 22.0 11.6 C21.9 13.3 22.7 16.2 22.5 18.6 C22.3 21.1 22.6 23.2 20.6 26.3 C18.6 29.4 12.7 34.6 10.7 37.2 C8.7 39.9 8.8 40.4 8.4 42.2 C8.0 44.0 8.0 46.3 8.3 47.8 C8.6 49.3 8.7 50.1 10.2 51.4 C11.7 52.7 14.1 54.5 17.2 55.5 C20.2 56.5 25.6 57.4 28.5 57.6 C31.4 57.8 32.7 57.4 34.9 56.8 C37.1 56.1 39.0 55.4 41.5 53.7 C44.0 52.0 47.8 48.0 50.0 46.7 C52.2 45.4 53.9 46.0 54.8 45.7 C55.6 45.4 55.6 45.6 55.1 44.8 C54.6 43.9 52.9 41.7 51.7 40.6 C50.5 39.5 49.2 38.9 47.7 38.4 C46.2 37.9 44.8 37.5 42.7 37.4 C40.6 37.3 34.9 37.9 34.9 37.9 C34.9 37.9 36.0 34.3 36.1 32.0 C36.2 29.7 34.5 26.2 35.5 23.9 C36.5 21.6 40.9 19.7 42.2 18.4 C43.5 17.1 43.2 16.1 43.2 16.1 C43.2 16.1 38.8 15.2 37.3 14.6 C35.8 13.9 35.1 13.3 34.2 12.2 C33.3 11.1 31.7 8.1 31.7 8.1 C31.7 8.1 30.1 10.3 28.8 10.2 C27.5 10.1 23.6 7.5 23.6 7.5 C23.6 7.5 23.3 7.6 23.0 8.3ZM30.4 16.8a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0Z"/></svg> Alopex</a>
+  <nav>
+    <a href="#features">Features</a><a href="#switch">Compare</a><a href="#how">How it works</a><a href="#faq">FAQ</a>
+    <a class="stars" href="https://github.com/marcodonghiaa/myfinances"><span>GitHub</span><img src="https://img.shields.io/github/stars/marcodonghiaa/myfinances?style=flat&amp;label=&amp;color=0a0a0a" width="48" height="20" loading="lazy" alt="GitHub stars"></a>
+    <a class="btn primary sm" href="https://myfinancess-view.vercel.app/demo">Live demo</a>
+  </nav>
+</div></header>
 
 <main>
+<div class="wrap">
 <div class="hero">
-  <h1>A self-hosted net worth tracker for European banks</h1>
-  <p class="sub">Bank accounts, investments and crypto in one dashboard, synced read-only from 2000+ European banks into a database you own. Open source, MIT.</p>
+  <p class="kicker">Open source · MIT · Self-hosted</p>
+  <h1>The open-source Monarch alternative for European banks.</h1>
+  <p class="sub">Net worth from 2000+ EU banks, stocks and crypto, synced read-only into your own Supabase project. Free, on free tiers.</p>
   <div class="ctas">
     <a class="btn primary" href="https://myfinancess-view.vercel.app/demo">Try the live demo</a>
-    <a class="btn" href="https://github.com/marcodonghiaa/myfinances">View on GitHub</a>
-    <small>Fake data, no sign-up.</small>
+    <a class="btn" href="#how">Self-host in 30 minutes</a>
   </div>
-  <div class="shot"><img src="/img/net-worth.webp" width="1600" height="1000" alt="MyFinances net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></div>
+  <p class="install">Or open the repo in Codespaces and run <code>./setup.sh</code></p>
+  <ul class="proof">
+    <li><a class="stars" href="https://github.com/marcodonghiaa/myfinances" aria-label="GitHub stars"><img src="https://img.shields.io/github/stars/marcodonghiaa/myfinances?style=flat&amp;label=&amp;color=0a0a0a" width="48" height="20" loading="lazy" alt="GitHub stars"></a></li>
+    <li><strong>2000+</strong> European banks over PSD2</li>
+    <li>Read-only access</li>
+    <li>No Alopex server</li>
+  </ul>
+  <div class="stage"><figure class="frame"><div class="bar"><i></i><i></i><i></i><span>alopex.finance</span></div>
+    <picture><source media="(max-width:640px)" srcset="/img/mobile.webp" width="600" height="1298"><img src="/img/net-worth.webp" width="1600" height="1000" alt="Alopex net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></picture>
+  </figure></div>
 </div>
 
-<section class="what" id="what">
-  <h2>What is MyFinances?</h2>
-  <p>MyFinances is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices your stocks and crypto, and stores everything in your own Supabase project. It is released under the MIT license.</p>
-</section>
-
-<section id="features">
-  <h2>Features</h2>
-  <dl>
-    <div class="row"><dt>Bank sync over PSD2</dt><dd>Connects Revolut, Wise, Fineco and 2000+ other European banks through Enable Banking, and syncs every 6 hours.</dd></div>
-    <div class="row"><dt>One net worth figure</dt><dd>Bank balances, portfolio and crypto add up to a single daily total, shown in EUR, USD or GBP using daily ECB rates.</dd></div>
-    <div class="row"><dt>Portfolio and crypto prices</dt><dd>Add holdings by name, ticker or ISIN. Prices come from Yahoo Finance and CoinGecko; Coinbase balances sync with a read-only key.</dd></div>
-    <div class="row"><dt>Rules-first categorization</dt><dd>Your own rules run first, Gemini handles the rest if you add a key, and categories you set by hand are never overwritten.</dd></div>
-    <div class="row"><dt>Subscription detection</dt><dd>Each transaction is marked Subscription or One-time, and the Subscriptions page shows billing frequency and true monthly cost.</dd></div>
-    <div class="row"><dt>Transfers and refunds</dt><dd>Transfers between your own accounts don't count as income, and card refunds are paired with the original charge so neither counts as spend.</dd></div>
-    <div class="row"><dt>"Worth it?" prompts</dt><dd>After a discretionary purchase you get a Web Push notification asking whether it was worth it. The answer is stored on the transaction.</dd></div>
-    <div class="row"><dt>Shared costs</dt><dd>Mark a transaction as split with someone; the owed share leaves your spending and the Splitwise page tracks who owes what.</dd></div>
-    <div class="row"><dt>Installable PWA</dt><dd>Add it to your phone's home screen, get push notifications, and import past months of net worth or spending from a CSV.</dd></div>
-  </dl>
-</section>
-
-<section id="screens">
-  <h2>Screens</h2>
-  <div class="gallery">
-    <figure><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" alt="Transactions register with inline categories"><figcaption>Transactions</figcaption></figure>
-    <figure><img src="/img/spending.webp" width="1600" height="1000" loading="lazy" alt="Monthly spending by category"><figcaption>Spending</figcaption></figure>
-    <figure><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" alt="Portfolio holdings and allocation"><figcaption>Portfolio</figcaption></figure>
+<section id="privacy">
+  <h2>Where your data goes</h2>
+  <p class="lead">Four hops. The last two run under your own accounts, and nothing in this line is ours.</p>
+  <div class="flow">
+    <div><p class="who">Your bank</p><h3>Balances and transactions</h3><p>Released under PSD2 account-information access. Read-only by law.</p></div>
+    <div><p class="who">Enable Banking</p><h3>Licensed relay</h3><p>Fetches from the bank and hands the data on. Keeps no copy for Alopex.</p></div>
+    <div class="yours"><p class="who">Your Supabase</p><h3>Postgres, your account</h3><p>Row Level Security on every table. The service-role key never reaches the browser.</p></div>
+    <div class="yours"><p class="who">Your Vercel</p><h3>The dashboard</h3><p>Deployed from your fork. Updates arrive as pull requests you merge.</p></div>
   </div>
-</section>
-
-<section id="how">
-  <h2>How it works</h2>
-  <p class="note" style="margin:0 0 16px">About 30 minutes, all in the browser. Nothing to install, no computer that has to stay on.</p>
-  <ol class="steps">
-    <li><strong>Create free accounts</strong><span>GitHub, Supabase, Enable Banking and Vercel, plus an optional Gemini key. About 15 minutes, mostly Enable Banking's signup.</span></li>
-    <li><strong>Run setup in Codespaces</strong><span>Open the repo in GitHub Codespaces and run <code>./setup.sh</code>. It creates your database schema, deploys the functions, creates your login and turns on the sync.</span></li>
-    <li><strong>Deploy the dashboard</strong><span>Click Deploy with Vercel, paste the three values setup printed, and sign in. About 5 minutes.</span></li>
-    <li><strong>Link a bank</strong><span>Connect a bank from the Accounts page. Balances appear at once; transactions arrive with the next sync. Prefer your own hardware? Docker runs both apps.</span></li>
-  </ol>
-</section>
-
-<section id="privacy" class="prose">
-  <h2>Privacy and security</h2>
-  <p><strong>Where your data lives.</strong> In your own Supabase project (Postgres). Every table has Row Level Security scoped to your user. The dashboard uses only the publishable key; the service-role key stays in the sync scripts and Edge Functions.</p>
-  <p><strong>Read-only access.</strong> PSD2 account information access only: MyFinances reads balances and transactions and cannot move money. Coinbase uses a read-only key. A database trigger stops bank-sourced fields from being edited.</p>
-  <p><strong>What the publisher sees.</strong> Nothing. There is no MyFinances server between your bank and your database, and the publisher has no access to your Supabase project, keys or data. Updates arrive as pull requests on your own copy; nothing changes until you review and merge them.</p>
-  <p><strong>Who else is involved.</strong></p>
-  <ul>
-    <li>Enable Banking, the licensed aggregator that relays data from your bank.</li>
-    <li>Supabase, Vercel and GitHub, under your own accounts.</li>
-    <li>Google Gemini, only if you add a key: transaction descriptions are sent for categorization and subscription detection.</li>
-    <li>Your fork's Actions run list is public; sync logs hold counts only, never names or amounts.</li>
+  <ul class="others">
+    <li>Optional: Google Gemini, only if you add a key, receives transaction descriptions for categorization.</li>
+    <li>Sync logs hold counts, never names or amounts. Alopex cannot move money.</li>
   </ul>
 </section>
 
-<section id="compare">
-  <h2>How it compares</h2>
-  <div class="tablewrap">
-  <table>
-    <thead><tr><th scope="col"></th><th scope="col">MyFinances</th><th scope="col">Firefly III</th><th scope="col">Actual Budget</th><th scope="col">Ghostfolio</th><th scope="col">Finary</th></tr></thead>
-    <tbody>
-      <tr><th scope="row">Focus</th><td class="us">Net worth, spending, subscriptions</td><td>Budgeting, bookkeeping</td><td>Envelope budgeting</td><td>Investment portfolio</td><td>Net worth, investing</td></tr>
-      <tr><th scope="row">Self-hosted</th><td class="us">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No, hosted service</td></tr>
-      <tr><th scope="row">License</th><td class="us">MIT</td><td>AGPL-3.0</td><td>MIT</td><td>AGPL-3.0</td><td>Proprietary</td></tr>
-      <tr><th scope="row">EU bank sync</th><td class="us">Built in, PSD2 via Enable Banking</td><td>Via Data Importer (Enable Banking, GoCardless, SimpleFIN, others)</td><td>Enable Banking, GoCardless, SimpleFIN</td><td>No</td><td>Built in</td></tr>
-      <tr><th scope="row">Investments and crypto</th><td class="us">Yes, auto-priced</td><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
-    </tbody>
-  </table>
+<section id="features">
+  <h2>Everything in one daily total</h2>
+  <article class="feat">
+    <div><h3>One net worth figure</h3><p>Banks, portfolio and crypto in one daily total, in EUR, USD or GBP.</p><p>Import past months from CSV so the chart starts with your history.</p></div>
+    <figure class="frame small"><img src="/img/net-worth.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex net worth page: total with year-to-date change and a chart over time"></figure>
+  </article>
+  <article class="feat">
+    <div><h3>Bank sync over PSD2</h3><p>Revolut, Wise, Fineco and 2000+ other European banks, synced every 6 hours.</p><p>Your category rules run first; Gemini fills the rest if you add a key.</p></div>
+    <figure class="frame small"><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex transactions page: register with merchant, category and subscription tags"></figure>
+  </article>
+  <article class="feat">
+    <div><h3>Portfolio and crypto, auto-priced</h3><p>Add holdings by ticker or ISIN; prices from Yahoo Finance and CoinGecko. Coinbase syncs with a read-only key.</p></div>
+    <figure class="frame small"><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex portfolio page: total return, holdings and allocation"></figure>
+  </article>
+  <div class="grid6">
+    <div><h3>Subscription detection</h3><p>Billing frequency and true monthly cost of every recurring charge.</p></div>
+    <div><h3>Transfers and refunds</h3><p>Transfers between your accounts are not income; refunds pair with the original charge.</p></div>
+    <div><h3>Spending by category</h3><p>Where the month went, in categories you can rename and group.</p></div>
+    <div><h3>"Worth it?" prompts</h3><p>After a discretionary purchase, a push notification asks. The answer is saved on the transaction.</p></div>
+    <div><h3>Shared costs</h3><p>Split a transaction with someone; the owed share leaves your spending.</p></div>
+    <div><h3>Installable PWA</h3><p>On your phone's home screen, with a push reminder before bank consent expires.</p></div>
   </div>
-  <p class="note">GoCardless Bank Account Data (formerly Nordigen) has closed new signups. MyFinances uses Enable Banking, which is free for connecting your own accounts. Corrections welcome on <a href="https://github.com/marcodonghiaa/myfinances/issues">GitHub</a>.</p>
 </section>
 
-<section id="not-for" class="prose">
+<section id="switch">
+  <h2>Switching from Monarch, Finary or a spreadsheet</h2>
+  <div class="switch">
+    <div><h3>Monarch Money</h3><p>Connects US and Canadian banks. Subscription. Your transactions live on their servers.</p><p class="vs">2000+ European banks over PSD2, free, in your own database.</p></div>
+    <div><h3>Finary</h3><p>European banks, hosted service, proprietary code.</p><p class="vs">Same scope, MIT licensed, self-hosted. It keeps working if we stop.</p></div>
+    <div><h3>A spreadsheet</h3><p>Typed by hand, no history, one currency.</p><p class="vs">Synced every 6 hours, daily history, EUR/USD/GBP. Import the spreadsheet as CSV.</p></div>
+  </div>
+  <p class="note">Coming from Firefly III, Actual or Ghostfolio? See the <a href="#faq">FAQ</a>. Corrections welcome on <a href="https://github.com/marcodonghiaa/myfinances/issues">GitHub</a>.</p>
+</section>
+
+<section id="how">
+  <h2>Set up in about 30 minutes</h2>
+  <p class="lead">In the browser, on free tiers. No computer has to stay on.</p>
+  <ol class="steps">
+    <li><strong>Create free accounts</strong><span>GitHub, Supabase, Enable Banking and Vercel. Optional Gemini key. About 15 minutes.</span></li>
+    <li><strong>Run setup in Codespaces</strong><span>Run <code>./setup.sh</code>. It creates the schema, deploys the functions and turns on the sync.</span></li>
+    <li><strong>Deploy the dashboard</strong><span>Click Deploy with Vercel, paste the three values setup printed, sign in.</span></li>
+    <li><strong>Link a bank</strong><span>From the Accounts page. Balances appear at once, transactions with the next sync.</span></li>
+  </ol>
+  <div class="after"><a class="btn" href="https://github.com/marcodonghiaa/myfinances#readme">Open the setup guide</a><p class="fine">Own hardware? <code>docker compose up</code> runs both apps.</p></div>
+</section>
+
+<section id="not-for" class="prose copy">
   <h2>Who it is not for</h2>
-  <p><strong>You bank outside Europe.</strong> Bank sync is PSD2 only. No Plaid, SimpleFIN or US/Canadian banks.</p>
-  <p><strong>You want someone else to run it.</strong> You host it, apply updates and renew bank consent every 180 days.</p>
-  <p><strong>You want real-time balances.</strong> Sync runs every 6 hours, because banks cap unattended access at about 4 calls a day per account.</p>
-  <p><strong>You want budgets, goals or forecasts.</strong> Not today. MyFinances tracks net worth, spending, subscriptions and holdings.</p>
-  <p><strong>You want broker sync.</strong> You enter holdings; prices update automatically. Coinbase is the only exchange that syncs balances.</p>
+  <p><strong>You bank outside Europe.</strong> PSD2 only. No Plaid, SimpleFIN or US banks.</p>
+  <p><strong>You want someone else to run it.</strong> You host it, merge updates and renew bank consent every 180 days.</p>
+  <p><strong>You want real-time balances.</strong> Sync runs every 6 hours; banks cap unattended access at about 4 calls a day.</p>
+  <p><strong>You want budgets, goals or forecasts.</strong> Not today.</p>
+  <p><strong>You want broker sync.</strong> You enter holdings; only Coinbase syncs balances.</p>
 </section>
 
-<section id="faq">
-  <h2>FAQ</h2>
-  <details><summary>Is there an open-source alternative to Finary?</summary><p>Yes. MyFinances is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers.</p></details>
-  <details><summary>Can I self-host a net worth tracker with European bank sync?</summary><p>Yes. MyFinances syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces.</p></details>
-  <details><summary>Is MyFinances free?</summary><p>The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change.</p></details>
-  <details><summary>Does MyFinances work with US banks?</summary><p>No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD.</p></details>
-  <details><summary>Which banks does MyFinances support?</summary><p>Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it.</p></details>
-  <details><summary>Can MyFinances move money or make payments?</summary><p>No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments.</p></details>
-  <details><summary>Who can see my financial data in MyFinances?</summary><p>You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection.</p></details>
-  <details><summary>How is MyFinances different from Firefly III or Actual Budget?</summary><p>Firefly III and Actual Budget are budgeting tools; MyFinances is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices.</p></details>
-  <details><summary>Do I need a server or Docker to run MyFinances?</summary><p>No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server.</p></details>
-  <details><summary>Can I try MyFinances without connecting a bank?</summary><p>Yes. The <a href="https://myfinancess-view.vercel.app/demo">live demo</a> runs on generated fake data in your browser, with no sign-up. It never touches a real account.</p></details>
-  <details><summary>Can I import CSV history into MyFinances?</summary><p>Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank.</p></details>
-  <details><summary>What happens when the 180-day bank consent expires?</summary><p>PSD2 consent lasts 180 days. The dashboard shows a Renew access banner two weeks before it ends and sends push reminders, and you renew from the Accounts page without losing history.</p></details>
+<section id="faq" class="copy">
+  <h2>Frequently asked questions</h2>
+  <details><summary>Is there an open-source alternative to Monarch Money or Finary?</summary><p>Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard, with the data in your own Supabase project.</p></details>
+  <details><summary>How is Alopex different from Firefly III, Actual Budget or Ghostfolio?</summary><p>Firefly III and Actual budget; Ghostfolio tracks investments. Alopex does net worth across bank accounts, investments and crypto, with EU bank sync built in.</p></details>
+  <details><summary>Is Alopex free?</summary><p>Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change.</p></details>
+  <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history.</p></details>
+  <details><summary>Do I need a server to run Alopex?</summary><p>No. Sync runs on GitHub Actions and the dashboard on Vercel. Docker is an option for a home server.</p></details>
+  <details><summary>Can Alopex move money or make payments?</summary><p>No. PSD2 account-information access and the Coinbase key are both read-only.</p></details>
+</section>
+
+<section class="founder">
+  <p class="label">From the maker</p>
+  <blockquote>
+    <p>I built Alopex because every net worth app I tried either could not see my Italian bank or wanted my transactions on its servers. This one runs on my own accounts, and the code is MIT so it keeps working if I stop.</p>
+  </blockquote>
+  <p class="sig"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span><strong>Marco D'Onghia</strong>, <a href="https://marcodonghiaa.com">marcodonghiaa.com</a></span></p>
 </section>
 
 <section class="final">
-  <h2>See your whole net worth in one number</h2>
-  <div class="ctas">
-    <a class="btn primary" href="https://myfinancess-view.vercel.app/demo">Try the live demo</a>
-    <a class="btn" href="https://github.com/marcodonghiaa/myfinances">Self-host it</a>
-    <small>Or self-host it in about 30 minutes.</small>
+  <div class="band">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M23.0 8.3 C22.7 9.0 22.1 9.9 22.0 11.6 C21.9 13.3 22.7 16.2 22.5 18.6 C22.3 21.1 22.6 23.2 20.6 26.3 C18.6 29.4 12.7 34.6 10.7 37.2 C8.7 39.9 8.8 40.4 8.4 42.2 C8.0 44.0 8.0 46.3 8.3 47.8 C8.6 49.3 8.7 50.1 10.2 51.4 C11.7 52.7 14.1 54.5 17.2 55.5 C20.2 56.5 25.6 57.4 28.5 57.6 C31.4 57.8 32.7 57.4 34.9 56.8 C37.1 56.1 39.0 55.4 41.5 53.7 C44.0 52.0 47.8 48.0 50.0 46.7 C52.2 45.4 53.9 46.0 54.8 45.7 C55.6 45.4 55.6 45.6 55.1 44.8 C54.6 43.9 52.9 41.7 51.7 40.6 C50.5 39.5 49.2 38.9 47.7 38.4 C46.2 37.9 44.8 37.5 42.7 37.4 C40.6 37.3 34.9 37.9 34.9 37.9 C34.9 37.9 36.0 34.3 36.1 32.0 C36.2 29.7 34.5 26.2 35.5 23.9 C36.5 21.6 40.9 19.7 42.2 18.4 C43.5 17.1 43.2 16.1 43.2 16.1 C43.2 16.1 38.8 15.2 37.3 14.6 C35.8 13.9 35.1 13.3 34.2 12.2 C33.3 11.1 31.7 8.1 31.7 8.1 C31.7 8.1 30.1 10.3 28.8 10.2 C27.5 10.1 23.6 7.5 23.6 7.5 C23.6 7.5 23.3 7.6 23.0 8.3ZM30.4 16.8a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0Z"/></svg>
+    <h2>Your net worth, in a database you own.</h2>
+    <p class="lead">Try it on fake data, then set up your own.</p>
+    <div class="ctas">
+      <a class="btn primary" href="https://myfinancess-view.vercel.app/demo">Try the live demo</a>
+      <a class="btn" href="https://github.com/marcodonghiaa/myfinances#readme">Set it up in 30 minutes</a>
+    </div>
+    <a class="by" href="https://marcodonghiaa.com"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span>Built by <strong>Marco D'Onghia</strong></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
   </div>
 </section>
+</div>
 </main>
 
-<footer>
-  <p>MyFinances is open source under the MIT license. Code: <a href="https://github.com/marcodonghiaa/myfinances">myfinances</a> (backend, start here) and <a href="https://github.com/marcodonghiaa/my-wealth-view">my-wealth-view</a> (dashboard). <a href="/llms.txt">llms.txt</a></p>
-  <p>MyFinances is a tracking tool, not financial, investment or tax advice. Figures depend on data from your banks and third-party price feeds and may be delayed or wrong; check important numbers with the source.</p>
-</footer>
-</div>
+<footer><div class="wrap">
+  <div class="cols">
+    <a class="brand" href="/" aria-label="Alopex home"><svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M23.0 8.3 C22.7 9.0 22.1 9.9 22.0 11.6 C21.9 13.3 22.7 16.2 22.5 18.6 C22.3 21.1 22.6 23.2 20.6 26.3 C18.6 29.4 12.7 34.6 10.7 37.2 C8.7 39.9 8.8 40.4 8.4 42.2 C8.0 44.0 8.0 46.3 8.3 47.8 C8.6 49.3 8.7 50.1 10.2 51.4 C11.7 52.7 14.1 54.5 17.2 55.5 C20.2 56.5 25.6 57.4 28.5 57.6 C31.4 57.8 32.7 57.4 34.9 56.8 C37.1 56.1 39.0 55.4 41.5 53.7 C44.0 52.0 47.8 48.0 50.0 46.7 C52.2 45.4 53.9 46.0 54.8 45.7 C55.6 45.4 55.6 45.6 55.1 44.8 C54.6 43.9 52.9 41.7 51.7 40.6 C50.5 39.5 49.2 38.9 47.7 38.4 C46.2 37.9 44.8 37.5 42.7 37.4 C40.6 37.3 34.9 37.9 34.9 37.9 C34.9 37.9 36.0 34.3 36.1 32.0 C36.2 29.7 34.5 26.2 35.5 23.9 C36.5 21.6 40.9 19.7 42.2 18.4 C43.5 17.1 43.2 16.1 43.2 16.1 C43.2 16.1 38.8 15.2 37.3 14.6 C35.8 13.9 35.1 13.3 34.2 12.2 C33.3 11.1 31.7 8.1 31.7 8.1 C31.7 8.1 30.1 10.3 28.8 10.2 C27.5 10.1 23.6 7.5 23.6 7.5 C23.6 7.5 23.3 7.6 23.0 8.3ZM30.4 16.8a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0Z"/></svg> Alopex</a>
+    <nav><a href="https://github.com/marcodonghiaa/myfinances">Backend repo</a><a href="https://github.com/marcodonghiaa/my-wealth-view">Dashboard repo</a><a href="https://github.com/marcodonghiaa/myfinances/blob/main/LICENSE">MIT license</a><a href="/llms.txt">llms.txt</a></nav>
+  </div>
+  <p class="legal">Alopex is a tracking tool, not financial, investment or tax advice. Figures come from your banks and third-party price feeds and may be delayed or wrong.</p>
+</div></footer>
 </body>
 </html>

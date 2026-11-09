@@ -80,7 +80,7 @@ EOF
   exit 0
 fi
 
-bold "MyFinances setup: 8 short steps, about 15-30 minutes (most of it on Enable Banking's site)."
+bold "Alopex setup: 8 short steps, about 15-30 minutes (most of it on Enable Banking's site)."
 echo "Every question shows a recommended answer: press Enter to accept it."
 echo "Your answers are saved as you go, so you can stop and run ./setup.sh again any time."
 echo
@@ -289,7 +289,7 @@ echo "only you use it, so the privacy and terms addresses can simply be your Git
 echo
 echo "  1. Environment ........... Production (not Sandbox)"
 echo "  2. Private key ........... leave 'Generate in the browser' selected"
-echo "  3. Application name ...... MyFinances (any name)"
+echo "  3. Application name ...... Alopex (any name)"
 echo "  4. Redirect URL .......... https://${PROJECT_REF}.supabase.co/functions/v1/bank-consent-callback"
 echo "  5. Application description  Personal net-worth tracker for my own accounts"
 echo "  6. Data protection email . ${LOGIN_EMAIL:-your email}"
@@ -432,7 +432,7 @@ signups_closed() {
 if ! signups_closed; then
   SIGNUP_DIR=$(mktemp -d)
   mkdir "$SIGNUP_DIR/supabase"
-  printf 'project_id = "myfinances-setup"\n\n[auth]\nenable_signup = false\n' > "$SIGNUP_DIR/supabase/config.toml"
+  printf 'project_id = "alopex-setup"\n\n[auth]\nenable_signup = false\n' > "$SIGNUP_DIR/supabase/config.toml"
   quiet supabase config push --workdir "$SIGNUP_DIR" --project-ref "$PROJECT_REF" --yes || echo "Could not switch them off automatically."
   rm -rf "$SIGNUP_DIR"
   for _ in 1 2 3 4 5; do signups_closed && break; sleep 2; done # the setting takes a moment to apply
@@ -496,5 +496,5 @@ if [ "${CODESPACES:-}" = "true" ]; then
   echo "https://github.com/codespaces -> ... next to this one -> Delete. Your setup lives on in Supabase and GitHub."
 fi
 echo
-echo "If MyFinances is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"
+echo "If Alopex is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"
 [ -z "$DASHBOARD_URL" ] || echo "Done! Open $DASHBOARD_URL and sign in as $SIGN_IN_AS"
