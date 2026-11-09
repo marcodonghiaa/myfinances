@@ -77,15 +77,14 @@ function addMonth(d: string): string {
   return new Date(Date.UTC(y, m, Math.min(+d.slice(8, 10), last))).toISOString().slice(0, 10);
 }
 
-const eurOf = (c: Charge) => c.amount_eur ?? c.amount;
-
-// R4: a normal key is one stream (price changes included); aggregators split greedily by EUR amount.
+// R4: a normal key is one stream (price changes included); aggregators split greedily by amount.
+// Original amount, not EUR: an FX-converted amount moves run to run and would move the key.
 function clusters(group: Charge[], aggregator: boolean): Charge[][] {
   if (!aggregator) return [group];
   const out: Charge[][] = [];
-  for (const c of [...group].sort((a, b) => eurOf(a) - eurOf(b))) {
+  for (const c of [...group].sort((a, b) => a.amount - b.amount)) {
     const cur = out[out.length - 1];
-    if (cur && eurOf(c) <= eurOf(cur[0]) * 1.1) cur.push(c);
+    if (cur && c.amount <= cur[0].amount * 1.1) cur.push(c);
     else out.push([c]);
   }
   return out;
@@ -133,7 +132,7 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
       const [cadence, period] = picked ?? [null, null];
       out.push({
         // R4/R5: the aggregator anchor (cluster minimum) stays put when the price rises.
-        stream_key: aggregator ? `${groupKey}|${Math.min(...cluster.map(eurOf)).toFixed(2)}` : groupKey,
+        stream_key: aggregator ? `${groupKey}|${Math.min(...cluster.map((c) => c.amount)).toFixed(2)}` : groupKey,
         merchant_key: newest.merchant_key!,
         account_uid: newest.account_uid,
         currency: newest.currency,
