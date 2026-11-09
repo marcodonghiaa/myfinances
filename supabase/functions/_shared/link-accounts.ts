@@ -63,6 +63,15 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
       }
     }
     const bank: BankInfo = { bank_name: bankName, bank_country: bankCountry, bank_logo: logo };
+
+    // Kept so the session can be closed at Enable Banking when the user deletes their account.
+    // Best effort: a failed write only means that session is left to expire on its own.
+    if (typeof data.session_id === "string") {
+      const { error: sessionError } = await supabase
+        .from("bank_sessions")
+        .upsert({ session_id: data.session_id, user_id: userId, bank_name: bankName }, { onConflict: "session_id" });
+      if (sessionError) console.error(`bank session not stored: ${errorTag(sessionError)}`);
+    }
     const savedRows: Array<{ uid: string; ebUid: string; label: string | null; currency: string }> = [];
 
     // uid is the PK (transactions, snapshots and sync_cursors reference it), so an existing row's uid
@@ -207,4 +216,26 @@ export async function burnCode(code: string): Promise<void> {
   } catch (err) {
     console.error(`refused code not closed: ${errorTag(err)}`);
   }
+}
+
+// Closes Enable Banking sessions so the bank stops sharing data with this app. Best effort per
+// session: one that is already closed or expired is not an error worth stopping for.
+export async function closeSessions(sessionIds: string[]): Promise<number> {
+  if (sessionIds.length === 0) return 0;
+  const token = await signEnableBankingJwt();
+  let closed = 0;
+  for (const id of sessionIds) {
+    try {
+      const res = await fetch(`https://api.enablebanking.com/sessions/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok || res.status === 404) closed++;
+      else console.error(`bank session not closed: HTTP ${res.status}`);
+    } catch (err) {
+      console.error(`bank session not closed: ${errorTag(err)}`);
+    }
+  }
+  return closed;
 }

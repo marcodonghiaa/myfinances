@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.complete-bank-consent]
 verify_jwt = true
 
+[functions.delete-account]
+verify_jwt = true
+
 [functions.add-holding]
 verify_jwt = true
 

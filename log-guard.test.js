@@ -28,6 +28,7 @@ const EDGE_SYNC_PATHS = [
   'supabase/functions/sync-bank/index.ts',
   'supabase/functions/bank-consent-callback/index.ts',
   'supabase/functions/complete-bank-consent/index.ts',
+  'supabase/functions/delete-account/index.ts',
   'supabase/functions/_shared/link-accounts.ts',
   'supabase/functions/add-holding/index.ts',
   'supabase/functions/parse-statement/index.ts',
