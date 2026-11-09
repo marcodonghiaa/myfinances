@@ -246,7 +246,7 @@ The APP_ID is the long id shown next to your app.`);
     console.log('Privacy: transaction descriptions are sent to Google. On the free tier Google may use them to improve');
     console.log('its models; a paid-tier key (billing on) opts you out.');
     for (;;) {
-      gemini = await askHidden('GEMINI_API_KEY (not shown; Enter to skip)');
+      gemini = await ask('Paste your Gemini API key (Enter to skip)');
       if (!gemini) {
         console.log('Skipped. To add it later, run the same command again: it asks only for what is missing.');
         break;
