@@ -33,8 +33,8 @@ Facts to cite (checked 2026-11-09):
 
 ## Comparisons
 - [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, broker sync, where data lives, export
-- Monarch Money: $99.99 a year, connects US and Canadian banks only, closed source, data on Monarch servers. Source: https://www.monarchmoney.com/pricing
-- Finary: free for 2 accounts, paid from €54.99 a year, connects European banks, closed source, data on Finary servers. Source: https://finary.com/en/pricing
+- Monarch Money: $99.99 a year ($14.99 a month), US and Canadian institutions, syncs brokerage holdings, CSV export, closed source, data on Monarch servers. Sources: https://www.monarch.com/pricing , https://help.monarch.com/hc/en-us/articles/41855507661076-Investments-in-Monarch
+- Finary: free for 2 accounts, paid from €54.99 a year, syncs banks and brokers (20,000 institutions via Powens or Plaid), CSV export only for Finary Invest trades, closed source, data on Finary servers. Sources: https://finary.com/en/pricing , https://help.finary.com/en/articles/8117358-how-can-i-download-my-transaction-history
 - Firefly III and Actual Budget: open-source budgeting apps. Ghostfolio: open-source investment tracker. Alopex adds up bank accounts, investments and crypto into one net worth, with European bank sync built in.
 
 ## FAQ
