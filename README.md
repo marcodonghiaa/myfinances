@@ -123,7 +123,7 @@ Then delete the Codespace, since it holds your keys: [github.com/codespaces](htt
 
 ### 4. Link a bank and add your investments
 
-Sign in on your dashboard. On **Accounts**, use **Connect a bank**: balances show at once, and the transactions arrive with the next sync (every 6 hours; to get them now, open your fork's **Actions** tab, **Sync**, **Run workflow**). On **Portfolio**, **Add an investment** finds yours by name, ticker or ISIN; on **Crypto**, **Add a coin**. A checklist on the dashboard shows what's left.
+Sign in on your dashboard. On **Accounts**, use **Connect a bank**: balances show at once, and the first sync of transactions starts right away (a minute or two). On **Portfolio**, **Add an investment** finds yours by name, ticker or ISIN; on **Crypto**, **Add a coin**. A checklist on the dashboard shows what's left.
 
 Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and you get a push notification the day the banner appears, then 7 days, 1 day and on the day it expires.
 

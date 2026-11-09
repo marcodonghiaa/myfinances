@@ -28,6 +28,13 @@ async function entryReferenceFor(tx: EbTransaction, seen: Map<string, number>): 
   return `h:${(await sha1Hex(`${key}|${n}`)).slice(0, 24)}`;
 }
 
+// The bank payload is kept for support and export, minus the counterparty's account number
+// (IBAN): nothing reads it, and it is someone else's data.
+export function rawWithoutAccounts(tx: EbTransaction): EbTransaction {
+  const { creditor_account: _c, debtor_account: _d, ...rest } = tx;
+  return rest;
+}
+
 function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryReference: string): Json {
   const creditorName = (tx.credit_debit_indicator === "CRDT" && tx.debtor?.name) || tx.creditor?.name || null;
   return {
@@ -44,7 +51,7 @@ function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryRe
     booking_date: tx.booking_date,
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
-    raw: tx,
+    raw: rawWithoutAccounts(tx),
     user_id: userId,
   };
 }
