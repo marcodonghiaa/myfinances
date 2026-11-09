@@ -109,30 +109,32 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
   for (const [groupKey, group] of groups) {
     const aggregator = (AGGREGATORS as readonly string[]).includes(group[0].merchant_key!);
     for (const cluster of clusters(group, aggregator)) {
+      // R2: the AI tag decides. A tagged stream is built from its tagged charges only, so untagged one-offs at the
+      // same merchant change neither its price nor its rhythm. An aggregator's tag counts per cluster.
+      const taggedCharges = cluster.filter((c) => c.transaction_type === "Subscription");
+      const tagged = taggedCharges.length > 0;
+      const stream = tagged ? taggedCharges : cluster;
       // Same-day ties: the larger amount counts as newest, so input order never matters.
-      const sorted = [...cluster].sort((a, b) => a.booking_date.localeCompare(b.booking_date) || a.amount - b.amount);
+      const sorted = [...stream].sort((a, b) => a.booking_date.localeCompare(b.booking_date) || a.amount - b.amount);
       const newest = sorted[sorted.length - 1];
       // Same-day duplicates count as charges but not as intervals.
       const days = [...new Set(sorted.map((c) => toDays(c.booking_date)))];
       const picked = days.length >= 2 ? pickCadence(days.slice(1).map((d, i) => d - days[i])) : null;
-      // R2: the AI tag decides; a rhythm makes it active, no rhythm makes it suggested while recent.
-      // An aggregator's tag counts per cluster, so one tagged PayPal plan does not promote every PayPal purchase.
-      const tagged = cluster.some((c) => c.transaction_type === "Subscription");
+      const everyday = RHYTHM_ONLY_DENY.has(newest.category ?? "");
       let status: "suggested" | "active";
       if (tagged) {
+        // A rhythm makes it active (an everyday category caps it at suggested); no rhythm: suggested while recent.
         if (!picked && toDays(today) - toDays(newest.booking_date) > TAG_RECENT_DAYS) continue;
-        status = picked ? "active" : "suggested";
+        status = picked && !everyday ? "active" : "suggested";
       } else {
-        // R3: rhythm alone completes the list, never auto-active.
-        if (
-          !picked || picked[0] === "weekly" || cluster.length < 3 || RHYTHM_ONLY_DENY.has(newest.category ?? "")
-        ) continue;
+        // R3: rhythm alone completes the list, never auto-active; 3+ distinct dates.
+        if (!picked || picked[0] === "weekly" || days.length < 3 || everyday) continue;
         status = "suggested";
       }
       const [cadence, period] = picked ?? [null, null];
       out.push({
         // R4/R5: the aggregator anchor (cluster minimum) stays put when the price rises.
-        stream_key: aggregator ? `${groupKey}|${Math.min(...cluster.map((c) => c.amount)).toFixed(2)}` : groupKey,
+        stream_key: aggregator ? `${groupKey}|${Math.min(...stream.map((c) => c.amount)).toFixed(2)}` : groupKey,
         merchant_key: newest.merchant_key!,
         account_uid: newest.account_uid,
         currency: newest.currency,
@@ -142,7 +144,7 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
         // R4: the current price, not an average.
         typical_amount: newest.amount,
         typical_amount_eur: newest.amount_eur,
-        charge_count: cluster.length,
+        charge_count: stream.length,
         first_charged: sorted[0].booking_date,
         last_charged: newest.booking_date,
         next_expected: cadence === "monthly"
@@ -151,7 +153,7 @@ export function detectStreams(charges: Charge[], today: string): DetectedStream[
           ? null
           : fromDays(toDays(newest.booking_date) + period),
         detected_status: status,
-        is_direct_debit: cluster.some((c) => /sdd/i.test(c.bank_transaction_code ?? "")),
+        is_direct_debit: stream.some((c) => /sdd/i.test(c.bank_transaction_code ?? "")),
       });
     }
   }

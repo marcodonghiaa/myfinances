@@ -119,13 +119,13 @@ Deno.test("an aggregator price rise keeps the same stream_key across runs", () =
   }
 });
 
-// protects=R3 rhythm-only deny list; fails_when=a category is dropped from the list or the list stops applying
-Deno.test("rhythm alone never proposes an everyday category", () => {
+// protects=R3 rhythm-only deny list and the tagged cap; fails_when=a category is dropped or the list stops applying
+Deno.test("an everyday category is never proposed by rhythm alone and never auto-active", () => {
   assertEquals([...RHYTHM_ONLY_DENY].sort(), ["Dine Out", "Experiences", "Groceries", "Shopping", "Transports"]);
   for (const category of RHYTHM_ONLY_DENY) {
     const charges = ["2026-08-05", "2026-09-05", "2026-10-05"].map((d) => charge({ booking_date: d, category }));
     assertEquals(detectStreams(charges, "2026-11-08"), [], category);
     const tagged = charges.map((c) => ({ ...c, transaction_type: "Subscription" }));
-    assertEquals(detectStreams(tagged, "2026-11-08").map((r) => r.detected_status), ["active"], category);
+    assertEquals(detectStreams(tagged, "2026-11-08").map((r) => r.detected_status), ["suggested"], category);
   }
 });
