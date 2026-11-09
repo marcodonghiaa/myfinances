@@ -154,5 +154,5 @@ from public.subscription_billing_overrides o
      limit case when o.dismissed then null else 1 end)
   ) s
 where o.dismissed or o.billing_frequency is not null or o.custom_interval_value is not null
-order by o.dismissed desc -- when two overrides map to one stream, dismissal wins
+order by o.dismissed -- two names, one stream: the name you kept wins over the one you dismissed
 on conflict (user_id, stream_key) do nothing;

@@ -59,7 +59,7 @@ test('override migration handles aggregators, deleted/credit rows, duplicates; s
   assert.match(up, /display_name, typical_amount, last_charged/);
   assert.match(up, /user_id uuid not null references auth\.users \(id\) on delete cascade/);
   assert.match(up, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
-  assert.match(up, /order by o\.dismissed desc/);
+  assert.match(up, /order by o\.dismissed\s+on conflict/); // the name you kept wins
   const fn = fnBody('stream_action');
   assert.match(fn, /raise exception 'Invalid cadence args'/);
   assert.match(fn, /custom_value'\)::int > 0/);

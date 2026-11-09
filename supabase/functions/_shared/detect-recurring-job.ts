@@ -29,7 +29,7 @@ async function userCharges(db: Db, user: string): Promise<Charge[]> {
   const spend = (t: string, cols: string) =>
     db.from(t).select(cols).eq("user_id", user).eq("credit_debit_indicator", "DBIT").eq("flow_type", "spend");
   const txs = await pages(
-    () => spend("transactions", "account_uid, entry_reference, merchant_key, currency, amount, booking_date, category, custom_name, creditor_name, bank_transaction_code, flow_type, credit_debit_indicator, deleted_at").is("deleted_at", null).not("merchant_key", "is", null),
+    () => spend("transactions", "account_uid, entry_reference, merchant_key, currency, amount, booking_date, category, custom_name, creditor_name, bank_transaction_code, flow_type, credit_debit_indicator, deleted_at, transaction_type").is("deleted_at", null).not("merchant_key", "is", null),
     order,
   );
   const eur = new Map<string, number>();
