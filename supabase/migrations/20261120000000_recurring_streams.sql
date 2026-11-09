@@ -168,11 +168,12 @@ from public.subscription_billing_overrides o
   ) e on true
 where (o.dismissed or o.billing_frequency is not null or o.custom_interval_value is not null)
   -- A dismissed name does not hide a stream that another, never-dismissed name keeps visible with a live
-  -- Subscription charge (aggregator names are payees, not variants, so they always keep their tombstones).
+  -- Subscription charge (aggregator names are payees, not variants, so they always keep their tombstones;
+  -- a charge with no creditor name never counts as a kept name).
   and not (o.dismissed and n.merchant_key not in ('paypal', 'apple', 'google') and exists (
     select 1 from public.transactions v
     where v.user_id = o.user_id and v.merchant_key = n.merchant_key and v.account_uid = n.account_uid
-      and v.transaction_type = 'Subscription' and v.amount <> 0
+      and v.transaction_type = 'Subscription' and v.amount <> 0 and v.creditor_name is not null
       and v.deleted_at is null and v.credit_debit_indicator = 'DBIT'
       and not exists (
         select 1 from public.subscription_billing_overrides d

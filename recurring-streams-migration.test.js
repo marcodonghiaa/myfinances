@@ -167,7 +167,7 @@ test('v2 stream_action: undismiss confirms a row the detector never filled, keep
   assert.match(v2, /grant execute on function public\.stream_action\(uuid, text, jsonb\) to authenticated/);
 });
 
-const variantRule = /v\.transaction_type = 'Subscription' and v\.amount <> 0[\s\S]*?d\.creditor_name = v\.creditor_name and d\.dismissed/;
+const variantRule = /v\.transaction_type = 'Subscription' and v\.amount <> 0 and v\.creditor_name is not null[\s\S]*?d\.creditor_name = v\.creditor_name and d\.dismissed/;
 
 test('override import: a dismissed name skips its tombstone when a never-dismissed name keeps the stream visible', () => {
   const m = up.slice(up.indexOf('from public.subscription_billing_overrides'));
@@ -179,11 +179,15 @@ test('override import: a dismissed name skips its tombstone when a never-dismiss
 const v3 = read('supabase/migrations/20261122000000_recurring_streams_variant_dismissal.sql');
 const v3down = fs.readFileSync('supabase/rollbacks/20261122000000_recurring_streams_variant_dismissal.down.sql', 'utf8');
 
-test('variant dismissal: only detected, non-aggregator imported dismissals go back to undecided', () => {
-  assert.match(v3, /set user_status = null, updated_at = now\(\)/);
-  assert.match(v3, /r\.source = 'override' and r\.user_status = 'dismissed' and r\.detected_status is not null/);
+test('variant dismissal: only imported, non-aggregator tombstones go back to the detector', () => {
+  assert.match(v3, /set user_status = null, source = 'bank', updated_at = now\(\)/);
+  assert.match(v3, /r\.source = 'override' and r\.user_status = 'dismissed'/);
   assert.match(v3, /r\.merchant_key not in \('paypal', 'apple', 'google'\)/);
-  assert.match(v3, /t\.transaction_type = 'Subscription' and t\.amount <> 0/);
+  // a dismissed override maps here and no kept one does: a stream you kept, then dismissed on the new page, stays dismissed
+  assert.match(v3, /exists \(select 1 from mapped m where m\.user_id = r\.user_id and m\.key = r\.stream_key and m\.dismissed\)/);
+  assert.match(v3, /not exists \(select 1 from mapped m where m\.user_id = r\.user_id and m\.key = r\.stream_key and not m\.dismissed\)/);
+  assert.match(v3, /order by t\.booking_date desc\s+limit 1/);
+  assert.match(v3, /t\.transaction_type = 'Subscription' and t\.amount <> 0 and t\.creditor_name is not null/);
   assert.match(v3, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
   assert.match(v3, /d\.creditor_name = t\.creditor_name and d\.dismissed/);
   assert.doesNotMatch(v3, /\b(delete|insert|drop|alter)\b/i);
