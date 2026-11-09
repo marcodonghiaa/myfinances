@@ -14,7 +14,7 @@ Key facts:
 - Not financial advice.
 
 ## Links
-- [Live demo (fake data, no sign-up)](https://myfinancess-view.vercel.app/demo)
+- [Live demo (fake data, no sign-up)](https://app.alopex.finance/demo)
 - [Backend repo, start here: sync, Edge Functions, setup](https://github.com/marcodonghiaa/alopex)
 - [Dashboard repo](https://github.com/marcodonghiaa/alopex-web)
 - [Landing page](https://alopex.finance/)

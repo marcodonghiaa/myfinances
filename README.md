@@ -69,7 +69,7 @@ Bank linking from the dashboard runs as three Supabase Edge Functions, see [`sup
 
 ## 🚀 Getting started
 
-Want to look first? Try the [live demo](https://myfinancess-view.vercel.app/demo): fake data, no sign-up.
+Want to look first? Try the [live demo](https://app.alopex.finance/demo): fake data, no sign-up.
 
 Your own copy takes about **30 minutes**, all in the browser: no computer has to stay on and nothing to install. Most of the time goes into Enable Banking's signup.
 
