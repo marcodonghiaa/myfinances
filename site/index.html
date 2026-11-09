@@ -58,9 +58,11 @@
       "mainEntity": [
         {"@type": "Question", "name": "Is there an open-source alternative to Monarch Money or Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard, with the data in your own Supabase project."}},
         {"@type": "Question", "name": "How is Alopex different from Firefly III, Actual Budget or Ghostfolio?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual budget; Ghostfolio tracks investments. Alopex does net worth across bank accounts, investments and crypto, with EU bank sync built in."}},
-        {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change."}},
+        {"@type": "Question", "name": "What's the catch?", "acceptedAnswer": {"@type": "Answer", "text": "You run it. Setup takes about 30 minutes, you renew bank consent every 180 days, and you install updates. There is no paid plan yet; if one comes, the self-hosted version stays free and MIT."}},
+        {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, MIT. It runs on the free tiers of Supabase, Vercel and Enable Banking, whose limits can change."}},
         {"@type": "Question", "name": "Which banks does Alopex support, and how long does access last?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history."}},
         {"@type": "Question", "name": "Do I need a server to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sync runs on a schedule inside your Supabase project and the dashboard on Vercel. Docker is an option for a home server."}},
+        {"@type": "Question", "name": "Who is Alopex not for?", "acceptedAnswer": {"@type": "Answer", "text": "People who bank outside Europe (PSD2 only), want real-time balances (sync runs every 6 hours), want budgets or forecasts (not yet), or want broker sync (only Coinbase syncs; you enter other holdings)."}},
         {"@type": "Question", "name": "Can Alopex move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. PSD2 account-information access and the Coinbase key are both read-only."}}
       ]
     }
@@ -101,7 +103,7 @@ h1{font-size:clamp(2.4rem,1.4rem + 3.6vw,4rem);line-height:1.04;letter-spacing:-
 .facts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 28px;margin:28px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
 .facts li{display:flex;align-items:center;gap:8px}
 .facts li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ink);opacity:.5}
-.stage{margin:var(--s4) calc(-1*var(--pad)) 0;padding:clamp(16px,3vw,40px) var(--pad) 0;background:linear-gradient(180deg,var(--soft),var(--bg));border-top:1px solid var(--line);position:relative}
+.stage{margin:var(--s3) calc(-1*var(--pad)) 0;padding:clamp(16px,3vw,40px) var(--pad) 0;background:linear-gradient(180deg,var(--soft),var(--bg));border-top:1px solid var(--line);position:relative}
 .stage::after{content:"";position:absolute;inset:auto 0 0;height:140px;background:linear-gradient(180deg,transparent,var(--bg));pointer-events:none}
 .frame{margin:0 auto;max-width:1040px;border:1px solid var(--line);border-radius:12px 12px 0 0;border-bottom:0;background:var(--bg);box-shadow:0 24px 60px -24px rgba(0,0,0,.25);overflow:hidden;animation:rise .7s cubic-bezier(.16,1,.3,1) both}
 .frame .bar{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--soft)}
@@ -126,7 +128,7 @@ h2{font-size:clamp(1.75rem,1.3rem + 1.6vw,2.5rem);letter-spacing:-.03em;line-hei
 .cards svg{width:22px;height:22px;display:block;margin-bottom:18px}
 .others{margin:var(--s4) 0 0;padding-left:18px;color:var(--muted);max-width:62ch;font-size:.95rem}
 .others li{margin-bottom:6px}
-ol.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s4);margin:0;padding:0;list-style:none;counter-reset:s}
+ol.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4);margin:0;padding:0;list-style:none;counter-reset:s}
 ol.steps li{counter-increment:s;padding-top:var(--s3);border-top:1px solid var(--ink)}
 ol.steps li::before{content:counter(s,decimal-leading-zero);display:block;font-size:13px;color:var(--muted);letter-spacing:.04em;margin-bottom:var(--s3);font-variant-numeric:tabular-nums}
 ol.steps strong{display:block;font-weight:600;margin-bottom:6px;letter-spacing:-.01em}
@@ -143,6 +145,16 @@ ol.steps span{color:var(--muted);font-size:.95rem}
 .feat p:last-child{margin:0}
 .frame.small{border-radius:12px;border-bottom:1px solid var(--line);animation:none;box-shadow:0 1px 2px rgba(0,0,0,.04),0 16px 40px -20px rgba(0,0,0,.2)}
 .frame.small img{aspect-ratio:16/10;object-position:left top}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s4) var(--s3);margin-top:var(--s4)}
+.shot{margin:0}
+.shot figcaption{padding-top:var(--s2)}
+.shot h3{font-size:1.05rem;letter-spacing:-.015em;font-weight:600;margin:0 0 6px}
+.shot p{color:var(--muted);margin:0;font-size:.95rem}
+.shot .frame.small img{aspect-ratio:16/10}
+.shot .frame.small img[src$="mobile.webp"]{object-fit:contain;object-position:center top;background:var(--soft);padding:12px 0 0}
+@media (max-width:900px){.shots{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.shots{grid-template-columns:1fr}}
+.founder .btn{margin-top:var(--s3)}
 .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .grid6>div{background:var(--bg);padding:var(--s3)}
 @media (max-width:760px){.feat,.feat:nth-of-type(even){grid-template-columns:1fr;gap:var(--s3)}.feat>div{order:0}.grid6,.cards{grid-template-columns:1fr}}
@@ -185,7 +197,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 @media (max-width:480px){.ctas .btn,.ctas .cmd{flex:1 1 100%;justify-content:center}}
 @media (prefers-color-scheme:dark){.frame{box-shadow:0 0 0 1px #262626,0 24px 60px -24px rgba(0,0,0,.8)}.frame img{filter:brightness(.94)}.frame .bar i{background:#333}}
 
-.proof{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 28px;margin:28px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.proof{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 28px;margin:20px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
 .proof li{display:flex;align-items:center;gap:8px}
 .proof li+li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ink);opacity:.4}
 .proof img{display:block;height:20px;width:auto}
@@ -196,7 +208,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 .cmd:hover .cp{color:#fff}
 .cmd.copied .cp{color:#4ade80}
 .ctas .btn{height:52px;font:15px ui-monospace,SFMono-Regular,Menlo,monospace}
-.docs{margin:14px 0 0;font-size:14px}
+.docs{margin:16px 0 0;font-size:14px;color:var(--muted)}
 .docs a{color:var(--muted);text-underline-offset:4px}
 .docs a:hover{color:var(--ink)}
 @media (prefers-color-scheme:dark){.cmd{background:#ededed;color:#0a0a0a}.cmd .ps,.cmd .cp{color:#666}.cmd .cp{border-color:#ccc}.cmd:hover .cp{color:#0a0a0a}}
@@ -245,7 +257,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> npx create-alopex<span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
     <a class="btn" href="https://app.alopex.finance/demo">Live demo</a>
   </div>
-  <p class="docs"><a href="https://github.com/marcodonghiaa/alopex#readme">docs <span aria-hidden="true">&#8599;</span></a></p>
+  <p class="docs">Free &amp; open source · No paid plan yet · <a href="https://github.com/marcodonghiaa/alopex#readme">docs <span aria-hidden="true">&#8599;</span></a></p>
   <ul class="proof">
     <li><a class="stars" href="https://github.com/marcodonghiaa/alopex" aria-label="GitHub stars"><img src="https://img.shields.io/github/stars/marcodonghiaa/alopex?style=flat&amp;label=&amp;color=0a0a0a" width="48" height="20" loading="lazy" alt="GitHub stars"></a></li>
     <li><strong>2000+</strong> European banks over PSD2</li>
@@ -258,7 +270,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 </div>
 
 <section id="privacy">
-  <h2>Where your data goes</h2>
+  <h2>You choose where your data lives</h2>
   <p class="lead">Four hops. The last two run under your own accounts, and nothing in this line is ours.</p>
   <div class="flow">
     <div><p class="who">Your bank</p><h3>Balances and transactions</h3><p>Released under PSD2 account-information access. Read-only by law.</p></div>
@@ -274,36 +286,30 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 
 <section id="features">
   <h2>Everything in one daily total</h2>
-  <article class="feat">
-    <div><h3>One net worth figure</h3><p>Banks, portfolio and crypto in one daily total, in EUR, USD or GBP.</p><p>Import past months from CSV so the chart starts with your history.</p></div>
-    <figure class="frame small"><img src="/img/net-worth.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex net worth page: total with year-to-date change and a chart over time"></figure>
-  </article>
-  <article class="feat">
-    <div><h3>Bank sync over PSD2</h3><p>Revolut, Wise, Fineco and 2000+ other European banks, synced every 6 hours.</p><p>Your category rules run first; Gemini fills the rest if you add a key.</p></div>
-    <figure class="frame small"><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex transactions page: register with merchant, category and subscription tags"></figure>
-  </article>
-  <article class="feat">
-    <div><h3>Portfolio and crypto, auto-priced</h3><p>Add holdings by ticker or ISIN; prices from Yahoo Finance and CoinGecko. Coinbase syncs with a read-only key.</p></div>
-    <figure class="frame small"><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex portfolio page: total return, holdings and allocation"></figure>
-  </article>
-  <div class="grid6">
-    <div><h3>Subscription detection</h3><p>Billing frequency and true monthly cost of every recurring charge.</p></div>
-    <div><h3>Transfers and refunds</h3><p>Transfers between your accounts are not income; refunds pair with the original charge.</p></div>
-    <div><h3>Spending by category</h3><p>Where the month went, in categories you can rename and group.</p></div>
-    <div><h3>"Worth it?" prompts</h3><p>After a discretionary purchase, a push notification asks. The answer is saved on the transaction.</p></div>
-    <div><h3>Shared costs</h3><p>Split a transaction with someone; the owed share leaves your spending.</p></div>
-    <div><h3>Installable PWA</h3><p>On your phone's home screen, with a push reminder before bank consent expires.</p></div>
+  <div class="shots">
+    <figure class="shot"><div class="frame small"><img src="/img/net-worth.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex one net worth figure"></div><figcaption><h3>One net worth figure</h3><p>Banks, portfolio and crypto in one daily total, in EUR, USD or GBP.</p></figcaption></figure>
+    <figure class="shot"><div class="frame small"><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex bank sync over psd2"></div><figcaption><h3>Bank sync over PSD2</h3><p>Revolut, Wise, Fineco and 2000+ more, every 6 hours. Your rules first, AI for the rest.</p></figcaption></figure>
+    <figure class="shot"><div class="frame small"><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex stocks and crypto, auto-priced"></div><figcaption><h3>Stocks and crypto, auto-priced</h3><p>Holdings by ticker or ISIN. Coinbase syncs with a read-only key.</p></figcaption></figure>
+    <figure class="shot"><div class="frame small"><img src="/img/spending.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex spending by category"></div><figcaption><h3>Spending by category</h3><p>Where the month went. Transfers and refunds never count as spending.</p></figcaption></figure>
+    <figure class="shot"><div class="frame small"><img src="/img/subscriptions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex subscriptions found for you"></div><figcaption><h3>Subscriptions found for you</h3><p>Every recurring charge and its true monthly cost.</p></figcaption></figure>
+    <figure class="shot"><div class="frame small"><img src="/img/mobile.webp" width="600" height="1298" loading="lazy" decoding="async" alt="Alopex on your phone"></div><figcaption><h3>On your phone</h3><p>Installable app with push reminders before bank consent expires.</p></figcaption></figure>
   </div>
 </section>
 
 <section id="switch">
-  <h2>Switching from Monarch, Finary or a spreadsheet</h2>
-  <div class="switch">
-    <div><h3>Monarch Money</h3><p>Connects US and Canadian banks. Subscription. Your transactions live on their servers.</p><p class="vs">2000+ European banks over PSD2, free, in your own database.</p></div>
-    <div><h3>Finary</h3><p>European banks, hosted service, proprietary code.</p><p class="vs">Same scope, MIT licensed, self-hosted. It keeps working if we stop.</p></div>
-    <div><h3>A spreadsheet</h3><p>Typed by hand, no history, one currency.</p><p class="vs">Synced every 6 hours, daily history, EUR/USD/GBP. Import the spreadsheet as CSV.</p></div>
-  </div>
-  <p class="note">Coming from Firefly III, Actual or Ghostfolio? See the <a href="#faq">FAQ</a>. Corrections welcome on <a href="https://github.com/marcodonghiaa/alopex/issues">GitHub</a>.</p>
+  <h2>Alopex vs Monarch, Finary and a spreadsheet</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Alopex</th><th>Monarch Money</th><th>Finary</th><th>Spreadsheet</th></tr></thead>
+    <tbody>
+      <tr><th>Price</th><td class="us">Free</td><td>$99.99/year</td><td>Free for 2 accounts, paid from €54.99/year</td><td>Free</td></tr>
+      <tr><th>European banks</th><td class="us">2000+ over PSD2</td><td>No, US and Canada</td><td>Yes</td><td>Typed by hand</td></tr>
+      <tr><th>Where your data lives</th><td class="us">Your own Supabase</td><td>Their servers</td><td>Their servers</td><td>Your file</td></tr>
+      <tr><th>Open source</th><td class="us">Yes, MIT</td><td>No</td><td>No</td><td>n/a</td></tr>
+      <tr><th>Daily history</th><td class="us">Automatic</td><td>Automatic</td><td>Automatic</td><td>If you keep it up</td></tr>
+      <tr><th>Export</th><td class="us">It is your Postgres</td><td>CSV</td><td>CSV</td><td>It is the file</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Prices checked November 2026. Coming from Firefly III, Actual or Ghostfolio? See the <a href="#faq">FAQ</a>. Corrections welcome on <a href="https://github.com/marcodonghiaa/alopex/issues">GitHub</a>.</p>
 </section>
 
 <section id="how">
@@ -311,48 +317,42 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <p class="lead">On free tiers. Nothing to keep running on your computer after setup.</p>
   <ol class="steps">
     <li><strong>Create free accounts</strong><span>Supabase, Enable Banking and Vercel. Optional Gemini key. No GitHub needed.</span></li>
-    <li><strong>Run one command</strong><span><code>npx create-alopex</code> on Mac, Linux or Windows (Node 20+). It builds the database, deploys the functions and schedules the sync.</span></li>
-    <li><strong>Get your dashboard</strong><span>The same command puts it on Vercel and prints your URL. Sign in with the login you chose.</span></li>
+    <li><strong>Run one command</strong><span><code>npx create-alopex</code> on Mac, Linux or Windows (Node 20+). It sets up the database and sync, and prints your dashboard URL.</span></li>
     <li><strong>Link a bank</strong><span>From the Accounts page. Balances appear at once, transactions with the next sync.</span></li>
   </ol>
   <div class="after"><a class="btn" href="https://github.com/marcodonghiaa/alopex#readme">Open the setup guide</a><p class="fine">Own hardware? <code>docker compose up</code> runs both apps.</p></div>
 </section>
 
-<section id="not-for" class="prose copy">
-  <h2>Who it is not for</h2>
-  <p><strong>You bank outside Europe.</strong> PSD2 only. No Plaid, SimpleFIN or US banks.</p>
-  <p><strong>You want someone else to run it.</strong> You host it, merge updates and renew bank consent every 180 days.</p>
-  <p><strong>You want real-time balances.</strong> Sync runs every 6 hours; banks cap unattended access at about 4 calls a day.</p>
-  <p><strong>You want budgets, goals or forecasts.</strong> Not today.</p>
-  <p><strong>You want broker sync.</strong> You enter holdings; only Coinbase syncs balances.</p>
-</section>
 
 <section id="faq" class="copy">
   <h2>Frequently asked questions</h2>
   <details><summary>Is there an open-source alternative to Monarch Money or Finary?</summary><p>Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard, with the data in your own Supabase project.</p></details>
   <details><summary>How is Alopex different from Firefly III, Actual Budget or Ghostfolio?</summary><p>Firefly III and Actual budget; Ghostfolio tracks investments. Alopex does net worth across bank accounts, investments and crypto, with EU bank sync built in.</p></details>
-  <details><summary>Is Alopex free?</summary><p>Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change.</p></details>
+  <details><summary>What's the catch?</summary><p>You run it. Setup takes about 30 minutes, you renew bank consent every 180 days, and you install updates. There is no paid plan yet; if one comes, the self-hosted version stays free and MIT.</p></details>
+  <details><summary>Is Alopex free?</summary><p>Yes, MIT. It runs on the free tiers of Supabase, Vercel and Enable Banking, whose limits can change.</p></details>
   <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history.</p></details>
   <details><summary>Do I need a server to run Alopex?</summary><p>No. Sync runs on a schedule inside your Supabase project and the dashboard on Vercel. Docker is an option for a home server.</p></details>
+  <details><summary>Who is Alopex not for?</summary><p>People who bank outside Europe (PSD2 only), want real-time balances (sync runs every 6 hours), want budgets or forecasts (not yet), or want broker sync (only Coinbase syncs; you enter other holdings).</p></details>
   <details><summary>Can Alopex move money or make payments?</summary><p>No. PSD2 account-information access and the Coinbase key are both read-only.</p></details>
 </section>
 
 <section class="founder">
   <p class="label">From the maker</p>
   <blockquote>
-    <p>I built Alopex because every net worth app I tried either could not see my Italian bank or wanted my transactions on its servers. This one runs on my own accounts, and the code is MIT so it keeps working if I stop.</p>
+    <p>I built Alopex because no net worth app could see my Italian bank without taking my transactions. It runs on my own accounts, and the code is MIT so it keeps working if I stop.</p>
   </blockquote>
-  <p class="sig"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span><strong>Marco D'Onghia</strong>, <a href="https://marcodonghiaa.com">marcodonghiaa.com</a></span></p>
+  <p class="sig"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span><strong>Marco D'Onghia</strong>, founder</span></p>
+  <a class="btn" href="https://marcodonghiaa.com">Talk to the founder <span aria-hidden="true">&#8599;</span></a>
 </section>
 
 <section class="final">
   <div class="band">
     <svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M23.0 8.3 C22.7 9.0 22.1 9.9 22.0 11.6 C21.9 13.3 22.7 16.2 22.5 18.6 C22.3 21.1 22.6 23.2 20.6 26.3 C18.6 29.4 12.7 34.6 10.7 37.2 C8.7 39.9 8.8 40.4 8.4 42.2 C8.0 44.0 8.0 46.3 8.3 47.8 C8.6 49.3 8.7 50.1 10.2 51.4 C11.7 52.7 14.1 54.5 17.2 55.5 C20.2 56.5 25.6 57.4 28.5 57.6 C31.4 57.8 32.7 57.4 34.9 56.8 C37.1 56.1 39.0 55.4 41.5 53.7 C44.0 52.0 47.8 48.0 50.0 46.7 C52.2 45.4 53.9 46.0 54.8 45.7 C55.6 45.4 55.6 45.6 55.1 44.8 C54.6 43.9 52.9 41.7 51.7 40.6 C50.5 39.5 49.2 38.9 47.7 38.4 C46.2 37.9 44.8 37.5 42.7 37.4 C40.6 37.3 34.9 37.9 34.9 37.9 C34.9 37.9 36.0 34.3 36.1 32.0 C36.2 29.7 34.5 26.2 35.5 23.9 C36.5 21.6 40.9 19.7 42.2 18.4 C43.5 17.1 43.2 16.1 43.2 16.1 C43.2 16.1 38.8 15.2 37.3 14.6 C35.8 13.9 35.1 13.3 34.2 12.2 C33.3 11.1 31.7 8.1 31.7 8.1 C31.7 8.1 30.1 10.3 28.8 10.2 C27.5 10.1 23.6 7.5 23.6 7.5 C23.6 7.5 23.3 7.6 23.0 8.3ZM30.4 16.8a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0Z"/></svg>
-    <h2>Your net worth, in a database you own.</h2>
+    <h2>Connect your first bank. See your net worth.</h2>
     <p class="lead">Try it on fake data, then set up your own.</p>
     <div class="ctas">
-      <a class="btn primary" href="https://app.alopex.finance/demo">Try the live demo</a>
-      <a class="btn" href="https://github.com/marcodonghiaa/alopex#readme">Set it up in 30 minutes</a>
+      <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> npx create-alopex<span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
+      <a class="btn" href="https://app.alopex.finance/demo">Live demo</a>
     </div>
     <a class="by" href="https://marcodonghiaa.com"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span>Built by <strong>Marco D'Onghia</strong></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
   </div>
