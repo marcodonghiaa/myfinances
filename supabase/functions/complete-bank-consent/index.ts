@@ -9,6 +9,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
 import { burnCode, linkAccounts } from "../_shared/link-accounts.ts";
 import { claimConsent, isConsentInput } from "../_shared/consent-claim.ts";
+import { startFirstSync } from "../_shared/first-sync.ts";
+import { parseSecretKeys } from "../_shared/secret-key.ts";
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
+const SECRET_KEYS = parseSecretKeys(Deno.env.get("SUPABASE_SECRET_KEYS"));
 
 const service = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -36,5 +41,13 @@ Deno.serve(serveWithCors(async (req, json) => {
   }
 
   const result = await linkAccounts(service, userData.user.id, body.code);
-  return "error" in result ? json({ error: result.error }, 502) : json(result.params);
+  if ("error" in result) return json({ error: result.error }, 502);
+
+  // Transactions now, not at the next cron run; the reply does not wait for it.
+  EdgeRuntime.waitUntil(startFirstSync(
+    Deno.env.get("SUPABASE_URL")!,
+    SECRET_KEYS.default ?? Object.values(SECRET_KEYS)[0],
+    result.accountUids,
+  ));
+  return json(result.params);
 }));

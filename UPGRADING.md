@@ -21,6 +21,7 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 - **No migration.** Redeploy the Edge Functions and the dashboard together (run the installer again, or `supabase functions deploy` + redeploy the dashboard). A new backend with an old dashboard leaves new bank links unfinished until the dashboard is updated.
 - The bank's redirect used to store the accounts under whoever *started* the link, so on an instance with several users, one could send another their own consent URL and receive that person's accounts. `bank-consent-callback` now only forwards the browser; the new `complete-bank-consent` links the accounts for the signed-in user, and only if that user started the link.
 - Your Enable Banking redirect URL does not change.
+- A new bank link starts its first sync right away (balance and transactions) instead of waiting up to 6 hours for the cron. It uses the same secret key as the cron, so nothing to configure.
 - Also: manual accounts are no longer sent to the bank sync (migration `20261124000000_sync_all_banks_skip_manual`; roll back with `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`).
 
 ### Splitwise undo keeps how a row counts

@@ -19,12 +19,12 @@ interface EnableBankingAccount {
   identification_hash?: string | null;
 }
 
-export type LinkResult = { params: Record<string, string> } | { error: string };
+export type LinkResult = { params: Record<string, string>; accountUids: string[] } | { error: string };
 
 // deno-lint-ignore no-explicit-any
 export async function linkAccounts(supabase: any, userId: string, code: string): Promise<LinkResult> {
   // Log the real reason server-side; the reply only gets a generic message.
-  const fail = (err: unknown): LinkResult => {
+  const fail = (err: unknown): { error: string } => {
     console.error(`bank link failed: ${errorTag(err)}`);
     return { error: LINK_FAILED };
   };
@@ -188,7 +188,10 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
       console.error(`fx seed failed: ${errorTag(err)}`);
     }
 
-    return { params: linkedParams(savedRows.length, bank.bank_name, savedRows.map((r) => r.currency)) };
+    return {
+      params: linkedParams(savedRows.length, bank.bank_name, savedRows.map((r) => r.currency)),
+      accountUids: savedRows.map((r) => r.uid),
+    };
   } catch (err) {
     return fail(err);
   }
