@@ -172,9 +172,14 @@ summary::after{content:"+";color:var(--muted);font-weight:400;flex:none}
 details[open] summary::after{content:"\2212"}
 details p{color:var(--muted);margin:10px 0 0;max-width:62ch}
 .final .band{border:1px solid var(--line);border-radius:16px;padding:clamp(48px,7vw,88px) var(--s3);text-align:center;background:linear-gradient(180deg,var(--soft),var(--bg))}
-.final .band svg{width:44px;height:44px;margin:0 auto var(--s3);display:block}
+.final .band>svg{width:44px;height:44px;margin:0 auto var(--s3);display:block}
 .final h2{margin:0 auto 12px;max-width:20ch}
 .final .lead{margin:0 auto var(--s4)}
+.by{display:inline-flex;align-items:center;gap:10px;margin-top:var(--s4);padding:6px 14px 6px 6px;border:1px solid var(--line);border-radius:999px;background:var(--bg);text-decoration:none;font-size:14px;color:var(--muted)}
+.by img{width:28px;height:28px;border-radius:50%;display:block}
+.by strong{color:var(--ink);font-weight:600}
+.by svg{width:14px;height:14px;color:var(--muted)}
+.by:hover{border-color:var(--muted)}
 footer{margin-top:var(--s6);border-top:1px solid var(--line);padding:var(--s4) 0 var(--s5);font-size:.85rem;color:var(--muted)}
 footer .cols{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s3)}
 footer nav{display:flex;gap:20px;flex-wrap:wrap}
@@ -318,6 +323,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
       <a class="btn primary" href="https://myfinancess-view.vercel.app/demo">Try the live demo</a>
       <a class="btn" href="https://github.com/marcodonghiaa/myfinances#readme">Set it up in 30 minutes</a>
     </div>
+    <a class="by" href="https://github.com/marcodonghiaa"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span>Built by <strong>Marco D'Onghia</strong></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
   </div>
 </section>
 </div>
@@ -328,7 +334,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     <a class="brand" href="/" aria-label="Alopex home"><svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M9 7Q10 6 11 7L25 21H39L53 7Q54 6 55 7L56 30Q56 33 54 35L35 55Q32 58 29 55L10 35Q8 33 8 30Z"/><path fill="var(--bg)" d="M14 34Q22 33 27 40L32 47L37 40Q42 33 50 34L36 50Q32 54 28 50Z"/><circle cx="23" cy="29" r="2.5" fill="var(--bg)"/><circle cx="41" cy="29" r="2.5" fill="var(--bg)"/><path fill="currentColor" d="M29 46H35L32 50Z"/></svg> Alopex</a>
     <nav><a href="https://github.com/marcodonghiaa/myfinances">Backend repo</a><a href="https://github.com/marcodonghiaa/my-wealth-view">Dashboard repo</a><a href="https://github.com/marcodonghiaa/myfinances/blob/main/LICENSE">MIT license</a><a href="/llms.txt">llms.txt</a></nav>
   </div>
-  <p class="legal">Alopex is a tracking tool, not financial, investment or tax advice. Figures depend on data from your banks and third-party price feeds and may be delayed or wrong; check important numbers with the source. Built by <a href="https://github.com/marcodonghiaa">Marco D'Onghia</a>.</p>
+  <p class="legal">Alopex is a tracking tool, not financial, investment or tax advice. Figures depend on data from your banks and third-party price feeds and may be delayed or wrong; check important numbers with the source.</p>
 </div></footer>
 </body>
 </html>
