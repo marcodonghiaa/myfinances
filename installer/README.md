@@ -29,5 +29,6 @@ Release: tag `v<version>` on both repos, then `npm publish` from `installer/`.
 
 Forks and testing: `ALOPEX_BACKEND_REPO`, `ALOPEX_DASHBOARD_REPO` (owner/name) and
 `ALOPEX_REF` (tag or branch; `ALOPEX_REF=main` to try unreleased code) choose what is downloaded.
+`ALOPEX_BACKEND_DIR` / `ALOPEX_DASHBOARD_DIR` copy a local checkout instead (try changes before pushing).
 
 Tests: `node --test installer/` (from the backend repo root).

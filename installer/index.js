@@ -83,7 +83,16 @@ function openBrowser(url) {
 }
 
 // --- steps ---------------------------------------------------------------------------------------
-async function download(repo, dir) {
+// Code from a release tag on GitHub, or from a local checkout when ALOPEX_<NAME>_DIR is set
+// (to try changes before they are published). Folders whose files the CLIs apply as a whole are
+// emptied first, so a migration or function renamed or removed upstream doesn't linger here.
+async function download(repo, dir, localDir) {
+  for (const sub of ['supabase/migrations', 'supabase/functions']) fs.rmSync(path.join(dir, sub), { recursive: true, force: true });
+  if (localDir) {
+    const src = path.resolve(localDir.replace(/^~(?=$|\/)/, os.homedir()));
+    fs.cpSync(src, dir, { recursive: true, filter: (f) => !/(^|[\\/])(node_modules|\.git|\.env|\.vercel|\.temp)$/.test(path.relative(src, f)) });
+    return;
+  }
   const res = await fetch(lib.tarballUrl(repo, REF));
   if (!res.ok) die(`Could not download ${repo} at ${REF} (HTTP ${res.status}).`);
   const file = path.join(os.tmpdir(), `alopex-${process.pid}-${path.basename(dir)}.tar.gz`);
@@ -105,8 +114,8 @@ async function main() {
   console.log('Answers are saved as you go: stop any time and run the same command again.');
 
   step('Downloading the app');
-  await download(BACKEND_REPO, backend);
-  await download(DASHBOARD_REPO, dashboard);
+  await download(BACKEND_REPO, backend, process.env.ALOPEX_BACKEND_DIR);
+  await download(DASHBOARD_REPO, dashboard, process.env.ALOPEX_DASHBOARD_DIR);
   must('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund'], { cwd: backend }, 'Could not install the backend packages.');
   // The backend's own helpers: .env merging, login creation, Enable Banking check.
   const { mergeEnv, parseEnv } = require(path.join(backend, 'env-file.js'));
