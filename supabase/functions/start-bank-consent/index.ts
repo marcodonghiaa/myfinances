@@ -47,9 +47,9 @@ Deno.serve(serveWithCors(async (req, json, origin) => {
   // Enable Banking treats `state` as an opaque pass-through it never
   // validates -- a bare user id there would let anyone who completes their
   // own consent hand-edit state to a victim's id before hitting the
-  // callback. Issue a single-use, unguessable token instead; the callback
-  // looks up the real user id by it and deletes the row.
-  // Tokens older than the callback's 15 minute window can never be used; clear the caller's.
+  // callback. Issue a single-use, unguessable token instead; complete-bank-consent
+  // deletes the row through the signed-in user's session, so only its owner can use it.
+  // Tokens older than the 15 minute window can never be used; clear the caller's.
   await supabase
     .from("pending_bank_consents")
     .delete()

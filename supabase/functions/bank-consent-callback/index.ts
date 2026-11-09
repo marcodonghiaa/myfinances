@@ -72,5 +72,11 @@ Deno.serve(async (req) => {
   // complete-bank-consent spends the one-time code within seconds, or closes it when the link is
   // refused; the dashboard drops it from the address bar straight away. Until then it is a secret:
   // it is not tied to this state, so whoever holds it could pair it with a link of their own.
-  return redirectToApp({ bank_code: code, bank_state: state });
+  // bank_link_error is for dashboards older than this backend, which ignore bank_code: they show
+  // it and clear the address bar. Current dashboards finish the link and ignore it.
+  return redirectToApp({
+    bank_code: code,
+    bank_state: state,
+    bank_link_error: "Update your dashboard to finish linking this bank",
+  });
 });

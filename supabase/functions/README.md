@@ -1,6 +1,6 @@
 # Supabase Edge Functions
 
-Source of truth for the three functions backing self-serve bank linking.
+Source of truth for the Edge Functions: bank linking, account deletion, holdings, statements.
 Deploy with `supabase functions deploy --project-ref <ref>` (what `setup.sh`
 runs) — `verify_jwt` per function is codified in `supabase/config.toml`, so a
 plain deploy from this repo reproduces the same gating described below.
@@ -14,6 +14,9 @@ plain deploy from this repo reproduces the same gating described below.
 - **complete-bank-consent** — called by the signed-in dashboard with that code.
   Exchanges it and saves the accounts, only for the user who started the link.
   `verify_jwt: true`.
+- **delete-account** — called by the signed-in dashboard with `{ "confirm": "DELETE" }`.
+  Deletes the user (every row cascades), then closes their stored Enable Banking
+  sessions. Refuses the instance owner while other users exist. `verify_jwt: true`.
 - **add-holding** — searches Yahoo Finance (stocks, ETFs, funds) or CoinGecko
   (crypto) by name, ticker or ISIN, and adds the chosen holding with today's
   price so it shows at once. Writes the holding as the user (RLS), the price

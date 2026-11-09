@@ -1,6 +1,6 @@
 // Supabase Edge Function: delete-account
 //
-// Deletes the signed-in user and everything stored for them on this instance, after closing
+// Deletes the signed-in user and everything stored for them on this instance, then closes
 // their Enable Banking sessions so their banks stop sharing data. Body: { "confirm": "DELETE" }.
 // Every row that belongs to the user goes with them (foreign keys cascade from auth.users,
 // migration 20261125000000). The Enable Banking key and the instance settings are untouched.
@@ -30,10 +30,25 @@ Deno.serve(serveWithCors(async (req, json) => {
   const body = await req.json().catch(() => null);
   if (body?.confirm !== "DELETE") return json({ error: "Type DELETE to confirm" }, 400);
 
+  const { data: allowed, error: ownerError } = await service.rpc("can_delete_user", { p_user: userId });
+  if (ownerError) {
+    console.error(`delete-account: owner check failed: ${errorTag(ownerError)}`);
+    return json({ error: "Couldn't delete the account, please try again" }, 500);
+  }
+  if (!allowed) {
+    return json({ error: "You set up this instance: remove the other users first" }, 409);
+  }
+
   const { data: sessions, error: sessionsError } = await service
     .from("bank_sessions").select("session_id").eq("user_id", userId);
   if (sessionsError) {
     console.error(`delete-account: sessions not read: ${errorTag(sessionsError)}`);
+    return json({ error: "Couldn't delete the account, please try again" }, 500);
+  }
+  // Delete first: if it fails, the user keeps working banks. The session ids are already read.
+  const { error } = await service.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error(`delete-account failed: ${errorTag(error)}`);
     return json({ error: "Couldn't delete the account, please try again" }, 500);
   }
   // Links made before bank_sessions existed have no stored session: those expire on their own
@@ -41,11 +56,5 @@ Deno.serve(serveWithCors(async (req, json) => {
   await closeSessions((sessions ?? []).map((s: { session_id: string }) => s.session_id)).catch((err) => {
     console.error(`delete-account: sessions not closed: ${errorTag(err)}`);
   });
-
-  const { error } = await service.auth.admin.deleteUser(userId);
-  if (error) {
-    console.error(`delete-account failed: ${errorTag(error)}`);
-    return json({ error: "Couldn't delete the account, please try again" }, 500);
-  }
   return json({ ok: true });
 }));

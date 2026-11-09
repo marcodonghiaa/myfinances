@@ -19,7 +19,7 @@ interface EnableBankingAccount {
   identification_hash?: string | null;
 }
 
-export type LinkResult = { params: Record<string, string>; accountUids: string[] } | { error: string };
+export type LinkResult = { params: Record<string, string>; newAccountUids: string[] } | { error: string };
 
 // deno-lint-ignore no-explicit-any
 export async function linkAccounts(supabase: any, userId: string, code: string): Promise<LinkResult> {
@@ -85,6 +85,7 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
     if (storedError) return fail(storedError);
     let stored: StoredAccount[] = storedRows ?? [];
 
+    const newUids: string[] = []; // first-synced right away; relinked ones wait for the cron
     for (const a of accounts) {
       const iban = a.account_id?.iban ?? null;
       const identificationHash = a.identification_hash ?? null;
@@ -107,6 +108,7 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
         if (!error) {
           stored = [...stored, { uid: a.uid, iban, currency: a.currency, identification_hash: identificationHash }];
           savedRows.push({ uid: a.uid, ebUid: a.uid, label, currency: a.currency });
+          newUids.push(a.uid);
           continue;
         }
         // A concurrent callback inserted the same pocket first (unique user_id + identification_hash).
@@ -190,7 +192,7 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
 
     return {
       params: linkedParams(savedRows.length, bank.bank_name, savedRows.map((r) => r.currency)),
-      accountUids: savedRows.map((r) => r.uid),
+      newAccountUids: newUids,
     };
   } catch (err) {
     return fail(err);
@@ -200,18 +202,22 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
 // A code whose link was refused (another user's state, or expired) must not stay redeemable:
 // whoever obtained it could pair it with a state of their own. Exchange it and close the session
 // straight away. Best effort: Enable Banking codes are short-lived anyway.
-export async function burnCode(code: string): Promise<void> {
+export async function burnCode(
+  code: string,
+  fetchFn: typeof fetch = fetch,
+  sign: () => Promise<string> = signEnableBankingJwt,
+): Promise<void> {
   try {
-    const token = await signEnableBankingJwt();
+    const token = await sign();
     const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    const res = await fetch("https://api.enablebanking.com/sessions", {
+    const res = await fetchFn("https://api.enablebanking.com/sessions", {
       method: "POST",
       headers,
       body: JSON.stringify({ code }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && typeof data.session_id === "string") {
-      await fetch(`https://api.enablebanking.com/sessions/${encodeURIComponent(data.session_id)}`, {
+      await fetchFn(`https://api.enablebanking.com/sessions/${encodeURIComponent(data.session_id)}`, {
         method: "DELETE",
         headers,
       });
@@ -223,19 +229,23 @@ export async function burnCode(code: string): Promise<void> {
 
 // Closes Enable Banking sessions so the bank stops sharing data with this app. Best effort per
 // session: one that is already closed or expired is not an error worth stopping for.
-export async function closeSessions(sessionIds: string[]): Promise<number> {
+export async function closeSessions(
+  sessionIds: string[],
+  fetchFn: typeof fetch = fetch,
+  sign: () => Promise<string> = signEnableBankingJwt,
+): Promise<number> {
   if (sessionIds.length === 0) return 0;
-  const token = await signEnableBankingJwt();
+  const token = await sign();
   let closed = 0;
   for (const id of sessionIds) {
     try {
-      const res = await fetch(`https://api.enablebanking.com/sessions/${encodeURIComponent(id)}`, {
+      const res = await fetchFn(`https://api.enablebanking.com/sessions/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
         signal: AbortSignal.timeout(10_000),
       });
       if (res.ok || res.status === 404) closed++;
-      else console.error(`bank session not closed: HTTP ${res.status}`);
+      else console.error(`bank session not closed: ${errorTag({ status: res.status })}`);
     } catch (err) {
       console.error(`bank session not closed: ${errorTag(err)}`);
     }

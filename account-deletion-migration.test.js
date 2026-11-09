@@ -8,7 +8,7 @@ const down = fs.readFileSync('supabase/rollbacks/20261125000000_account_deletion
 // Without cascades Postgres refuses to delete a user who still has rows.
 test('keys to users and accounts with no delete rule start cascading', () => {
   assert.match(code, /c\.confdeltype = 'a'/);
-  assert.match(code, /'auth\.users'::regclass, 'public\.accounts'::regclass/);
+  assert.match(code, /'auth\.users'::regclass, 'public\.accounts'::regclass,\s+'public\.portfolio_holdings'::regclass, 'public\.crypto_holdings'::regclass/);
   assert.match(code, /on delete cascade/);
 });
 
@@ -22,4 +22,11 @@ test('bank_sessions is server-only', () => {
 test('rollback keeps the keys that cascaded before', () => {
   assert.match(down, /drop table if exists public\.bank_sessions;/);
   assert.match(down, /'merchant_aliases', 'holding_trades',\s+'user_categories', 'recurring_streams'/);
+});
+
+// Otherwise the next-oldest user silently becomes owner and may add dashboard addresses.
+test('the owner cannot delete themselves while other users remain; only the server may ask', () => {
+  assert.match(code, /p_user is distinct from \(select id from auth\.users order by created_at, id limit 1\)/);
+  assert.match(code, /or not exists \(select 1 from auth\.users where id <> p_user\)/);
+  assert.match(code, /revoke execute on function public\.can_delete_user\(uuid\) from public, anon, authenticated;/);
 });

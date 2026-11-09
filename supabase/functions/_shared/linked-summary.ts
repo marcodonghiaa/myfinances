@@ -1,5 +1,5 @@
-// What the callback found, for the dashboard toast ("Revolut: EUR, GBP, USD").
-// Bank name and currency codes only: the redirect URL must carry no personal data.
+// What a bank link found, for the dashboard toast ("Revolut: EUR, GBP, USD"), in
+// complete-bank-consent's reply. Bank name and currency codes only: no personal data.
 
 export function linkedParams(count: number, bankName: string | null, currencies: string[]): Record<string, string> {
   const params: Record<string, string> = { bank_linked: String(count) };

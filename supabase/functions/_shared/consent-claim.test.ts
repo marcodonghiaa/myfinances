@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { claimConsent, EXPIRED_CONSENT, INVALID_CONSENT, isConsentInput } from "./consent-claim.ts";
+import { CLAIM_FAILED, claimConsent, EXPIRED_CONSENT, INVALID_CONSENT, isConsentInput } from "./consent-claim.ts";
 
 const STATE = "0b0e6a4e-1f7e-4f43-9d0c-2b1c9a7d5e11";
 const NOW = Date.parse("2026-11-09T12:00:00Z");
@@ -39,9 +39,10 @@ Deno.test("a row for another user is refused even with a client that bypasses RL
   assertEquals(await claimConsent(db, STATE, "u2", NOW), { error: INVALID_CONSENT });
 });
 
-Deno.test("a database error is refused", async () => {
+// protects=a user's own code; fails_when=a database hiccup is reported as a refusal (and burned).
+Deno.test("a database error is transient, not a refusal", async () => {
   const { db } = fakeDb(null, { code: "XX000" });
-  assertEquals(await claimConsent(db, STATE, "u1", NOW), { error: INVALID_CONSENT });
+  assertEquals(await claimConsent(db, STATE, "u1", NOW), { error: CLAIM_FAILED, transient: true });
 });
 
 Deno.test("a link older than 15 minutes has expired", async () => {

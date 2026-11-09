@@ -36,7 +36,12 @@ Deno.serve(serveWithCors(async (req, json) => {
 
   const claim = await claimConsent(asUser, body.state, userData.user.id, Date.now());
   if ("error" in claim) {
-    await burnCode(body.code);
+    if (claim.transient) return json({ error: claim.error }, 503);
+    // The state is someone else's (the link was started by another user): close the code, so it
+    // can't be paired with a state of their own. A state that doesn't exist costs no bank call.
+    const { data: foreign } = await service
+      .from("pending_bank_consents").select("id").eq("id", body.state).maybeSingle();
+    if (foreign) await burnCode(body.code);
     return json({ error: claim.error }, 403);
   }
 
@@ -47,7 +52,7 @@ Deno.serve(serveWithCors(async (req, json) => {
   EdgeRuntime.waitUntil(startFirstSync(
     Deno.env.get("SUPABASE_URL")!,
     SECRET_KEYS.default ?? Object.values(SECRET_KEYS)[0],
-    result.accountUids,
+    result.newAccountUids,
   ));
   return json(result.params);
 }));

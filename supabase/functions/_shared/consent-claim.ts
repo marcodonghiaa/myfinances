@@ -10,6 +10,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const INVALID_CONSENT = "Invalid or expired consent request";
 export const EXPIRED_CONSENT = "Consent request expired, please try again";
+export const CLAIM_FAILED = "Couldn't finish linking the bank, please try again";
 
 export function isConsentInput(body: unknown): body is { code: string; state: string } {
   const b = body as { code?: unknown; state?: unknown } | null;
@@ -22,14 +23,16 @@ export async function claimConsent(
   state: string,
   userId: string,
   now: number,
-): Promise<{ ok: true } | { error: string }> {
+): Promise<{ ok: true } | { error: string; transient?: true }> {
   const { data, error } = await db
     .from("pending_bank_consents")
     .delete()
     .eq("id", state)
     .select("user_id, created_at")
     .maybeSingle();
-  if (error || !data || data.user_id !== userId) return { error: INVALID_CONSENT };
+  // A database error is not a refusal: report it as such, so the caller does not burn the code.
+  if (error) return { error: CLAIM_FAILED, transient: true };
+  if (!data || data.user_id !== userId) return { error: INVALID_CONSENT };
   if (now - new Date(data.created_at).getTime() > CONSENT_WINDOW_MS) return { error: EXPIRED_CONSENT };
   return { ok: true };
 }

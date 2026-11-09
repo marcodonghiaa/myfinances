@@ -13,16 +13,18 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ### Delete your account from Settings
 - **Migration:** `20261125000000_account_deletion`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions and the dashboard.
-- Deleting a user used to fail: most tables pointed at the user with no delete rule. They now cascade, so deleting a user (Settings → Delete account, or Supabase Auth → Users) removes all their rows, and deleting an account removes its transactions.
+- Deleting a user used to fail: most tables pointed at the user with no delete rule. They now cascade, so deleting a user (Settings → Delete account, or Supabase Auth → Users) removes all their rows, including investments and coins, and deleting an account removes its transactions.
+- The instance owner (the first user) can't delete themselves from Settings while other users exist: the next user would silently become owner.
 - New server-only table `bank_sessions` remembers each Enable Banking session, so deleting your account also closes it at the bank. Links made before this release are not in it; their consent simply expires.
 - **Roll back:** `supabase/rollbacks/20261125000000_account_deletion.down.sql`.
 
 ### Bank links finish in the signed-in dashboard
-- **No migration.** Redeploy the Edge Functions and the dashboard together (run the installer again, or `supabase functions deploy` + redeploy the dashboard). A new backend with an old dashboard leaves new bank links unfinished until the dashboard is updated.
+- **Migration:** `20261124000000_sync_all_banks_skip_manual` (manual accounts are no longer sent to the bank sync). Redeploy the Edge Functions and the dashboard together (run the installer again, or `supabase functions deploy` + redeploy the dashboard). A new backend with an old dashboard leaves new bank links unfinished until the dashboard is updated.
 - The bank's redirect used to store the accounts under whoever *started* the link, so on an instance with several users, one could send another their own consent URL and receive that person's accounts. `bank-consent-callback` now only forwards the browser; the new `complete-bank-consent` links the accounts for the signed-in user, and only if that user started the link.
 - Your Enable Banking redirect URL does not change.
-- A new bank link starts its first sync right away (balance and transactions) instead of waiting up to 6 hours for the cron. It uses the same secret key as the cron, so nothing to configure.
-- Also: manual accounts are no longer sent to the bank sync (migration `20261124000000_sync_all_banks_skip_manual`; roll back with `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`).
+- A newly linked account starts its first sync right away (balance and transactions) instead of waiting up to 6 hours for the cron. It uses the same secret key as the cron, so nothing to configure.
+- An old dashboard shows "Couldn't link the bank" for new links until you redeploy it.
+- **Roll back:** `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`.
 
 ### Splitwise undo keeps how a row counts
 - **Migration:** `20261116000000_splitwise_undo_keeps_flow`. You apply it with `supabase db push --linked`.

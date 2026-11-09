@@ -1,7 +1,8 @@
 -- Rollback of 20261125000000_account_deletion: drops bank_sessions and puts the cascading keys
--- back to NO ACTION, except the four that cascaded before (merchant_aliases, holding_trades,
+-- back to NO ACTION (and drops can_delete_user), except the four that cascaded before (merchant_aliases, holding_trades,
 -- user_categories, recurring_streams).
 drop table if exists public.bank_sessions;
+drop function if exists public.can_delete_user(uuid);
 do $$
 declare
   fk record;
@@ -13,7 +14,8 @@ begin
     where c.contype = 'f'
       and n.nspname = 'public'
       and c.confdeltype = 'c'
-      and c.confrelid in ('auth.users'::regclass, 'public.accounts'::regclass)
+      and c.confrelid in ('auth.users'::regclass, 'public.accounts'::regclass,
+                          'public.portfolio_holdings'::regclass, 'public.crypto_holdings'::regclass)
       and c.conrelid::regclass::text not in ('merchant_aliases', 'holding_trades',
                                              'user_categories', 'recurring_streams')
   loop
