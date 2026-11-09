@@ -1,0 +1,1 @@
+document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{navigator.clipboard.writeText(b.dataset.copy).then(()=>{b.classList.add("copied");setTimeout(()=>b.classList.remove("copied"),1500)})}))
