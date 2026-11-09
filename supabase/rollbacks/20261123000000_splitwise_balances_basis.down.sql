@@ -1,4 +1,4 @@
--- Rollback of 20261122000000_splitwise_balances_basis: old save function, no basis column.
+-- Rollback of 20261123000000_splitwise_balances_basis: old save function, no basis column.
 create or replace function public.save_splitwise_balances(p_group text, p_balances jsonb)
 returns jsonb
 language plpgsql
