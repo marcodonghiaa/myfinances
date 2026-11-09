@@ -60,7 +60,7 @@
         {"@type": "Question", "name": "How is Alopex different from Firefly III, Actual Budget or Ghostfolio?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual budget; Ghostfolio tracks investments. Alopex does net worth across bank accounts, investments and crypto, with EU bank sync built in."}},
         {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change."}},
         {"@type": "Question", "name": "Which banks does Alopex support, and how long does access last?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history."}},
-        {"@type": "Question", "name": "Do I need a server to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sync runs on GitHub Actions and the dashboard on Vercel. Docker is an option for a home server."}},
+        {"@type": "Question", "name": "Do I need a server to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sync runs on a schedule inside your Supabase project and the dashboard on Vercel. Docker is an option for a home server."}},
         {"@type": "Question", "name": "Can Alopex move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. PSD2 account-information access and the Coinbase key are both read-only."}}
       ]
     }
@@ -191,7 +191,9 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 .proof img{display:block;height:20px;width:auto}
 .proof strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 .install{display:inline-flex;align-items:center;gap:10px;margin:18px auto 0;font-size:13px;color:var(--muted)}
-.install code{font-size:13px;padding:4px 10px}
+.install code{font-size:14px;padding:6px 12px;color:var(--ink)}
+.install button{font:inherit;font-size:12px;color:var(--muted);background:none;border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer}
+.install button:hover{color:var(--ink);border-color:var(--ink)}
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--line);gap:1px}
 .flow>div{background:var(--bg);padding:var(--s3);position:relative}
 .flow>div+div::before{content:"\2192";position:absolute;left:-9px;top:var(--s3);width:18px;height:18px;border-radius:50%;background:var(--bg);border:1px solid var(--line);font-size:11px;line-height:16px;text-align:center;color:var(--muted);z-index:1}
@@ -237,7 +239,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     <a class="btn primary" href="https://app.alopex.finance/demo">Try the live demo</a>
     <a class="btn" href="#how">Self-host in 30 minutes</a>
   </div>
-  <p class="install">Or open the repo in Codespaces and run <code>./setup.sh</code></p>
+  <p class="install">Or self-host with one command: <code>npx create-alopex</code><button type="button" data-copy="npx create-alopex">Copy</button></p>
   <ul class="proof">
     <li><a class="stars" href="https://github.com/marcodonghiaa/alopex" aria-label="GitHub stars"><img src="https://img.shields.io/github/stars/marcodonghiaa/alopex?style=flat&amp;label=&amp;color=0a0a0a" width="48" height="20" loading="lazy" alt="GitHub stars"></a></li>
     <li><strong>2000+</strong> European banks over PSD2</li>
@@ -300,11 +302,11 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 
 <section id="how">
   <h2>Set up in about 30 minutes</h2>
-  <p class="lead">In the browser, on free tiers. No computer has to stay on.</p>
+  <p class="lead">On free tiers. Nothing to keep running on your computer after setup.</p>
   <ol class="steps">
-    <li><strong>Create free accounts</strong><span>GitHub, Supabase, Enable Banking and Vercel. Optional Gemini key. About 15 minutes.</span></li>
-    <li><strong>Run setup in Codespaces</strong><span>Run <code>./setup.sh</code>. It creates the schema, deploys the functions and turns on the sync.</span></li>
-    <li><strong>Deploy the dashboard</strong><span>Click Deploy with Vercel, paste the three values setup printed, sign in.</span></li>
+    <li><strong>Create free accounts</strong><span>Supabase, Enable Banking and Vercel. Optional Gemini key. No GitHub needed.</span></li>
+    <li><strong>Run one command</strong><span><code>npx create-alopex</code> on Mac, Linux or Windows (Node 20+). It builds the database, deploys the functions and schedules the sync.</span></li>
+    <li><strong>Get your dashboard</strong><span>The same command puts it on Vercel and prints your URL. Sign in with the login you chose.</span></li>
     <li><strong>Link a bank</strong><span>From the Accounts page. Balances appear at once, transactions with the next sync.</span></li>
   </ol>
   <div class="after"><a class="btn" href="https://github.com/marcodonghiaa/alopex#readme">Open the setup guide</a><p class="fine">Own hardware? <code>docker compose up</code> runs both apps.</p></div>
@@ -325,7 +327,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <details><summary>How is Alopex different from Firefly III, Actual Budget or Ghostfolio?</summary><p>Firefly III and Actual budget; Ghostfolio tracks investments. Alopex does net worth across bank accounts, investments and crypto, with EU bank sync built in.</p></details>
   <details><summary>Is Alopex free?</summary><p>Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change.</p></details>
   <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history.</p></details>
-  <details><summary>Do I need a server to run Alopex?</summary><p>No. Sync runs on GitHub Actions and the dashboard on Vercel. Docker is an option for a home server.</p></details>
+  <details><summary>Do I need a server to run Alopex?</summary><p>No. Sync runs on a schedule inside your Supabase project and the dashboard on Vercel. Docker is an option for a home server.</p></details>
   <details><summary>Can Alopex move money or make payments?</summary><p>No. PSD2 account-information access and the Coinbase key are both read-only.</p></details>
 </section>
 
@@ -359,5 +361,6 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   </div>
   <p class="legal">Alopex is a tracking tool, not financial, investment or tax advice. Figures come from your banks and third-party price feeds and may be delayed or wrong.</p>
 </div></footer>
+<script>document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{navigator.clipboard.writeText(b.dataset.copy).then(()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1500)})}))</script>
 </body>
 </html>

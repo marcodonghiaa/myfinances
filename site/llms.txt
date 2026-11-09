@@ -9,7 +9,7 @@ Key facts:
 - Currencies: EUR, USD or GBP, daily ECB rates.
 - Categorization: user rules first, optional Google Gemini for the rest.
 - Also: Splitwise shared costs, reports, income vs expenses, subscription detection, transfer and refund pairing, "worth it?" Web Push prompts, installable PWA, CSV import.
-- Hosting: runs on the user's own Supabase, GitHub Actions and Vercel (free tiers), or Docker. Setup about 30 minutes in the browser via GitHub Codespaces.
+- Hosting: runs on the user's own Supabase and Vercel (free tiers), or Docker. Setup: one command, `npx create-alopex` (Node 20+), about 30 minutes including the Enable Banking signup. Sync runs on pg_cron inside the user's Supabase project.
 - Not included: budgets, savings goals, forecasts, broker sync.
 - Not financial advice.
 
