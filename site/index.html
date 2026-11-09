@@ -56,18 +56,12 @@
     {
       "@type": "FAQPage",
       "mainEntity": [
-        {"@type": "Question", "name": "Is there an open-source alternative to Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers."}},
-        {"@type": "Question", "name": "Can I self-host a net worth tracker with European bank sync?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces."}},
-        {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change."}},
-        {"@type": "Question", "name": "Does Alopex work with US banks?", "acceptedAnswer": {"@type": "Answer", "text": "No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD."}},
-        {"@type": "Question", "name": "Which banks does Alopex support?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it."}},
-        {"@type": "Question", "name": "Can Alopex move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments."}},
-        {"@type": "Question", "name": "Who can see my financial data in Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection."}},
-        {"@type": "Question", "name": "How is Alopex different from Firefly III or Actual Budget?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual Budget are budgeting tools; Alopex is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices."}},
-        {"@type": "Question", "name": "Do I need a server or Docker to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server."}},
-        {"@type": "Question", "name": "Can I try Alopex without connecting a bank?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The live demo runs on generated fake data in your browser, with no sign-up. It never touches a real account."}},
-        {"@type": "Question", "name": "Can I import CSV history into Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank."}},
-        {"@type": "Question", "name": "What happens when the 180-day bank consent expires?", "acceptedAnswer": {"@type": "Answer", "text": "PSD2 consent lasts 180 days. The dashboard shows a Renew access banner two weeks before it ends and sends push reminders, and you renew from the Accounts page without losing history."}}
+        {"@type": "Question", "name": "Is there an open-source alternative to Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard."}},
+        {"@type": "Question", "name": "How is Alopex different from Firefly III or Actual Budget?", "acceptedAnswer": {"@type": "Answer", "text": "They budget; Alopex tracks net worth and prices investments and crypto, which they do not."}},
+        {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change."}},
+        {"@type": "Question", "name": "Which banks does Alopex support, and how long does access last?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history."}},
+        {"@type": "Question", "name": "Do I need a server to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. Sync runs on GitHub Actions and the dashboard on Vercel. Docker is an option for a home server."}},
+        {"@type": "Question", "name": "Can Alopex move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. PSD2 account-information access and the Coinbase key are both read-only."}}
       ]
     }
   ]
@@ -207,13 +201,13 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 <div class="hero">
   <p class="kicker">Open source · MIT · Self-hosted</p>
   <h1>One number for your net worth. In a database you own.</h1>
-  <p class="sub">Alopex syncs balances read-only from 2000+ European banks over PSD2, prices your stocks and crypto, and writes everything to your own Supabase project. Runs on free tiers, no server to keep on.</p>
+  <p class="sub">Read-only sync from 2000+ European banks over PSD2, stocks and crypto auto-priced, everything written to your own Supabase project. Runs on free tiers.</p>
   <div class="ctas">
     <a class="btn primary" href="https://myfinancess-view.vercel.app/demo">Try the live demo</a>
     <a class="btn" href="#how">Self-host in 30 minutes</a>
   </div>
   <p class="fine">The demo runs on fake data. No sign-up.</p>
-  <ul class="facts"><li>MIT licensed</li><li>Read-only PSD2 access</li><li>No Alopex server</li><li>Your own Supabase</li></ul>
+  <ul class="facts"><li>MIT licensed</li><li>Read-only PSD2 access</li><li>No Alopex server</li></ul>
   <div class="stage"><figure class="frame"><div class="bar"><i></i><i></i><i></i><span>alopex.finance</span></div>
     <picture><source media="(max-width:640px)" srcset="/img/mobile.webp" width="600" height="1298"><img src="/img/net-worth.webp" width="1600" height="1000" alt="Alopex net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></picture>
   </figure></div>
@@ -221,68 +215,67 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 
 <section class="quote" id="what">
   <p class="label">What the publisher sees</p>
-  <p>Nothing. <span>There is no Alopex server between your bank and your database. The data goes from Enable Banking straight into your own Supabase project.</span></p>
+  <p>Nothing. <span>There is no Alopex server. Bank data goes from Enable Banking straight into your Supabase project.</span></p>
 </section>
 
 <section id="privacy">
-  <h2>You stay in control</h2>
-  <p class="lead">Every piece runs under your own accounts, and nothing on the bank side can be written to.</p>
+  <h2>Read-only, under your own accounts</h2>
+  <p class="lead">Three third parties touch your data.</p>
   <div class="cards">
-    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><h3>Your data lives in your Supabase</h3><p>Postgres under your account, Row Level Security on every table. The dashboard uses only the publishable key; the service-role key stays in the sync scripts and Edge Functions.</p></div>
-    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><h3>Read-only by design</h3><p>PSD2 account-information access and a read-only Coinbase key. Alopex cannot move money, and a database trigger blocks edits to bank-sourced fields.</p></div>
-    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7 7h10M7 12h10M7 17h6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg><h3>Updates you review</h3><p>Updates arrive as pull requests on your own copy. Nothing changes until you read and merge them. Sync logs hold counts only, never names or amounts.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><h3>Row Level Security on every table</h3><p>The dashboard holds only the publishable key. The service-role key stays in the sync scripts and Edge Functions.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><h3>Cannot move money</h3><p>PSD2 account-information access and a read-only Coinbase key. A database trigger blocks edits to bank-sourced fields.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7 7h10M7 12h10M7 17h6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg><h3>Updates you merge yourself</h3><p>They arrive as pull requests on your copy. Sync logs hold counts, never names or amounts.</p></div>
   </div>
   <ul class="others">
-    <li>Enable Banking, the licensed aggregator that relays data from your bank.</li>
-    <li>Supabase, Vercel and GitHub, under your own accounts.</li>
-    <li>Google Gemini, only if you add a key: transaction descriptions are sent for categorization and subscription detection.</li>
+    <li>Enable Banking relays data from your bank.</li>
+    <li>Supabase, Vercel and GitHub run under your accounts.</li>
+    <li>Google Gemini, only if you add a key, receives transaction descriptions for categorization.</li>
   </ul>
 </section>
 
 <section id="how">
   <h2>Set up in about 30 minutes</h2>
-  <p class="lead">All in the browser, all on free tiers. Nothing to install, no computer that has to stay on.</p>
+  <p class="lead">In the browser, on free tiers. No computer has to stay on.</p>
   <ol class="steps">
-    <li><strong>Create free accounts</strong><span>GitHub, Supabase, Enable Banking and Vercel, plus an optional Gemini key. About 15 minutes, mostly Enable Banking's signup.</span></li>
-    <li><strong>Run setup in Codespaces</strong><span>Open the repo in GitHub Codespaces and run <code>./setup.sh</code>. It creates your database schema, deploys the functions, creates your login and turns on the sync.</span></li>
-    <li><strong>Deploy the dashboard</strong><span>Click Deploy with Vercel, paste the three values setup printed, and sign in. About 5 minutes.</span></li>
-    <li><strong>Link a bank</strong><span>Connect a bank from the Accounts page. Balances appear at once; transactions arrive with the next sync.</span></li>
+    <li><strong>Create free accounts</strong><span>GitHub, Supabase, Enable Banking and Vercel. Optional Gemini key. About 15 minutes.</span></li>
+    <li><strong>Run setup in Codespaces</strong><span>Run <code>./setup.sh</code>. It creates the schema, deploys the functions and turns on the sync.</span></li>
+    <li><strong>Deploy the dashboard</strong><span>Click Deploy with Vercel, paste the three values setup printed, sign in.</span></li>
+    <li><strong>Link a bank</strong><span>From the Accounts page. Balances appear at once, transactions with the next sync.</span></li>
   </ol>
-  <div class="after"><a class="btn" href="https://github.com/marcodonghiaa/myfinances#readme">Open the setup guide</a><p class="fine">Prefer your own hardware? <code>docker compose up</code> runs both apps.</p></div>
+  <div class="after"><a class="btn" href="https://github.com/marcodonghiaa/myfinances#readme">Open the setup guide</a><p class="fine">Own hardware? <code>docker compose up</code> runs both apps.</p></div>
 </section>
 
 <section id="features">
   <h2>Everything in one daily total</h2>
-  <p class="lead">Bank accounts, portfolio and crypto, with the detail underneath when you want it.</p>
   <article class="feat">
-    <div><h3>One net worth figure</h3><p>Bank balances, portfolio and crypto add up to a single daily total, shown in EUR, USD or GBP at daily ECB rates.</p><p>Import past months from a CSV so the chart starts with your history, not with the day you linked a bank.</p></div>
+    <div><h3>One net worth figure</h3><p>Banks, portfolio and crypto in one daily total, in EUR, USD or GBP.</p><p>Import past months from CSV so the chart starts with your history.</p></div>
     <figure class="frame small"><img src="/img/net-worth.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex net worth page: total with year-to-date change and a chart over time"></figure>
   </article>
   <article class="feat">
-    <div><h3>Bank sync over PSD2</h3><p>Revolut, Wise, Fineco and 2000+ other European banks through Enable Banking, synced every 6 hours.</p><p>Your own category rules run first. Gemini handles the rest if you add a key, and categories you set by hand are never overwritten.</p></div>
+    <div><h3>Bank sync over PSD2</h3><p>Revolut, Wise, Fineco and 2000+ other European banks, synced every 6 hours.</p><p>Your category rules run first; Gemini fills the rest if you add a key.</p></div>
     <figure class="frame small"><img src="/img/transactions.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex transactions page: register with merchant, category and subscription tags"></figure>
   </article>
   <article class="feat">
-    <div><h3>Portfolio and crypto, auto-priced</h3><p>Add holdings by name, ticker or ISIN. Prices come from Yahoo Finance and CoinGecko; Coinbase balances sync with a read-only key.</p></div>
+    <div><h3>Portfolio and crypto, auto-priced</h3><p>Add holdings by ticker or ISIN; prices from Yahoo Finance and CoinGecko. Coinbase syncs with a read-only key.</p></div>
     <figure class="frame small"><img src="/img/portfolio.webp" width="1600" height="1000" loading="lazy" decoding="async" alt="Alopex portfolio page: total return, holdings and allocation"></figure>
   </article>
   <div class="grid6">
-    <div><h3>Subscription detection</h3><p>Each transaction is marked Subscription or One-time; the Subscriptions page shows billing frequency and true monthly cost.</p></div>
-    <div><h3>Transfers and refunds</h3><p>Transfers between your own accounts don't count as income, and card refunds are paired with the original charge.</p></div>
-    <div><h3>Spending by category</h3><p>A monthly view of where the money went, with categories you can rename and group.</p></div>
-    <div><h3>"Worth it?" prompts</h3><p>After a discretionary purchase, a push notification asks whether it was worth it. The answer is stored on the transaction.</p></div>
-    <div><h3>Shared costs</h3><p>Mark a transaction as split with someone; the owed share leaves your spending and the Who owes you page tracks it.</p></div>
-    <div><h3>Installable PWA</h3><p>Add it to your phone's home screen and get push notifications, including a reminder before bank consent expires.</p></div>
+    <div><h3>Subscription detection</h3><p>Billing frequency and true monthly cost of every recurring charge.</p></div>
+    <div><h3>Transfers and refunds</h3><p>Transfers between your accounts are not income; refunds pair with the original charge.</p></div>
+    <div><h3>Spending by category</h3><p>Where the month went, in categories you can rename and group.</p></div>
+    <div><h3>"Worth it?" prompts</h3><p>After a discretionary purchase, a push notification asks. The answer is saved on the transaction.</p></div>
+    <div><h3>Shared costs</h3><p>Split a transaction with someone; the owed share leaves your spending.</p></div>
+    <div><h3>Installable PWA</h3><p>On your phone's home screen, with a push reminder before bank consent expires.</p></div>
   </div>
 </section>
 
 <section id="not-for" class="prose copy">
   <h2>Who it is not for</h2>
-  <p><strong>You bank outside Europe.</strong> Bank sync is PSD2 only. No Plaid, SimpleFIN or US/Canadian banks.</p>
-  <p><strong>You want someone else to run it.</strong> You host it, apply updates and renew bank consent every 180 days.</p>
-  <p><strong>You want real-time balances.</strong> Sync runs every 6 hours, because banks cap unattended access at about 4 calls a day per account.</p>
-  <p><strong>You want budgets, goals or forecasts.</strong> Not today. Alopex tracks net worth, spending, subscriptions and holdings.</p>
-  <p><strong>You want broker sync.</strong> You enter holdings; prices update automatically. Coinbase is the only exchange that syncs balances.</p>
+  <p><strong>You bank outside Europe.</strong> PSD2 only. No Plaid, SimpleFIN or US banks.</p>
+  <p><strong>You want someone else to run it.</strong> You host it, merge updates and renew bank consent every 180 days.</p>
+  <p><strong>You want real-time balances.</strong> Sync runs every 6 hours; banks cap unattended access at about 4 calls a day.</p>
+  <p><strong>You want budgets, goals or forecasts.</strong> Not today.</p>
+  <p><strong>You want broker sync.</strong> You enter holdings; only Coinbase syncs balances.</p>
 </section>
 
 <section id="compare">
@@ -292,33 +285,31 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     <thead><tr><th scope="col"></th><th scope="col">Alopex</th><th scope="col">Firefly III</th><th scope="col">Actual Budget</th><th scope="col">Ghostfolio</th><th scope="col">Finary</th></tr></thead>
     <tbody>
       <tr><th scope="row">Focus</th><td class="us">Net worth, spending, subscriptions</td><td>Budgeting, bookkeeping</td><td>Envelope budgeting</td><td>Investment portfolio</td><td>Net worth, investing</td></tr>
-      <tr><th scope="row">Self-hosted</th><td class="us">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No, hosted service</td></tr>
+      <tr><th scope="row">Self-hosted</th><td class="us">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
       <tr><th scope="row">License</th><td class="us">MIT</td><td>AGPL-3.0</td><td>MIT</td><td>AGPL-3.0</td><td>Proprietary</td></tr>
-      <tr><th scope="row">EU bank sync</th><td class="us">Built in, PSD2 via Enable Banking</td><td>Via Data Importer (Enable Banking, GoCardless, SimpleFIN, others)</td><td>Enable Banking, GoCardless, SimpleFIN</td><td>No</td><td>Built in</td></tr>
+      <tr><th scope="row">EU bank sync</th><td class="us">Built in, PSD2 via Enable Banking</td><td>Via Data Importer</td><td>Enable Banking, GoCardless, SimpleFIN</td><td>No</td><td>Built in</td></tr>
       <tr><th scope="row">Investments and crypto</th><td class="us">Yes, auto-priced</td><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
     </tbody>
   </table>
   </div>
-  <p class="note">GoCardless Bank Account Data (formerly Nordigen) has closed new signups. Alopex uses Enable Banking, which is free for connecting your own accounts. Corrections welcome on <a href="https://github.com/marcodonghiaa/myfinances/issues">GitHub</a>.</p>
+  <p class="note">Corrections welcome on <a href="https://github.com/marcodonghiaa/myfinances/issues">GitHub</a>.</p>
 </section>
 
 <section id="faq" class="copy">
   <h2>Frequently asked questions</h2>
-  <details><summary>Is there an open-source alternative to Finary?</summary><p>Yes. Alopex is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers.</p></details>
-  <details><summary>How is Alopex different from Firefly III or Actual Budget?</summary><p>Firefly III and Actual Budget are budgeting tools; Alopex is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices.</p></details>
-  <details><summary>Is Alopex free?</summary><p>The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change.</p></details>
-  <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. PSD2 consent lasts 180 days: the dashboard shows a Renew access banner two weeks before it ends and sends push reminders, and you renew from the Accounts page without losing history.</p></details>
-  <details><summary>Do I need a server to run Alopex?</summary><p>No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Setup takes about 30 minutes in the browser using GitHub Codespaces. Docker is an option if you want to run it on your own machine or home server.</p></details>
-  <details><summary>Does Alopex work with US banks?</summary><p>No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD.</p></details>
-  <details><summary>Can Alopex move money or make payments?</summary><p>No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments.</p></details>
-  <details><summary>Who can see my financial data in Alopex?</summary><p>You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection.</p></details>
+  <details><summary>Is there an open-source alternative to Finary?</summary><p>Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard.</p></details>
+  <details><summary>How is Alopex different from Firefly III or Actual Budget?</summary><p>They budget; Alopex tracks net worth and prices investments and crypto, which they do not.</p></details>
+  <details><summary>Is Alopex free?</summary><p>Yes, MIT. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking, whose limits can change.</p></details>
+  <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the 2000+ on Enable Banking, including Revolut, Wise and Fineco. Consent lasts 180 days; you get a reminder before it ends and renew without losing history.</p></details>
+  <details><summary>Do I need a server to run Alopex?</summary><p>No. Sync runs on GitHub Actions and the dashboard on Vercel. Docker is an option for a home server.</p></details>
+  <details><summary>Can Alopex move money or make payments?</summary><p>No. PSD2 account-information access and the Coinbase key are both read-only.</p></details>
 </section>
 
 <section class="final">
   <div class="band">
     <svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M23.0 8.3 C22.7 9.0 22.1 9.9 22.0 11.6 C21.9 13.3 22.7 16.2 22.5 18.6 C22.3 21.1 22.6 23.2 20.6 26.3 C18.6 29.4 12.7 34.6 10.7 37.2 C8.7 39.9 8.8 40.4 8.4 42.2 C8.0 44.0 8.0 46.3 8.3 47.8 C8.6 49.3 8.7 50.1 10.2 51.4 C11.7 52.7 14.1 54.5 17.2 55.5 C20.2 56.5 25.6 57.4 28.5 57.6 C31.4 57.8 32.7 57.4 34.9 56.8 C37.1 56.1 39.0 55.4 41.5 53.7 C44.0 52.0 47.8 48.0 50.0 46.7 C52.2 45.4 53.9 46.0 54.8 45.7 C55.6 45.4 55.6 45.6 55.1 44.8 C54.6 43.9 52.9 41.7 51.7 40.6 C50.5 39.5 49.2 38.9 47.7 38.4 C46.2 37.9 44.8 37.5 42.7 37.4 C40.6 37.3 34.9 37.9 34.9 37.9 C34.9 37.9 36.0 34.3 36.1 32.0 C36.2 29.7 34.5 26.2 35.5 23.9 C36.5 21.6 40.9 19.7 42.2 18.4 C43.5 17.1 43.2 16.1 43.2 16.1 C43.2 16.1 38.8 15.2 37.3 14.6 C35.8 13.9 35.1 13.3 34.2 12.2 C33.3 11.1 31.7 8.1 31.7 8.1 C31.7 8.1 30.1 10.3 28.8 10.2 C27.5 10.1 23.6 7.5 23.6 7.5 C23.6 7.5 23.3 7.6 23.0 8.3ZM30.4 16.8a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0Z"/><path fill="var(--bg)" d="M14 34Q22 33 27 40L32 47L37 40Q42 33 50 34L36 50Q32 54 28 50Z"/><circle cx="23" cy="29" r="2.5" fill="var(--bg)"/><circle cx="41" cy="29" r="2.5" fill="var(--bg)"/><path fill="currentColor" d="M29 46H35L32 50Z"/></svg>
     <h2>One number, in a database you own.</h2>
-    <p class="lead">Try it on fake data first, then set up your own copy.</p>
+    <p class="lead">Try it on fake data, then set up your own.</p>
     <div class="ctas">
       <a class="btn primary" href="https://myfinancess-view.vercel.app/demo">Try the live demo</a>
       <a class="btn" href="https://github.com/marcodonghiaa/myfinances#readme">Set it up in 30 minutes</a>
@@ -334,7 +325,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     <a class="brand" href="/" aria-label="Alopex home"><svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M23.0 8.3 C22.7 9.0 22.1 9.9 22.0 11.6 C21.9 13.3 22.7 16.2 22.5 18.6 C22.3 21.1 22.6 23.2 20.6 26.3 C18.6 29.4 12.7 34.6 10.7 37.2 C8.7 39.9 8.8 40.4 8.4 42.2 C8.0 44.0 8.0 46.3 8.3 47.8 C8.6 49.3 8.7 50.1 10.2 51.4 C11.7 52.7 14.1 54.5 17.2 55.5 C20.2 56.5 25.6 57.4 28.5 57.6 C31.4 57.8 32.7 57.4 34.9 56.8 C37.1 56.1 39.0 55.4 41.5 53.7 C44.0 52.0 47.8 48.0 50.0 46.7 C52.2 45.4 53.9 46.0 54.8 45.7 C55.6 45.4 55.6 45.6 55.1 44.8 C54.6 43.9 52.9 41.7 51.7 40.6 C50.5 39.5 49.2 38.9 47.7 38.4 C46.2 37.9 44.8 37.5 42.7 37.4 C40.6 37.3 34.9 37.9 34.9 37.9 C34.9 37.9 36.0 34.3 36.1 32.0 C36.2 29.7 34.5 26.2 35.5 23.9 C36.5 21.6 40.9 19.7 42.2 18.4 C43.5 17.1 43.2 16.1 43.2 16.1 C43.2 16.1 38.8 15.2 37.3 14.6 C35.8 13.9 35.1 13.3 34.2 12.2 C33.3 11.1 31.7 8.1 31.7 8.1 C31.7 8.1 30.1 10.3 28.8 10.2 C27.5 10.1 23.6 7.5 23.6 7.5 C23.6 7.5 23.3 7.6 23.0 8.3ZM30.4 16.8a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0-3.2 0Z"/><path fill="var(--bg)" d="M14 34Q22 33 27 40L32 47L37 40Q42 33 50 34L36 50Q32 54 28 50Z"/><circle cx="23" cy="29" r="2.5" fill="var(--bg)"/><circle cx="41" cy="29" r="2.5" fill="var(--bg)"/><path fill="currentColor" d="M29 46H35L32 50Z"/></svg> Alopex</a>
     <nav><a href="https://github.com/marcodonghiaa/myfinances">Backend repo</a><a href="https://github.com/marcodonghiaa/my-wealth-view">Dashboard repo</a><a href="https://github.com/marcodonghiaa/myfinances/blob/main/LICENSE">MIT license</a><a href="/llms.txt">llms.txt</a></nav>
   </div>
-  <p class="legal">Alopex is a tracking tool, not financial, investment or tax advice. Figures depend on data from your banks and third-party price feeds and may be delayed or wrong; check important numbers with the source.</p>
+  <p class="legal">Alopex is a tracking tool, not financial, investment or tax advice. Figures come from your banks and third-party price feeds and may be delayed or wrong.</p>
 </div></footer>
 </body>
 </html>
