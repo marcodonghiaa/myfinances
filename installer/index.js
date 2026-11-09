@@ -243,8 +243,21 @@ The APP_ID is the long id shown next to your app.`);
   if (gemini) console.log('Using the key from your last run.');
   else {
     console.log('Free at https://aistudio.google.com/apikey . Enter skips: then only your own rules categorize.');
-    gemini = await askHidden('GEMINI_API_KEY (not shown; Enter to skip)');
-    if (gemini) saveEnv({ GEMINI_API_KEY: gemini });
+    for (;;) {
+      gemini = await askHidden('GEMINI_API_KEY (not shown; Enter to skip)');
+      if (!gemini) {
+        console.log('Skipped. To add it later, run the same command again: it asks only for what is missing.');
+        break;
+      }
+      const check = await lib.checkGeminiKey(gemini);
+      if (check.ok) {
+        saveEnv({ GEMINI_API_KEY: gemini });
+        console.log(`Key OK (ends in ...${gemini.slice(-4)}).`);
+        break;
+      }
+      console.log(check.message);
+      if (check.unreachable) { saveEnv({ GEMINI_API_KEY: gemini }); break; }
+    }
   }
 
   step('Edge Functions and the scheduled sync');
@@ -320,6 +333,7 @@ function closeAuth(sb, ref, siteUrl) {
   const r = supabase(['config', 'push', '--workdir', dir, '--project-ref', ref, '--yes'], sb);
   fs.rmSync(dir, { recursive: true, force: true });
   if (!r.ok) console.log(`WARNING: could not switch public sign-ups off. Do it at https://supabase.com/dashboard/project/${ref}/auth/providers`);
+  else if (!siteUrl) console.log('Public sign-ups are off: only your login can use this instance.');
 }
 
 function withTempFile(text, fn) {

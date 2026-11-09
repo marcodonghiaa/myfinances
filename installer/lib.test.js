@@ -69,3 +69,13 @@ test('secretsEnv quotes values, keeps the PEM on one line, skips empty ones', ()
   const out = lib.secretsEnv({ A: 'x"y', PEM: '-----BEGIN-----\nab+c\n-----END-----\n', EMPTY: '', MISSING: undefined });
   assert.equal(out, 'A="x\\"y"\nPEM="-----BEGIN-----\\nab+c\\n-----END-----"\n');
 });
+
+test('checkGeminiKey: ok, rejected, outage', async () => {
+  const answer = (status) => async () => ({ ok: status === 200, status });
+  assert.deepEqual(await lib.checkGeminiKey('k', answer(200)), { ok: true });
+  const bad = await lib.checkGeminiKey('k', answer(400));
+  assert.equal(bad.ok, false);
+  assert.equal(bad.unreachable, undefined);
+  assert.equal((await lib.checkGeminiKey('k', answer(503))).unreachable, true);
+  assert.equal((await lib.checkGeminiKey('k', async () => { throw new Error('offline'); })).unreachable, true);
+});

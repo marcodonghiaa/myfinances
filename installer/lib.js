@@ -86,4 +86,18 @@ function pickAlias(json) {
   return hosts[0] ? `https://${hosts[0]}` : '';
 }
 
-module.exports = { cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
+// One free call (list models) tells a wrong key from a right one before it is saved. An outage
+// must not block setup, so an unreachable API keeps the key and says so.
+async function checkGeminiKey(key, doFetch = fetch) {
+  let res;
+  try {
+    res = await doFetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${encodeURIComponent(key)}`);
+  } catch {
+    return { ok: false, unreachable: true, message: "Couldn't reach Google to check the key; it is saved, check it later." };
+  }
+  if (res.ok) return { ok: true };
+  if (res.status >= 500) return { ok: false, unreachable: true, message: `Google answered HTTP ${res.status}; the key is saved, check it later.` };
+  return { ok: false, message: 'Google rejected that key. Paste it again (copy the whole key), or press Enter to skip.' };
+}
+
+module.exports = { checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
