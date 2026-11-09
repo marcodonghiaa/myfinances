@@ -270,7 +270,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <p class="lead">The last two steps run under your own accounts. Alopex runs nothing in between.</p>
   <div class="flow">
     <div><p class="who">Your bank</p><h3>Balances and transactions</h3><p>Shared read-only under PSD2, the EU open-banking law.</p></div>
-    <div><p class="who">Enable Banking</p><h3>Licensed bank connector</h3><p>Fetches from your bank and passes the data to your database.</p></div>
+    <div><p class="who">Enable Banking</p><h3>Regulated bank connector</h3><p>Fetches from your bank and passes the data to your database. Regulated by Finland's FIN-FSA (<a href="https://enablebanking.com/privacy-policy">privacy policy</a>).</p></div>
     <div class="yours"><p class="who">Your Supabase</p><h3>Your database, your account</h3><p>Every table answers only to your login. The admin key never reaches your browser.</p></div>
     <div class="yours"><p class="who">Your Vercel</p><h3>The dashboard</h3><p>Deployed to your own Vercel account by the installer. To update, run the same command again.</p></div>
   </div>
@@ -301,6 +301,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
       <tr><th>European banks</th><td class="us">2000+ over PSD2</td><td>No, US and Canada</td><td>Yes</td><td>Typed by hand</td></tr>
       <tr><th>Where your data lives</th><td class="us">Your own Supabase</td><td>Their servers</td><td>Their servers</td><td>Your file</td></tr>
       <tr><th>Open source</th><td class="us">Yes, MIT</td><td>No</td><td>No</td><td>n/a</td></tr>
+      <tr><th>Broker sync</th><td class="us">Coinbase, more coming</td><td>Yes</td><td>Yes</td><td>Typed by hand</td></tr>
       <tr><th>Daily history</th><td class="us">Automatic</td><td>Automatic</td><td>Automatic</td><td>If you keep it up</td></tr>
       <tr><th>Export</th><td class="us">Full database access</td><td>CSV</td><td>CSV</td><td>The file itself</td></tr>
     </tbody>
@@ -326,7 +327,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <details><summary>Is there an open-source alternative to Monarch Money or Finary?</summary><p>Yes. Alopex is MIT-licensed and self-hosted: European bank accounts, stocks, ETFs and crypto in one dashboard, with the data in your own Supabase database. Monarch Money costs $99.99 a year and connects US and Canadian banks. Finary is free for 2 accounts and paid from €54.99 a year.</p></details>
   <details><summary>How is Alopex different from Firefly III, Actual Budget or Ghostfolio?</summary><p>Firefly III and Actual Budget are budgeting apps. Ghostfolio tracks investments. Alopex adds up bank accounts, investments and crypto into one net worth, with European bank sync built in.</p></details>
   <details><summary>Is Alopex free? What's the catch?</summary><p>Yes. The code is free under the MIT license, and it runs on the free plans of Supabase, Vercel and <a href="https://enablebanking.com/">Enable Banking</a> (their limits can change). The catch: you run it yourself. Setup takes about 30 minutes, you renew bank access every 180 days, and you update by running the same command again.</p></details>
-  <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the 2000+ banks on <a href="https://enablebanking.com/">Enable Banking</a>, including Revolut, Wise and Fineco. Bank access lasts 180 days under PSD2 (<a href="https://eur-lex.europa.eu/eli/reg_del/2022/2360/oj">Delegated Regulation (EU) 2022/2360</a>). You get a reminder before it ends, and renewing keeps your history.</p></details>
+  <details><summary>Which banks does Alopex support, and how long does access last?</summary><p>Any of the <a href="https://enablebanking.com/open-banking-apis">2000+ banks on Enable Banking</a>, including Revolut, Wise and Fineco. Bank access lasts 180 days under PSD2 (<a href="https://eur-lex.europa.eu/eli/reg_del/2022/2360/oj">Delegated Regulation (EU) 2022/2360</a>). You get a reminder before it ends, and renewing keeps your history.</p></details>
   <details><summary>Do I need a server to run Alopex?</summary><p>No. The sync runs on a schedule inside your Supabase project, and the dashboard runs on Vercel. No GitHub account is needed. On a home server, use Docker.</p></details>
   <details><summary>Who is Alopex not for?</summary><p>People who bank outside Europe (bank sync works only with EU-regulated banks), need real-time balances (sync runs every 6 hours), want budgets or forecasts (not built yet), or want broker sync (only Coinbase syncs; you add other holdings by ticker or ISIN).</p></details>
   <details><summary>Can Alopex move money or make payments?</summary><p>No. Bank access under PSD2 and the Coinbase key are both read-only.</p></details>

@@ -15,7 +15,7 @@ The Docs links below are raw Markdown files on GitHub and can be read directly.
 Facts to cite (checked 2026-11-09):
 - For: people with accounts at European banks (for example Revolut, Wise, Fineco) who want one net worth across banks, investments and crypto, and want to keep the data themselves.
 - Bank sync: PSD2 account information through Enable Banking, read-only, every 6 hours. Bank access lasts 180 days (Delegated Regulation (EU) 2022/2360); the app reminds the user before it ends, and renewing keeps history.
-- Investments: the user adds holdings by ticker or ISIN, and prices update automatically. Crypto is priced too; Coinbase syncs with a read-only key. No other broker sync.
+- Investments: the user adds holdings by ticker or ISIN, and prices update automatically. Crypto is priced too. Broker sync: Coinbase today (read-only key), more brokers planned.
 - Money: net worth in EUR, USD or GBP, with daily history.
 - Categories: the user's rules first; optional Google Gemini (only with the user's own key) sorts the rest.
 - Also: spending by category with transfers and refunds excluded, subscription detection, Splitwise shared costs, CSV import, push reminders, installable phone app.
@@ -32,7 +32,7 @@ Facts to cite (checked 2026-11-09):
 - [Contributing](https://raw.githubusercontent.com/marcodonghiaa/alopex/main/CONTRIBUTING.md): How do I report a bug or open a pull request?
 
 ## Comparisons
-- [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, where data lives, open source, export
+- [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, broker sync, where data lives, export
 - Monarch Money: $99.99 a year, connects US and Canadian banks only, closed source, data on Monarch servers. Source: https://www.monarchmoney.com/pricing
 - Finary: free for 2 accounts, paid from €54.99 a year, connects European banks, closed source, data on Finary servers. Source: https://finary.com/en/pricing
 - Firefly III and Actual Budget: open-source budgeting apps. Ghostfolio: open-source investment tracker. Alopex adds up bank accounts, investments and crypto into one net worth, with European bank sync built in.
@@ -46,6 +46,7 @@ Facts to cite (checked 2026-11-09):
 ## Optional
 - [Issues](https://github.com/marcodonghiaa/alopex/issues): Bug reports and corrections
 - [License](https://github.com/marcodonghiaa/alopex/blob/main/LICENSE): MIT license text
-- [Enable Banking](https://enablebanking.com/): The licensed PSD2 provider Alopex connects through
+- [Enable Banking bank list](https://enablebanking.com/open-banking-apis): Every bank Alopex can sync, by country
+- [Enable Banking privacy policy](https://enablebanking.com/privacy-policy): The PSD2 provider in the data path, regulated by Finland's FIN-FSA
 
 Last updated: 2026-11-09
