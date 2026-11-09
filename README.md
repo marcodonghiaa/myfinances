@@ -5,18 +5,18 @@
 **A self-hosted net worth tracker for European bank accounts, brokerage and crypto.**
 Your data lives in your own Supabase project. No SaaS, no subscription.
 
-[![Tests](https://github.com/marcodonghiaa/myfinances/actions/workflows/test.yml/badge.svg)](https://github.com/marcodonghiaa/myfinances/actions/workflows/test.yml)
+[![Tests](https://github.com/marcodonghiaa/alopex/actions/workflows/test.yml/badge.svg)](https://github.com/marcodonghiaa/alopex/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 ![Node 22](https://img.shields.io/badge/node-22-339933?logo=node.js&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)
 ![PSD2](https://img.shields.io/badge/PSD2-2000%2B%20EU%20banks-blue)
 
-![Dashboard](https://raw.githubusercontent.com/marcodonghiaa/my-wealth-view/main/docs/screenshots/net-worth.png)
+![Dashboard](https://raw.githubusercontent.com/marcodonghiaa/alopex-web/main/docs/screenshots/net-worth.png)
 
 </div>
 
 > This repo is the **backend**: sync scripts, Supabase Edge Functions and migrations.
-> The dashboard is [**my-wealth-view**](https://github.com/marcodonghiaa/my-wealth-view).
+> The dashboard is [**alopex-web**](https://github.com/marcodonghiaa/alopex-web).
 
 ## ✨ Features
 
@@ -45,7 +45,7 @@ flowchart LR
     TYPE --> FLOW[classify-flow]
     FLOW --> DB
     PRICES[portfolio + crypto prices<br/>Yahoo, Coinbase, CoinGecko] --> DB
-    DB --> UI[my-wealth-view<br/>dashboard]
+    DB --> UI[alopex-web<br/>dashboard]
     DB --> PUSH[notify-worth-it<br/>Web Push]
 ```
 
@@ -87,7 +87,7 @@ In Enable Banking, sign up only; setup tells you when to create the app and give
 
 ### 2. Run the setup (about 10 minutes)
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/myfinances?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/alopex?quickstart=1)
 
 This opens a terminal in your browser.
 
@@ -105,7 +105,7 @@ At the end it prints three values for the next step (also saved in `dashboard-va
 
 ### 3. Put the dashboard online (about 5 minutes)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmy-wealth-view&project-name=alopex&repository-name=alopex-web&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+by+setup.sh%2C+also+in+dashboard-values.txt&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Fmyfinances%23-getting-started)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Falopex-web&project-name=alopex&repository-name=alopex-web&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+by+setup.sh%2C+also+in+dashboard-values.txt&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Falopex%23-getting-started)
 
 Click **GitHub** first, then **Install Vercel** (All repositories is fine). Paste the three values setup printed and deploy, then open the address under **Domains** on the project page (not a deployment URL) and sign in. Your dashboard tells your database its own address on that first sign-in, so there is nothing to copy back: setup sees it, prints `Done! Open <your address>, sign in as <email>` and bank linking sends you back there. Closed the terminal first? Nothing is lost, the sign-in alone finishes it.
 
@@ -125,9 +125,9 @@ Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's
 Needs [Docker](https://www.docker.com/products/docker-desktop), the [Supabase CLI](https://supabase.com/docs/guides/cli) and [Node 22](https://nodejs.org). The sync runs only while that machine is on.
 
 ```bash
-git clone https://github.com/marcodonghiaa/myfinances.git
-git clone https://github.com/marcodonghiaa/my-wealth-view.git
-cd myfinances
+git clone https://github.com/marcodonghiaa/alopex.git
+git clone https://github.com/marcodonghiaa/alopex-web.git
+cd alopex
 ./setup.sh          # choose 2, Docker
 docker compose up -d --build
 ```
@@ -168,9 +168,9 @@ Open http://localhost:3000 (only this computer; set `WEB_BIND=0.0.0.0` in `.env`
 Docker runs everything on its own schedule (`scheduler.js`). Without Docker, use cron or launchd:
 
 ```cron
-0 */6 * * *    cd /path/to/myfinances && bash run-daily-sync.sh
-*/30 * * * *   cd /path/to/myfinances && bash run-notify.sh
-0 9 * * *      cd /path/to/myfinances && node consent-notice.js
+0 */6 * * *    cd /path/to/alopex && bash run-daily-sync.sh
+*/30 * * * *   cd /path/to/alopex && bash run-notify.sh
+0 9 * * *      cd /path/to/alopex && node consent-notice.js
 ```
 
 ## 🗄️ Data model

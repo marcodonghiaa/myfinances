@@ -15,6 +15,6 @@ Key facts:
 
 ## Links
 - [Live demo (fake data, no sign-up)](https://myfinancess-view.vercel.app/demo)
-- [Backend repo, start here: sync, Edge Functions, setup](https://github.com/marcodonghiaa/myfinances)
-- [Dashboard repo](https://github.com/marcodonghiaa/my-wealth-view)
+- [Backend repo, start here: sync, Edge Functions, setup](https://github.com/marcodonghiaa/alopex)
+- [Dashboard repo](https://github.com/marcodonghiaa/alopex-web)
 - [Landing page](https://alopex.finance/)

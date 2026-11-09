@@ -1,6 +1,6 @@
-# Assumes my-wealth-view checked out as a sibling directory by default:
-#   git clone https://github.com/marcodonghiaa/myfinances.git
-#   git clone https://github.com/marcodonghiaa/my-wealth-view.git
+# Assumes alopex-web checked out as a sibling directory by default:
+#   git clone https://github.com/marcodonghiaa/alopex.git
+#   git clone https://github.com/marcodonghiaa/alopex-web.git
 # If it lives elsewhere, set FRONTEND_DIR (in .env or the shell env) to its
 # path. Both apps still connect to your own Supabase Cloud project -- this
 # does not containerize Supabase itself. Copy .env.example to .env here
@@ -16,7 +16,7 @@ services:
 
   web:
     build:
-      context: ${FRONTEND_DIR:-../my-wealth-view}
+      context: ${FRONTEND_DIR:-../alopex-web}
       args:
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
