@@ -14,7 +14,8 @@ plain deploy from this repo reproduces the same gating described below.
 - **complete-bank-consent** — called by the signed-in dashboard with that code.
   Exchanges it and saves the accounts, only for the user who started the link.
   `verify_jwt: true`.
-- **delete-account** — called by the signed-in dashboard with `{ "confirm": "DELETE" }`.
+- **delete-account** — called by the signed-in dashboard with `{ "confirm": "DELETE", "password" }`;
+  checks the password again before anything is deleted.
   Deletes the user (every row cascades), then closes their stored Enable Banking
   sessions. Refuses the instance owner while other users exist. `verify_jwt: true`.
 - **add-holding** — searches Yahoo Finance (stocks, ETFs, funds) or CoinGecko

@@ -1,7 +1,9 @@
 // Supabase Edge Function: delete-account
 //
 // Deletes the signed-in user and everything stored for them on this instance, then closes
-// their Enable Banking sessions so their banks stop sharing data. Body: { "confirm": "DELETE" }.
+// their Enable Banking sessions so their banks stop sharing data.
+// Body: { "confirm": "DELETE", "password": "..." }. The password is checked again here, so a
+// stolen session token alone can't erase an account.
 // Every row that belongs to the user goes with them (foreign keys cascade from auth.users,
 // migration 20261125000000). The Enable Banking key and the instance settings are untouched.
 
@@ -29,6 +31,19 @@ Deno.serve(serveWithCors(async (req, json) => {
 
   const body = await req.json().catch(() => null);
   if (body?.confirm !== "DELETE") return json({ error: "Type DELETE to confirm" }, 400);
+  const password = body?.password;
+  if (typeof password !== "string" || !password || password.length > 1024) {
+    return json({ error: "Enter your password to confirm" }, 400);
+  }
+  const email = userData.user.email;
+  if (!email) return json({ error: "This account has no password to confirm with" }, 400);
+  const check = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: signedIn, error: passwordError } = await check.auth.signInWithPassword({ email, password });
+  if (passwordError || signedIn.user?.id !== userId) {
+    return json({ error: "Wrong password" }, 403);
+  }
 
   const { data: allowed, error: ownerError } = await service.rpc("can_delete_user", { p_user: userId });
   if (ownerError) {

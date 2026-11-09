@@ -15,6 +15,7 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 - **Migration:** `20261125000000_account_deletion`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions and the dashboard.
 - Deleting a user used to fail: most tables pointed at the user with no delete rule. They now cascade, so deleting a user (Settings → Delete account, or Supabase Auth → Users) removes all their rows, including investments and coins, and deleting an account removes its transactions.
 - The instance owner (the first user) can't delete themselves from Settings while other users exist: the next user would silently become owner.
+- Settings asks for your password again before deleting (checked by the server).
 - New server-only table `bank_sessions` remembers each Enable Banking session, so deleting your account also closes it at the bank. Links made before this release are not in it; their consent simply expires.
 - **Roll back:** `supabase/rollbacks/20261125000000_account_deletion.down.sql`.
 
