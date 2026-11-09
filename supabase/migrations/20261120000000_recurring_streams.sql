@@ -117,7 +117,7 @@ grant execute on function public.stream_action(uuid, text, jsonb) to authenticat
 -- with that creditor_name; overrides with no such transaction are skipped.
 insert into public.recurring_streams (
   user_id, stream_key, merchant_key, account_uid, currency, display_name, typical_amount, last_charged,
-  user_status, user_cadence, custom_interval_value, custom_interval_unit, source, updated_at)
+  user_status, user_cadence, custom_interval_value, custom_interval_unit, source, updated_at, typical_amount_eur)
 select o.user_id,
   n.merchant_key || '|' || n.account_uid || '|' || n.currency
     || case when s.amt is not null then '|' || s.amt::text else '' end,
@@ -128,7 +128,7 @@ select o.user_id,
        else lower(o.billing_frequency) end,
   case when o.dismissed then null else o.custom_interval_value end,
   case when o.dismissed then null else o.custom_interval_unit end,
-  'override', now()
+  'override', now(), e.eur
 from public.subscription_billing_overrides o
   join lateral (
     select t.merchant_key, t.account_uid, t.currency, t.amount, t.booking_date
@@ -153,6 +153,19 @@ from public.subscription_billing_overrides o
      order by a.amt
      limit case when o.dismissed then null else 1 end)
   ) s
+  -- typical_amount_eur: your EUR share of the newest live debit for this merchant and account (aggregators: at this amount).
+  left join lateral (
+    select abs(v.personal_signed_amount_eur) as eur
+    from public.transactions t
+      join public.v_transactions_eur v
+        on v.user_id = t.user_id and v.account_uid = t.account_uid and v.entry_reference = t.entry_reference
+    where t.user_id = o.user_id and t.merchant_key = n.merchant_key and t.account_uid = n.account_uid
+      and t.deleted_at is null and t.credit_debit_indicator = 'DBIT'
+      and v.personal_signed_amount_eur is not null
+      and (s.amt is null or round(abs(t.amount), 2) = s.amt)
+    order by t.booking_date desc
+    limit 1
+  ) e on true
 where o.dismissed or o.billing_frequency is not null or o.custom_interval_value is not null
-order by o.dismissed desc -- when two overrides map to one stream, dismissal wins
+order by o.dismissed -- two names, one stream: the name you kept wins over the one you dismissed
 on conflict (user_id, stream_key) do nothing;

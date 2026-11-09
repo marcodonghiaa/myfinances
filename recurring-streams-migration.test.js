@@ -59,7 +59,7 @@ test('override migration handles aggregators, deleted/credit rows, duplicates; s
   assert.match(up, /display_name, typical_amount, last_charged/);
   assert.match(up, /user_id uuid not null references auth\.users \(id\) on delete cascade/);
   assert.match(up, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
-  assert.match(up, /order by o\.dismissed desc/);
+  assert.match(up, /order by o\.dismissed\s+on conflict/); // the name you kept wins
   const fn = fnBody('stream_action');
   assert.match(fn, /raise exception 'Invalid cadence args'/);
   assert.match(fn, /custom_value'\)::int > 0/);
@@ -73,4 +73,96 @@ test('rollback drops the functions and the table', () => {
   assert.match(down, /drop function public\.stream_action\(uuid, text, jsonb\)/);
   assert.match(down, /drop function public\.upsert_detected_streams\(uuid, jsonb\)/);
   assert.match(down, /drop table public\.recurring_streams/);
+});
+
+test('R7: override import fills typical_amount_eur from your EUR share of the newest live debit', () => {
+  const m = up.slice(up.indexOf('insert into public.recurring_streams (\n  user_id, stream_key, merchant_key, account_uid, currency, display_name'));
+  assert.match(m, /source, updated_at, typical_amount_eur\)/);
+  assert.match(m, /'override', now\(\), e\.eur/);
+  assert.match(m, /left join lateral \(\s+select abs\(v\.personal_signed_amount_eur\) as eur/);
+  assert.match(m, /join public\.v_transactions_eur v\s+on v\.user_id = t\.user_id and v\.account_uid = t\.account_uid and v\.entry_reference = t\.entry_reference/);
+  assert.match(m, /t\.merchant_key = n\.merchant_key and t\.account_uid = n\.account_uid/);
+  assert.match(m, /\(s\.amt is null or round\(abs\(t\.amount\), 2\) = s\.amt\)\s+order by t\.booking_date desc\s+limit 1\s+\) e on true/);
+});
+
+const v2 = read('supabase/migrations/20261121000000_recurring_streams_v2.sql');
+const v2down = fs.readFileSync('supabase/rollbacks/20261121000000_recurring_streams_v2.down.sql', 'utf8');
+const at = (re) => {
+  const i = v2.search(re);
+  assert.notEqual(i, -1, String(re));
+  return i;
+};
+
+test('v2: only old-shape keys (merchant|account|CUR[|amount]) are rekeyed, currency dropped', () => {
+  assert.match(v2, /r\.merchant_key \|\| '\|' \|\| coalesce\(r\.account_uid::text, 'null'\) \|\| '\|' as p/);
+  assert.match(v2, /where left\(stream_key, length\(p\)\) = p/);
+  assert.match(v2, /rest ~ '\^\[A-Z\]\{3\}\(\\\|\[0-9\]\+\(\\\.\[0-9\]\+\)\?\)\?\$'/);
+  assert.match(v2, /left\(p, -1\) \|\| coalesce\('\|' \|\| nullif\(substr\(rest, 5\), ''\), ''\) as new_key/);
+  assert.match(v2, /update public\.recurring_streams r\s+set stream_key = o\.new_key\s+from v2_old_keys o\s+where r\.id = o\.id/);
+});
+
+test('v2: detector-only rows go first, then collisions keep confirmed > undecided > dismissed, newest first', () => {
+  const del = at(/delete from public\.recurring_streams r\s+where r\.user_status is null and r\.source = 'bank'/);
+  const dedupe = at(/partition by user_id, new_key/);
+  const rekey = at(/set stream_key = o\.new_key/);
+  assert.ok(del < dedupe && dedupe < rekey, 'order: delete detector rows, dedupe, rekey');
+  assert.match(v2, /o\.id = r\.id or \(o\.user_id = r\.user_id and o\.new_key = r\.stream_key\)/);
+  assert.match(v2, /order by case user_status when 'confirmed' then 0 when 'dismissed' then 2 else 1 end,\s+updated_at desc nulls last, id/);
+  assert.match(v2, /where r\.id = d\.id and d\.rn > 1/);
+});
+
+test('v2: kept override name wins over a dismissed one on the same stream, after the rekey', () => {
+  const kept = at(/set user_status = 'confirmed'/);
+  assert.ok(kept > at(/set stream_key = o\.new_key/));
+  const d = v2.slice(kept);
+  assert.match(d, /where not o\.dismissed and \(o\.billing_frequency is not null or o\.custom_interval_value is not null\)/);
+  assert.match(d, /order by t\.booking_date desc\s+limit 1/);
+  assert.match(d, /case when o\.custom_interval_value is not null then 'custom' else lower\(o\.billing_frequency\) end/);
+  assert.match(d, /min\(round\(abs\(m\.amount\), 2\)\) as amt/); // aggregators: same amount only
+  assert.match(d, /r\.source = 'override' and r\.user_status = 'dismissed'/);
+  assert.match(d, /display_name = k\.creditor_name/);
+});
+
+test('v2: typical_amount_eur backfill only fills nulls, from the newest live debit', () => {
+  const e = v2.slice(at(/set typical_amount_eur = \(/));
+  assert.match(e, /select abs\(v\.personal_signed_amount_eur\)/);
+  assert.match(e, /t\.deleted_at is null and t\.credit_debit_indicator = 'DBIT'/);
+  assert.match(e, /order by t\.booking_date desc\s+limit 1\)\s+where r\.typical_amount_eur is null/);
+  assert.match(v2, /drop table v2_old_keys;/);
+});
+
+test('v2 rollback restores both functions and states the data steps are a no-op', () => {
+  assert.match(v2down, /data steps are a no-op on purpose/);
+  const code = v2down.replace(/--.*$/gm, '');
+  assert.equal(code.match(/create or replace function public\.(upsert_detected_streams|stream_action)\(/g).length, 2);
+  assert.doesNotMatch(code, /\bdelete\b/i); // the restored upsert never deletes
+  assert.match(code, /p_action = 'undismiss' then\s+update public\.recurring_streams set user_status = null/);
+  assert.doesNotMatch(code, /\b(drop|alter)\b|delete from|insert into public\.recurring_streams \(\s+user_id, stream_key, merchant_key, account_uid, currency, display_name, typical_amount/i);
+});
+
+const v2fn = (name) => {
+  const i = v2.indexOf(`function public.${name}(`);
+  assert.notEqual(i, -1, name);
+  return v2.slice(i, v2.indexOf('$$;', v2.indexOf('$$', i) + 2) + 3);
+};
+
+test('v2 upsert_detected_streams removes stale detector-only rows, never user choices; service role only', () => {
+  const fn = v2fn('upsert_detected_streams');
+  assert.match(fn, /security definer set search_path = public/);
+  assert.doesNotMatch(fn.slice(fn.indexOf('do update set'), fn.indexOf('get diagnostics')), /user_status|user_cadence|custom_interval|source/);
+  assert.match(fn, /delete from public\.recurring_streams s\s+where s\.user_id = p_user and s\.user_status is null and s\.source = 'bank'\s+and not exists \(select 1 from jsonb_array_elements\(p_rows\) e where e->>'stream_key' = s\.stream_key\)/);
+  assert.match(v2, /revoke execute on function public\.upsert_detected_streams\(uuid, jsonb\) from public, anon, authenticated/);
+  assert.match(v2, /grant execute on function public\.upsert_detected_streams\(uuid, jsonb\) to service_role/);
+});
+
+test('v2 stream_action: undismiss confirms a row the detector never filled, keeps ownership check and grants', () => {
+  const fn = v2fn('stream_action');
+  assert.match(fn, /security definer set search_path = public/);
+  assert.match(fn, /user_id = auth\.uid\(\)/);
+  for (const a of ['confirm', 'dismiss', 'undismiss', 'set_cadence']) assert.match(fn, new RegExp(`p_action = '${a}'`));
+  assert.match(fn, /p_action = 'undismiss' then\s+update public\.recurring_streams\s+set user_status = case when detected_status is null then 'confirmed' end, updated_at = now\(\)/);
+  assert.match(fn, /raise exception 'Unknown stream action/);
+  assert.match(fn, /raise exception 'Invalid cadence args'/);
+  assert.match(v2, /revoke execute on function public\.stream_action\(uuid, text, jsonb\) from public, anon/);
+  assert.match(v2, /grant execute on function public\.stream_action\(uuid, text, jsonb\) to authenticated/);
 });

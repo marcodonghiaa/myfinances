@@ -77,12 +77,13 @@ Deno.test("stops starting users when time is up", async () => {
   assertEquals(calls, []);
 });
 
-Deno.test("skips the rpc when nothing is detected", async () => {
+// protects=stale detector rows get removed; fails_when=the rpc is skipped when a user has no streams left
+Deno.test("still calls the rpc with no rows when nothing is detected", async () => {
   const { calls, rpc } = recorder();
   const tables = build(["u1"]);
   tables.transactions = tables.transactions.slice(0, 1);
   assertEquals(await runDetection(memoryDb(tables), rpc, "2026-10-20", always), { users: 1, streams: 0, failed: 0, skipped: 0 });
-  assertEquals(calls, []);
+  assertEquals(calls, [{ p_user: "u1", p_rows: [] }]);
 });
 
 Deno.test("ignores deleted, unkeyed, income and credit rows; missing EUR share stays null", async () => {
