@@ -17,7 +17,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-FRONTEND_DIR="${FRONTEND_DIR:-../my-wealth-view}"
+FRONTEND_DIR="${FRONTEND_DIR:-../alopex-web}"
 
 bold() { printf '\033[1m%s\033[0m\n' "$1"; }
 step() { echo; bold "==> $1"; }
@@ -116,7 +116,7 @@ command -v npx >/dev/null || die "npx not found (ships with Node)."
 if [ "$SYNC_ON" = "docker" ]; then
   command -v docker >/dev/null || die "docker not found. Install Docker Desktop: https://www.docker.com/products/docker-desktop"
   docker compose version >/dev/null 2>&1 || die "docker compose (v2 plugin) not found. Update Docker Desktop, or install the compose plugin."
-  [ -d "$FRONTEND_DIR" ] || die "Frontend repo not found at $FRONTEND_DIR. Clone it as a sibling directory, or set FRONTEND_DIR=/path/to/my-wealth-view."
+  [ -d "$FRONTEND_DIR" ] || die "Frontend repo not found at $FRONTEND_DIR. Clone it as a sibling directory, or set FRONTEND_DIR=/path/to/alopex-web."
   echo "OK: supabase CLI, node, docker, frontend repo at $FRONTEND_DIR"
 else
   command -v gh >/dev/null || die "GitHub CLI not found. Install: https://cli.github.com (or choose 2 for Docker)."
@@ -127,7 +127,7 @@ else
   else
     gh auth status >/dev/null 2>&1 || gh auth login
   fi
-  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "This folder is not a GitHub repository. Clone myfinances (or open it in Codespaces) and run setup there."
+  REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner) || die "This folder is not a GitHub repository. Clone alopex (or open it in Codespaces) and run setup there."
   # The sync runs in a repo you own. Opened from someone else's repo (e.g. Codespaces on the
   # original), fork it to your account and use the fork.
   if [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission)" != "ADMIN" ]; then
@@ -140,7 +140,7 @@ else
     [ "$(gh repo view "$REPO" --json viewerPermission --jq .viewerPermission 2>/dev/null)" = "ADMIN" ] \
       || die "Could not find your fork $REPO. Fork it on GitHub, then run setup again."
   fi
-  if [ "$REPO" = "marcodonghiaa/myfinances" ]; then
+  if [ "$REPO" = "marcodonghiaa/alopex" ]; then
     echo "This is the original public repo: the sync would run here and its logs are public."
     read -rp "Continue anyway? [y/N] " UPSTREAM_OK
     [[ "$UPSTREAM_OK" =~ ^[Yy]$ ]] || die "Run setup from your own fork of $REPO."
@@ -293,8 +293,8 @@ echo "  3. Application name ...... Alopex (any name)"
 echo "  4. Redirect URL .......... https://${PROJECT_REF}.supabase.co/functions/v1/bank-consent-callback"
 echo "  5. Application description  Personal net-worth tracker for my own accounts"
 echo "  6. Data protection email . ${LOGIN_EMAIL:-your email}"
-echo "  7. Privacy URL ........... https://github.com/${REPO:-marcodonghiaa/myfinances}"
-echo "  8. Terms URL ............. https://github.com/${REPO:-marcodonghiaa/myfinances}"
+echo "  7. Privacy URL ........... https://github.com/${REPO:-marcodonghiaa/alopex}"
+echo "  8. Terms URL ............. https://github.com/${REPO:-marcodonghiaa/alopex}"
 echo
 echo "Click Register: a .pem key file downloads to your Downloads folder. Keep it, setup asks for it below."
 echo "The app starts Inactive. Click 'Activate by linking accounts' and link any"
@@ -466,7 +466,7 @@ else
     # Public values only: the publishable key and VAPID public key are meant for browsers.
     printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\nVITE_VAPID_PUBLIC_KEY=%s\n' \
       "$SUPABASE_URL" "$PUBLISHABLE_KEY" "$VAPID_PUBLIC" > dashboard-values.txt
-    echo "Put the dashboard online: the Deploy button in the my-wealth-view README (Vercel)."
+    echo "Put the dashboard online: the Deploy button in the alopex-web README (Vercel)."
     echo "Paste these three values there (also saved in dashboard-values.txt):"
     echo
     cat dashboard-values.txt
@@ -496,5 +496,5 @@ if [ "${CODESPACES:-}" = "true" ]; then
   echo "https://github.com/codespaces -> ... next to this one -> Delete. Your setup lives on in Supabase and GitHub."
 fi
 echo
-echo "If Alopex is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/myfinances"
+echo "If Alopex is useful to you, a star on GitHub helps others find it: https://github.com/marcodonghiaa/alopex"
 [ -z "$DASHBOARD_URL" ] || echo "Done! Open $DASHBOARD_URL and sign in as $SIGN_IN_AS"
