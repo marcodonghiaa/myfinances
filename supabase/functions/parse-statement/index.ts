@@ -11,6 +11,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
+import { errorTag } from "../_shared/log-safe.ts";
 import { geminiRequest, parseGeminiRows, parseStatementRequest } from "../_shared/statement-pdf.ts";
 
 const TIMEOUT_MS = 90_000;
@@ -50,7 +51,7 @@ Deno.serve(serveWithCors(async (req, json) => {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
-    console.error("Gemini did not answer:", (err as Error).message);
+    console.error(`Gemini did not answer: ${errorTag(err)}`);
     return json({ error: "The AI didn't answer in time, try a shorter statement" }, 504);
   }
   if (!res.ok) {

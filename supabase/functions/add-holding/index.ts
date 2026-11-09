@@ -11,6 +11,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
+import { errorTag } from "../_shared/log-safe.ts";
 import { fetchRateToEur } from "../_shared/fx-rates.ts";
 import {
   HoldingError,
@@ -37,7 +38,7 @@ async function getJson(url: string): Promise<Record<string, unknown>> {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
-    console.error(`${host} did not answer:`, (err as Error).message);
+    console.error(`${host} did not answer: ${errorTag(err)}`);
     throw new HoldingError(upstreamMessage(host, 0));
   }
   if (!res.ok) throw new HoldingError(upstreamMessage(host, res.status));
@@ -60,12 +61,12 @@ async function rateToEur(currency: string): Promise<number> {
   if (stored != null) return stored;
 
   const found = await fetchRateToEur(currency).catch((err) => {
-    console.error("fx lookup failed:", (err as Error).message);
+    console.error(`fx lookup failed: ${errorTag(err)}`);
     return null;
   });
   if (!found) throw new HoldingError(`No exchange rate for ${currency}, can't value this holding`);
   const { error } = await admin().from("fx_rates").upsert(found.rows, { onConflict: "date,currency" });
-  if (error) console.error("fx seed failed:", error.message);
+  if (error) console.error(`fx seed failed: ${errorTag(error)}`);
   return found.rate;
 }
 
@@ -112,7 +113,7 @@ async function addStock(userClient: any, userId: string, req: AddRequest): Promi
     value_native: valueNative,
     value_eur: valueNative * rate,
   }, { onConflict: "user_id,isin,snapshot_date" });
-  if (snapError) console.error("Snapshot insert failed:", snapError.message);
+  if (snapError) console.error(`Snapshot insert failed: ${errorTag(snapError)}`);
   return !snapError;
 }
 
@@ -145,7 +146,7 @@ async function addCoin(userClient: any, userId: string, req: AddRequest): Promis
     value_usd: valueUsd,
     value_eur: valueUsd * rate,
   }, { onConflict: "user_id,asset_symbol,source,snapshot_date" });
-  if (snapError) console.error("Snapshot insert failed:", snapError.message);
+  if (snapError) console.error(`Snapshot insert failed: ${errorTag(snapError)}`);
   return !snapError;
 }
 
@@ -180,7 +181,7 @@ Deno.serve(serveWithCors(async (req, json) => {
     try {
       return json({ results: await search(parsed.kind, parsed.query) });
     } catch (err) {
-      console.error("Search failed:", (err as Error).message);
+      console.error(`Search failed: ${errorTag(err)}`);
       return json({ error: userMessage(err, "Search is unavailable right now, try again") }, 502);
     }
   }
@@ -193,7 +194,7 @@ Deno.serve(serveWithCors(async (req, json) => {
     if ((err as { code?: string }).code === DUPLICATE_KEY) {
       return json({ error: "Already in your holdings: change its quantity instead" }, 409);
     }
-    console.error("Add failed:", (err as Error).message);
+    console.error(`Add failed: ${errorTag(err)}`);
     return json({ error: userMessage(err, "Couldn't add it right now, try again") }, 502);
   }
 }));

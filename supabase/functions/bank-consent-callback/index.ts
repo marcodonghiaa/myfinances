@@ -16,6 +16,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { EB_NO_ACCOUNTS, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { redirectOrigin } from "../_shared/origins.ts";
+import { errorTag } from "../_shared/log-safe.ts";
 import { matchAccount, matchPatch, type StoredAccount } from "../_shared/account-match.ts";
 import { bankLogo, type BankInfo } from "../_shared/bank-info.ts";
 import { linkedParams } from "../_shared/linked-summary.ts";
@@ -79,14 +80,14 @@ Deno.serve(async (req) => {
 
   // Log the real reason server-side; the redirect URL (and the toast it feeds) only
   // gets a generic message so database or upstream error text never reaches the browser.
-  const failLink = (detail: string): Response => {
-    console.error("bank-consent-callback failed:", detail);
+  const failLink = (err: unknown): Response => {
+    console.error(`bank-consent-callback failed: ${errorTag(err)}`);
     return redirectToApp({ bank_link_error: "Couldn't link the bank, please try again" });
   };
 
   if (errorParam) {
-    // errorParam comes from a public GET, so it is logged, not echoed into the app.
-    console.error("bank declined consent:", errorParam);
+    // errorParam comes from a public GET: only a plain error code is logged, never free text.
+    console.error(`bank declined consent: ${/^[a-z_]{1,40}$/.test(errorParam) ? errorParam : "other"}`);
     return redirectToApp({ bank_link_error: "The bank did not approve the connection" });
   }
   if (!code || !state) {
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return failLink(data.message ?? `Enable Banking error ${res.status}`);
+      return failLink({ status: res.status });
     }
 
     const accounts = (data.accounts ?? []) as Array<EnableBankingAccount>;
@@ -144,7 +145,7 @@ Deno.serve(async (req) => {
       .from("accounts")
       .select("uid, iban, currency, identification_hash")
       .eq("user_id", userId);
-    if (storedError) return failLink(storedError.message);
+    if (storedError) return failLink(storedError);
     let stored: StoredAccount[] = storedRows ?? [];
 
     for (const a of accounts) {
@@ -172,14 +173,14 @@ Deno.serve(async (req) => {
           continue;
         }
         // A concurrent callback inserted the same pocket first (unique user_id + identification_hash).
-        if (error.code !== "23505" || !identificationHash) return failLink(error.message);
+        if (error.code !== "23505" || !identificationHash) return failLink(error);
         const { data: raced, error: racedError } = await supabase
           .from("accounts")
           .select("uid, iban, currency, identification_hash")
           .eq("user_id", userId)
           .eq("identification_hash", identificationHash)
           .maybeSingle();
-        if (racedError || !raced) return failLink(racedError?.message ?? "conflicting account row not found");
+        if (racedError || !raced) return failLink(racedError ?? { name: "RacedRowMissing" });
         const racedRow: StoredAccount = raced;
         stored = [...stored, racedRow];
         uid = racedRow.uid;
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
         .update(patch)
         .eq("uid", uid);
       if (error) {
-        return failLink(error.message);
+        return failLink(error);
       }
       stored = stored.map((s) =>
         s.uid === uid
@@ -247,11 +248,11 @@ Deno.serve(async (req) => {
         if (error) throw error;
       }
     } catch (err) {
-      console.error("fx seed failed:", (err as Error).message);
+      console.error(`fx seed failed: ${errorTag(err)}`);
     }
 
     return redirectToApp(linkedParams(savedRows.length, bank.bank_name, savedRows.map((r) => r.currency)));
   } catch (err) {
-    return failLink((err as Error).message);
+    return failLink(err);
   }
 });
