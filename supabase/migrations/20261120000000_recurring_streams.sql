@@ -166,6 +166,17 @@ from public.subscription_billing_overrides o
     order by t.booking_date desc
     limit 1
   ) e on true
-where o.dismissed or o.billing_frequency is not null or o.custom_interval_value is not null
+where (o.dismissed or o.billing_frequency is not null or o.custom_interval_value is not null)
+  -- A dismissed name does not hide a stream that another, never-dismissed name keeps visible with a live
+  -- Subscription charge (aggregator names are payees, not variants, so they always keep their tombstones;
+  -- a charge with no creditor name never counts as a kept name).
+  and not (o.dismissed and n.merchant_key not in ('paypal', 'apple', 'google') and exists (
+    select 1 from public.transactions v
+    where v.user_id = o.user_id and v.merchant_key = n.merchant_key and v.account_uid = n.account_uid
+      and v.transaction_type = 'Subscription' and v.amount <> 0 and v.creditor_name is not null
+      and v.deleted_at is null and v.credit_debit_indicator = 'DBIT'
+      and not exists (
+        select 1 from public.subscription_billing_overrides d
+        where d.user_id = v.user_id and d.creditor_name = v.creditor_name and d.dismissed)))
 order by o.dismissed -- two names, one stream: the name you kept wins over the one you dismissed
 on conflict (user_id, stream_key) do nothing;
