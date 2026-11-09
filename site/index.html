@@ -27,7 +27,7 @@
 <meta name="twitter:image" content="https://alopex.finance/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600&display=swap">
 <link rel="preload" as="image" href="/img/net-worth.webp" type="image/webp">
 <script type="application/ld+json">
 {
@@ -274,6 +274,31 @@ section>h2{font-size:clamp(1.8rem,1.3rem + 1.6vw,2.6rem)}
 #t-sp:checked~.chips label[for=t-sp]{background:var(--ink);color:var(--bg);box-shadow:none}#t-sp:checked~.p-sp{display:block}#t-sp:focus-visible~.chips label[for=t-sp]{outline:2px solid var(--accent);outline-offset:2px}
 #t-su:checked~.chips label[for=t-su]{background:var(--ink);color:var(--bg);box-shadow:none}#t-su:checked~.p-su{display:block}#t-su:focus-visible~.chips label[for=t-su]{outline:2px solid var(--accent);outline-offset:2px}
 #t-mo:checked~.chips label[for=t-mo]{background:var(--ink);color:var(--bg);box-shadow:none}#t-mo:checked~.p-mo{display:block}#t-mo:focus-visible~.chips label[for=t-mo]{outline:2px solid var(--accent);outline-offset:2px}
+
+/* batch 1 fixes */
+:root{--sans:"Geist",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;--mono:"Fragment Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--r-pill:999px;--r-xl:24px;--r-md:16px;--r-sm:8px;--ease:cubic-bezier(.25,.46,.45,.94)}
+.cmd,code,ol.steps li::before{font-family:var(--mono)}
+.ctas .btn{font:500 15px/1 var(--sans)}
+.hint{min-height:1.4em;margin:12px 0 0;font-size:14px;color:var(--ink)}
+.hint a{text-underline-offset:4px}
+.proof a{color:inherit;text-decoration:none}
+.proof a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+section.copy{margin-inline:auto}
+.note{margin-inline:auto;text-align:center}
+.after{justify-content:center}
+.frame{border-radius:var(--r-xl) var(--r-xl) 0 0}
+.panel .frame{border-radius:var(--r-md)}
+.final .band{border-radius:var(--r-xl)}
+.frame .bar span{border-radius:var(--r-pill)}
+code{border-radius:var(--r-sm)}
+.stage{border-top:0;background:none}
+.btn,.cmd,.chips label{transition:background-color .18s var(--ease),color .18s var(--ease),transform .16s var(--ease),box-shadow .18s var(--ease)}
+.btn:active,.cmd:active,.chips label:active{transform:translateY(1px) scale(.98)}
+@media (prefers-reduced-motion:reduce){.btn,.cmd,.chips label{transition:none}.btn:active,.cmd:active,.chips label:active{transform:none}}
+.marq ul{gap:0}.marq li{padding-right:44px}
+.chips label{height:44px}
+@media (max-width:640px){.chips{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*var(--pad));padding:0 var(--pad) 4px;scroll-snap-type:x proximity;-webkit-mask:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 32px),transparent);mask:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 32px),transparent)}.chips::-webkit-scrollbar{display:none}.chips label{flex:none;scroll-snap-align:start}}
+@media (max-width:560px){table{min-width:600px;font-size:.875rem}th,td{padding:12px}tbody th{white-space:normal;width:7rem}}
 </style>
 </head>
 <body>
@@ -289,19 +314,20 @@ section>h2{font-size:clamp(1.8rem,1.3rem + 1.6vw,2.6rem)}
 <main>
 <div class="wrap">
 <div class="hero">
-  <p class="kicker">Open source · MIT · Self-hosted</p>
+  <p class="kicker">Open source · Read-only · Your own accounts</p>
   <h1>The open-source Monarch alternative for European banks.</h1>
   <p class="sub">2000+ European banks, from Revolut to Fineco, synced read-only into your own Supabase database. Stocks and crypto priced for you. Free.</p>
   <div class="ctas">
     <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> npx create-alopex<span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
     <a class="btn" href="https://app.alopex.finance/demo">Live demo</a>
   </div>
-  <p class="docs">About 30 minutes on free plans · <a href="https://github.com/marcodonghiaa/alopex#readme">Setup guide <span aria-hidden="true">&#8599;</span></a></p>
+  <p class="hint" role="status" aria-live="polite"></p>
+  <p class="docs">Live demo uses sample data, no sign-up · <a href="https://github.com/marcodonghiaa/alopex#readme">Setup guide <span aria-hidden="true">&#8599;</span></a></p>
   <ul class="proof">
     <li><a class="stars" href="https://github.com/marcodonghiaa/alopex"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>Star on GitHub</span></a></li>
-    <li>EU-regulated bank access (PSD2)</li>
+    <li><a href="https://enablebanking.com/open-banking-apis">EU-regulated bank access (PSD2)</a></li>
     <li>Cannot move money</li>
-    <li>No Alopex server</li>
+    <li><a href="#privacy">No Alopex server</a></li>
   </ul>
   <div class="stage"><figure class="frame"><div class="bar"><i></i><i></i><i></i><span>alopex.finance</span></div>
     <picture><source media="(max-width:640px)" srcset="/img/mobile.webp" width="600" height="1298"><img src="/img/net-worth.webp" width="1600" height="1000" alt="Alopex net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></picture>
@@ -380,6 +406,7 @@ section>h2{font-size:clamp(1.8rem,1.3rem + 1.6vw,2.6rem)}
       <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> npx create-alopex<span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
       <a class="btn" href="https://app.alopex.finance/demo">Live demo</a>
     </div>
+    <p class="hint" role="status" aria-live="polite"></p>
     <a class="by" href="https://marcodonghiaa.com"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span>Built by <strong>Marco D'Onghia</strong></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
   </div>
 </section>
