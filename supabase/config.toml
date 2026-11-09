@@ -21,6 +21,9 @@ verify_jwt = true
 [functions.bank-consent-callback]
 verify_jwt = false
 
+[functions.complete-bank-consent]
+verify_jwt = true
+
 [functions.add-holding]
 verify_jwt = true
 

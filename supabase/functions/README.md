@@ -8,9 +8,12 @@ plain deploy from this repo reproduces the same gating described below.
 - **start-bank-consent** — signs an Enable Banking consent request for the
   logged-in user, returns the URL to redirect the browser to. `verify_jwt: true`.
 - **bank-consent-callback** — the redirect target Enable Banking sends the
-  user back to after consent. Exchanges the code, saves the discovered
-  accounts. `verify_jwt: false` (it's a bank's plain browser redirect, no
-  Authorization header).
+  user back to after consent. Links nothing: it checks the request and sends
+  the browser to the dashboard with the code. `verify_jwt: false` (it's a
+  bank's plain browser redirect, no Authorization header).
+- **complete-bank-consent** — called by the signed-in dashboard with that code.
+  Exchanges it and saves the accounts, only for the user who started the link.
+  `verify_jwt: true`.
 - **add-holding** — searches Yahoo Finance (stocks, ETFs, funds) or CoinGecko
   (crypto) by name, ticker or ISIN, and adds the chosen holding with today's
   price so it shows at once. Writes the holding as the user (RLS), the price

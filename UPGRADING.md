@@ -6,6 +6,12 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Bank links finish in the signed-in dashboard
+- **No migration.** Redeploy the Edge Functions and the dashboard together (run the installer again, or `supabase functions deploy` + redeploy the dashboard). A new backend with an old dashboard leaves new bank links unfinished until the dashboard is updated.
+- The bank's redirect used to store the accounts under whoever *started* the link, so on an instance with several users, one could send another their own consent URL and receive that person's accounts. `bank-consent-callback` now only forwards the browser; the new `complete-bank-consent` links the accounts for the signed-in user, and only if that user started the link.
+- Your Enable Banking redirect URL does not change.
+- Also: manual accounts are no longer sent to the bank sync (migration `20261124000000_sync_all_banks_skip_manual`; roll back with `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`).
+
 ### Splitwise undo keeps how a row counts
 - **Migration:** `20261116000000_splitwise_undo_keeps_flow`. You apply it with `supabase db push --linked`.
 - Undoing a Splitwise import no longer resets spend/income on bank rows it only gave a share; only rows the import marked as transfers are reset.
