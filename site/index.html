@@ -316,6 +316,18 @@ table.vs td.n{color:var(--muted)}
 .social a{color:var(--muted);display:inline-flex}
 .social a:hover{color:var(--ink)}
 .social svg{width:18px;height:18px}
+
+/* round 4 */
+.cmd .tip{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;opacity:1;padding:0;transform:none;background:none}
+.cmd .lbl{display:inline-block;min-width:17ch;text-align:left;transition:opacity .14s var(--ease)}
+.cmd.copied .lbl{color:#4ade80}
+.cmd .cp svg{transition:transform .16s var(--ease)}
+.cmd.copied .cp svg{transform:scale(.9)}
+@media (prefers-color-scheme:dark){.cmd.copied .lbl{color:#15803d}}
+.chalk{position:relative;white-space:nowrap}
+.chalk::after{content:"";position:absolute;left:-3px;right:-4px;bottom:-5px;height:7px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2060%208%22%20preserveAspectRatio%3D%22none%22%3E%3Cfilter%20id%3D%22c%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.9%22%20numOctaves%3D%222%22/%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20scale%3D%221.6%22/%3E%3C/filter%3E%3Cpath%20filter%3D%22url%28%23c%29%22%20d%3D%22M1.5%205.2C12%203.6%2026%203.2%2040%203.9s14%20.6%2018.5-.4%22%20fill%3D%22none%22%20stroke%3D%22%239ec5e8%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.85%22/%3E%3C/svg%3E") no-repeat center/100% 100%;pointer-events:none}
+.flow>div:nth-child(3) .chalk::after{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2060%208%22%20preserveAspectRatio%3D%22none%22%3E%3Cfilter%20id%3D%22c%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.9%22%20numOctaves%3D%222%22/%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20scale%3D%221.6%22/%3E%3C/filter%3E%3Cpath%20filter%3D%22url%28%23c%29%22%20d%3D%22M1.5%205.2C12%203.6%2026%203.2%2040%203.9s14%20.6%2018.5-.4%22%20fill%3D%22none%22%20stroke%3D%22%23a8dcc4%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.85%22/%3E%3C/svg%3E")}
+.flow>div:nth-child(4) .chalk::after{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2060%208%22%20preserveAspectRatio%3D%22none%22%3E%3Cfilter%20id%3D%22c%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.9%22%20numOctaves%3D%222%22/%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20scale%3D%221.6%22/%3E%3C/filter%3E%3Cpath%20filter%3D%22url%28%23c%29%22%20d%3D%22M1.5%205.2C12%203.6%2026%203.2%2040%203.9s14%20.6%2018.5-.4%22%20fill%3D%22none%22%20stroke%3D%22%23f3c1a6%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.85%22/%3E%3C/svg%3E")}
 </style>
 </head>
 <body>
@@ -335,7 +347,7 @@ table.vs td.n{color:var(--muted)}
   <h1>The open-source Monarch alternative for European banks.</h1>
   <p class="sub">2000+ European banks, from Revolut to Fineco, synced read-only into your own Supabase database. Stocks and crypto priced for you. Free.</p>
   <div class="ctas">
-    <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> npx create-alopex<span class="tip" role="status" aria-live="polite"></span><span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
+    <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> <span class="lbl">npx create-alopex</span><span class="tip" role="status" aria-live="polite"></span><span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
     <a class="btn" href="https://app.alopex.finance/demo">Live demo</a>
   </div>
   <p class="docs"><a href="https://github.com/marcodonghiaa/alopex#readme">Read the setup guide <span aria-hidden="true">&#8599;</span></a></p>
@@ -355,10 +367,10 @@ table.vs td.n{color:var(--muted)}
   <h2>Your bank. Your database. Your data.</h2>
   <p class="lead">Your bank data never touches an Alopex server.</p>
   <div class="flow">
-    <div><p class="who">Your bank</p><h3>Read-only access</h3><p>Under PSD2, the EU open-banking law.</p></div>
+    <div><p class="who"><span class="chalk">Your</span> bank</p><h3>Read-only access</h3><p>Under PSD2, the EU open-banking law.</p></div>
     <div><p class="who">Enable Banking</p><h3>Regulated connector</h3><p>Passes data straight to you. <a href="https://enablebanking.com/privacy-policy">Privacy</a></p></div>
-    <div class="yours"><p class="who">Your Supabase</p><h3>Your database</h3><p>Only your login can read it.</p></div>
-    <div class="yours"><p class="who">Your Vercel</p><h3>Your dashboard</h3><p>Runs on your own account.</p></div>
+    <div class="yours"><p class="who"><span class="chalk">Your</span> Supabase</p><h3>Your database</h3><p>Only your login can read it.</p></div>
+    <div class="yours"><p class="who"><span class="chalk">Your</span> Vercel</p><h3>Your dashboard</h3><p>Runs on your own account.</p></div>
   </div>
   <p class="others">AI categories are optional: only with your own Gemini key.</p>
 </section>
@@ -423,7 +435,7 @@ table.vs td.n{color:var(--muted)}
     <h2>Stop checking every banking app one by one.</h2>
     <p class="lead">One number for everything you own, in accounts only you control.</p>
     <div class="ctas">
-      <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> npx create-alopex<span class="tip" role="status" aria-live="polite"></span><span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
+      <button type="button" class="cmd" data-copy="npx create-alopex" aria-label="Copy install command: npx create-alopex"><span class="ps" aria-hidden="true">$</span> <span class="lbl">npx create-alopex</span><span class="tip" role="status" aria-live="polite"></span><span class="cp" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="2"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg></span></button>
       <a class="btn" href="https://app.alopex.finance/demo">Live demo</a>
     </div>
     <a class="by" href="https://marcodonghiaa.com"><img src="/img/marco.webp" width="28" height="28" loading="lazy" alt=""><span>Built by <strong>Marco D'Onghia</strong></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
