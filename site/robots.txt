@@ -23,4 +23,4 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://myfinances.vercel.app/sitemap.xml
+Sitemap: https://alopex.finance/sitemap.xml

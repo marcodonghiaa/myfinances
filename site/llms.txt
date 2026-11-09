@@ -1,6 +1,6 @@
-# MyFinances
+# Alopex
 
-> MyFinances is an open-source (MIT), self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. There is no MyFinances server: the publisher never sees user data.
+> Alopex is an open-source (MIT), self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. There is no Alopex server: the publisher never sees user data.
 
 Key facts:
 - License: MIT. Author: Marco D'Onghia.
@@ -17,4 +17,4 @@ Key facts:
 - [Live demo (fake data, no sign-up)](https://myfinancess-view.vercel.app/demo)
 - [Backend repo, start here: sync, Edge Functions, setup](https://github.com/marcodonghiaa/myfinances)
 - [Dashboard repo](https://github.com/marcodonghiaa/my-wealth-view)
-- [Landing page](https://myfinances.vercel.app/)
+- [Landing page](https://alopex.finance/)

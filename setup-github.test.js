@@ -46,7 +46,7 @@ test('setup.sh hides secret input and opens with an overview', () => {
   assert.match(setup, /read -rsp "GEMINI_API_KEY/);
   assert.match(setup, /read -rsp "Password/);
   assert.doesNotMatch(setup, /read -rp "[^"]*(KEY|PASSWORD|SECRET)/);
-  const overview = setup.slice(setup.indexOf('bold "MyFinances setup:'), setup.indexOf('step "Where should the sync run?"'));
+  const overview = setup.slice(setup.indexOf('bold "Alopex setup:'), setup.indexOf('step "Where should the sync run?"'));
   assert.strictEqual(overview.match(/^echo "  \d\. /gm).length, 8);
   assert.match(overview, /press Enter to accept it/);
 });

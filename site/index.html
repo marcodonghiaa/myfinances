@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MyFinances: Self-Hosted Net Worth Tracker for EU Banks</title>
+<title>Alopex: Self-Hosted Net Worth Tracker for EU Banks</title>
 <meta name="description" content="Open-source (MIT) net worth tracker you host yourself. PSD2 sync with 2000+ European banks, plus stocks and crypto. Your data stays in your own Supabase.">
-<!-- SITE_URL: change every https://myfinances.vercel.app below (and in robots.txt, sitemap.xml, llms.txt) when the domain is chosen -->
-<link rel="canonical" href="https://myfinances.vercel.app/">
+<!-- SITE_URL: https://alopex.finance, also in robots.txt, sitemap.xml, llms.txt -->
+<link rel="canonical" href="https://alopex.finance/">
 <meta name="theme-color" content="#173F34">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="MyFinances">
-<meta property="og:title" content="MyFinances: a self-hosted net worth tracker for European banks">
+<meta property="og:site_name" content="Alopex">
+<meta property="og:title" content="Alopex: a self-hosted net worth tracker for European banks">
 <meta property="og:description" content="Bank accounts, investments and crypto in one dashboard, synced read-only from 2000+ European banks into a database you own. MIT licensed.">
-<meta property="og:url" content="https://myfinances.vercel.app/">
-<meta property="og:image" content="https://myfinances.vercel.app/og-image.png">
+<meta property="og:url" content="https://alopex.finance/">
+<meta property="og:image" content="https://alopex.finance/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="MyFinances: net worth, spending, subscriptions and portfolio from your own bank accounts, in your own Supabase project">
+<meta property="og:image:alt" content="Alopex: net worth, spending, subscriptions and portfolio from your own bank accounts, in your own Supabase project">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,14 +30,14 @@
   "@graph": [
     {
       "@type": "SoftwareApplication",
-      "@id": "https://myfinances.vercel.app/#app",
-      "name": "MyFinances",
-      "description": "MyFinances is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. MIT license.",
+      "@id": "https://alopex.finance/#app",
+      "name": "Alopex",
+      "description": "Alopex is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. MIT license.",
       "applicationCategory": "FinanceApplication",
       "operatingSystem": "Web, Docker",
-      "url": "https://myfinances.vercel.app/",
-      "image": "https://myfinances.vercel.app/og-image.png",
-      "screenshot": "https://myfinances.vercel.app/img/net-worth.webp",
+      "url": "https://alopex.finance/",
+      "image": "https://alopex.finance/og-image.png",
+      "screenshot": "https://alopex.finance/img/net-worth.webp",
       "license": "https://opensource.org/licenses/MIT",
       "isAccessibleForFree": true,
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
@@ -49,17 +49,17 @@
     {
       "@type": "FAQPage",
       "mainEntity": [
-        {"@type": "Question", "name": "Is there an open-source alternative to Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. MyFinances is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers."}},
-        {"@type": "Question", "name": "Can I self-host a net worth tracker with European bank sync?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. MyFinances syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces."}},
-        {"@type": "Question", "name": "Is MyFinances free?", "acceptedAnswer": {"@type": "Answer", "text": "The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change."}},
-        {"@type": "Question", "name": "Does MyFinances work with US banks?", "acceptedAnswer": {"@type": "Answer", "text": "No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD."}},
-        {"@type": "Question", "name": "Which banks does MyFinances support?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it."}},
-        {"@type": "Question", "name": "Can MyFinances move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments."}},
-        {"@type": "Question", "name": "Who can see my financial data in MyFinances?", "acceptedAnswer": {"@type": "Answer", "text": "You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection."}},
-        {"@type": "Question", "name": "How is MyFinances different from Firefly III or Actual Budget?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual Budget are budgeting tools; MyFinances is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices."}},
-        {"@type": "Question", "name": "Do I need a server or Docker to run MyFinances?", "acceptedAnswer": {"@type": "Answer", "text": "No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server."}},
-        {"@type": "Question", "name": "Can I try MyFinances without connecting a bank?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The live demo runs on generated fake data in your browser, with no sign-up. It never touches a real account."}},
-        {"@type": "Question", "name": "Can I import CSV history into MyFinances?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank."}},
+        {"@type": "Question", "name": "Is there an open-source alternative to Finary?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers."}},
+        {"@type": "Question", "name": "Can I self-host a net worth tracker with European bank sync?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Alopex syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces."}},
+        {"@type": "Question", "name": "Is Alopex free?", "acceptedAnswer": {"@type": "Answer", "text": "The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change."}},
+        {"@type": "Question", "name": "Does Alopex work with US banks?", "acceptedAnswer": {"@type": "Answer", "text": "No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD."}},
+        {"@type": "Question", "name": "Which banks does Alopex support?", "acceptedAnswer": {"@type": "Answer", "text": "Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it."}},
+        {"@type": "Question", "name": "Can Alopex move money or make payments?", "acceptedAnswer": {"@type": "Answer", "text": "No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments."}},
+        {"@type": "Question", "name": "Who can see my financial data in Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection."}},
+        {"@type": "Question", "name": "How is Alopex different from Firefly III or Actual Budget?", "acceptedAnswer": {"@type": "Answer", "text": "Firefly III and Actual Budget are budgeting tools; Alopex is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices."}},
+        {"@type": "Question", "name": "Do I need a server or Docker to run Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server."}},
+        {"@type": "Question", "name": "Can I try Alopex without connecting a bank?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The live demo runs on generated fake data in your browser, with no sign-up. It never touches a real account."}},
+        {"@type": "Question", "name": "Can I import CSV history into Alopex?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank."}},
         {"@type": "Question", "name": "What happens when the 180-day bank consent expires?", "acceptedAnswer": {"@type": "Answer", "text": "PSD2 consent lasts 180 days. The dashboard shows a Renew access banner two weeks before it ends and sends push reminders, and you renew from the Accounts page without losing history."}}
       ]
     }
@@ -142,9 +142,9 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 <body>
 <div class="wrap">
 <header>
-  <a class="brand" href="/" aria-label="MyFinances home">
+  <a class="brand" href="/" aria-label="Alopex home">
     <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="220" fill="#173F34"/><rect x="284" y="536" width="108" height="204" rx="54" fill="#D8ECDD"/><rect x="458" y="406" width="108" height="334" rx="54" fill="#D8ECDD"/><rect x="632" y="266" width="108" height="474" rx="54" fill="#D8ECDD"/></svg>
-    MyFinances
+    Alopex
   </a>
   <nav><a href="#faq">FAQ</a><a href="https://github.com/marcodonghiaa/myfinances">GitHub</a></nav>
 </header>
@@ -158,12 +158,12 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     <a class="btn" href="https://github.com/marcodonghiaa/myfinances">View on GitHub</a>
     <small>Fake data, no sign-up.</small>
   </div>
-  <div class="shot"><img src="/img/net-worth.webp" width="1600" height="1000" alt="MyFinances net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></div>
+  <div class="shot"><img src="/img/net-worth.webp" width="1600" height="1000" alt="Alopex net worth dashboard: one total across bank accounts, portfolio and crypto, with a chart over time" fetchpriority="high"></div>
 </div>
 
 <section class="what" id="what">
-  <h2>What is MyFinances?</h2>
-  <p>MyFinances is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices your stocks and crypto, and stores everything in your own Supabase project. It is released under the MIT license.</p>
+  <h2>What is Alopex?</h2>
+  <p>Alopex is an open-source, self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices your stocks and crypto, and stores everything in your own Supabase project. It is released under the MIT license.</p>
 </section>
 
 <section id="features">
@@ -204,8 +204,8 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 <section id="privacy" class="prose">
   <h2>Privacy and security</h2>
   <p><strong>Where your data lives.</strong> In your own Supabase project (Postgres). Every table has Row Level Security scoped to your user. The dashboard uses only the publishable key; the service-role key stays in the sync scripts and Edge Functions.</p>
-  <p><strong>Read-only access.</strong> PSD2 account information access only: MyFinances reads balances and transactions and cannot move money. Coinbase uses a read-only key. A database trigger stops bank-sourced fields from being edited.</p>
-  <p><strong>What the publisher sees.</strong> Nothing. There is no MyFinances server between your bank and your database, and the publisher has no access to your Supabase project, keys or data. Updates arrive as pull requests on your own copy; nothing changes until you review and merge them.</p>
+  <p><strong>Read-only access.</strong> PSD2 account information access only: Alopex reads balances and transactions and cannot move money. Coinbase uses a read-only key. A database trigger stops bank-sourced fields from being edited.</p>
+  <p><strong>What the publisher sees.</strong> Nothing. There is no Alopex server between your bank and your database, and the publisher has no access to your Supabase project, keys or data. Updates arrive as pull requests on your own copy; nothing changes until you review and merge them.</p>
   <p><strong>Who else is involved.</strong></p>
   <ul>
     <li>Enable Banking, the licensed aggregator that relays data from your bank.</li>
@@ -219,7 +219,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <h2>How it compares</h2>
   <div class="tablewrap">
   <table>
-    <thead><tr><th scope="col"></th><th scope="col">MyFinances</th><th scope="col">Firefly III</th><th scope="col">Actual Budget</th><th scope="col">Ghostfolio</th><th scope="col">Finary</th></tr></thead>
+    <thead><tr><th scope="col"></th><th scope="col">Alopex</th><th scope="col">Firefly III</th><th scope="col">Actual Budget</th><th scope="col">Ghostfolio</th><th scope="col">Finary</th></tr></thead>
     <tbody>
       <tr><th scope="row">Focus</th><td class="us">Net worth, spending, subscriptions</td><td>Budgeting, bookkeeping</td><td>Envelope budgeting</td><td>Investment portfolio</td><td>Net worth, investing</td></tr>
       <tr><th scope="row">Self-hosted</th><td class="us">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No, hosted service</td></tr>
@@ -229,7 +229,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
     </tbody>
   </table>
   </div>
-  <p class="note">GoCardless Bank Account Data (formerly Nordigen) has closed new signups. MyFinances uses Enable Banking, which is free for connecting your own accounts. Corrections welcome on <a href="https://github.com/marcodonghiaa/myfinances/issues">GitHub</a>.</p>
+  <p class="note">GoCardless Bank Account Data (formerly Nordigen) has closed new signups. Alopex uses Enable Banking, which is free for connecting your own accounts. Corrections welcome on <a href="https://github.com/marcodonghiaa/myfinances/issues">GitHub</a>.</p>
 </section>
 
 <section id="not-for" class="prose">
@@ -237,23 +237,23 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
   <p><strong>You bank outside Europe.</strong> Bank sync is PSD2 only. No Plaid, SimpleFIN or US/Canadian banks.</p>
   <p><strong>You want someone else to run it.</strong> You host it, apply updates and renew bank consent every 180 days.</p>
   <p><strong>You want real-time balances.</strong> Sync runs every 6 hours, because banks cap unattended access at about 4 calls a day per account.</p>
-  <p><strong>You want budgets, goals or forecasts.</strong> Not today. MyFinances tracks net worth, spending, subscriptions and holdings.</p>
+  <p><strong>You want budgets, goals or forecasts.</strong> Not today. Alopex tracks net worth, spending, subscriptions and holdings.</p>
   <p><strong>You want broker sync.</strong> You enter holdings; prices update automatically. Coinbase is the only exchange that syncs balances.</p>
 </section>
 
 <section id="faq">
   <h2>FAQ</h2>
-  <details><summary>Is there an open-source alternative to Finary?</summary><p>Yes. MyFinances is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers.</p></details>
-  <details><summary>Can I self-host a net worth tracker with European bank sync?</summary><p>Yes. MyFinances syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces.</p></details>
-  <details><summary>Is MyFinances free?</summary><p>The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change.</p></details>
-  <details><summary>Does MyFinances work with US banks?</summary><p>No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD.</p></details>
-  <details><summary>Which banks does MyFinances support?</summary><p>Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it.</p></details>
-  <details><summary>Can MyFinances move money or make payments?</summary><p>No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments.</p></details>
-  <details><summary>Who can see my financial data in MyFinances?</summary><p>You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection.</p></details>
-  <details><summary>How is MyFinances different from Firefly III or Actual Budget?</summary><p>Firefly III and Actual Budget are budgeting tools; MyFinances is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices.</p></details>
-  <details><summary>Do I need a server or Docker to run MyFinances?</summary><p>No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server.</p></details>
-  <details><summary>Can I try MyFinances without connecting a bank?</summary><p>Yes. The <a href="https://myfinancess-view.vercel.app/demo">live demo</a> runs on generated fake data in your browser, with no sign-up. It never touches a real account.</p></details>
-  <details><summary>Can I import CSV history into MyFinances?</summary><p>Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank.</p></details>
+  <details><summary>Is there an open-source alternative to Finary?</summary><p>Yes. Alopex is an MIT-licensed, self-hosted net worth tracker that combines European bank accounts, stock and ETF holdings and crypto in one dashboard. You run it yourself and the data stays in your own Supabase project instead of a company's servers.</p></details>
+  <details><summary>Can I self-host a net worth tracker with European bank sync?</summary><p>Yes. Alopex syncs balances and transactions from 2000+ European banks over PSD2 through Enable Banking, and runs on your own Supabase, GitHub Actions and Vercel accounts or on Docker. Setup takes about 30 minutes in the browser using GitHub Codespaces.</p></details>
+  <details><summary>Is Alopex free?</summary><p>The software is free under the MIT license. The default setup runs on free tiers of GitHub, Supabase, Vercel and Enable Banking (for your own accounts), with an optional Gemini key. Those limits are set by each provider and can change.</p></details>
+  <details><summary>Does Alopex work with US banks?</summary><p>No. Bank sync uses PSD2, so it only covers European banks. You can still add US stocks and ETFs by ticker, track crypto, and show totals in USD.</p></details>
+  <details><summary>Which banks does Alopex support?</summary><p>Any of the 2000+ European banks available through Enable Banking, including Revolut, Wise and Fineco. You link a bank from the Accounts page, and access lasts 180 days before you renew it.</p></details>
+  <details><summary>Can Alopex move money or make payments?</summary><p>No. It uses PSD2 account information access, which is read-only, and the Coinbase integration uses a read-only API key. The app reads balances, transactions and prices and never initiates payments.</p></details>
+  <details><summary>Who can see my financial data in Alopex?</summary><p>You, and anyone you create a login for on your own install. The data sits in your own Supabase project with Row Level Security, and the publisher has no access to it. Enable Banking relays bank data, and if you add a Gemini key, transaction descriptions are sent to Google for categorization and subscription detection.</p></details>
+  <details><summary>How is Alopex different from Firefly III or Actual Budget?</summary><p>Firefly III and Actual Budget are budgeting tools; Alopex is a net worth tracker. It puts bank accounts, stock and ETF holdings and crypto in one daily total, and syncs European banks through Enable Banking. It does not offer budgets the way Actual does, and Firefly III and Actual do not track investment prices.</p></details>
+  <details><summary>Do I need a server or Docker to run Alopex?</summary><p>No. The default setup runs the sync on GitHub Actions and the dashboard on Vercel, so no computer has to stay on. Docker is an option if you want to run it on your own machine or home server.</p></details>
+  <details><summary>Can I try Alopex without connecting a bank?</summary><p>Yes. The <a href="https://myfinancess-view.vercel.app/demo">live demo</a> runs on generated fake data in your browser, with no sign-up. It never touches a real account.</p></details>
+  <details><summary>Can I import CSV history into Alopex?</summary><p>Yes. The Import page reads monthly net worth or spending history from a CSV in your browser, so the charts start with your past months instead of from the day you linked a bank.</p></details>
   <details><summary>What happens when the 180-day bank consent expires?</summary><p>PSD2 consent lasts 180 days. The dashboard shows a Renew access banner two weeks before it ends and sends push reminders, and you renew from the Accounts page without losing history.</p></details>
 </section>
 
@@ -268,8 +268,8 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 </main>
 
 <footer>
-  <p>MyFinances is open source under the MIT license. Code: <a href="https://github.com/marcodonghiaa/myfinances">myfinances</a> (backend, start here) and <a href="https://github.com/marcodonghiaa/my-wealth-view">my-wealth-view</a> (dashboard). <a href="/llms.txt">llms.txt</a></p>
-  <p>MyFinances is a tracking tool, not financial, investment or tax advice. Figures depend on data from your banks and third-party price feeds and may be delayed or wrong; check important numbers with the source.</p>
+  <p>Alopex is open source under the MIT license. Code: <a href="https://github.com/marcodonghiaa/myfinances">myfinances</a> (backend, start here) and <a href="https://github.com/marcodonghiaa/my-wealth-view">my-wealth-view</a> (dashboard). <a href="/llms.txt">llms.txt</a></p>
+  <p>Alopex is a tracking tool, not financial, investment or tax advice. Figures depend on data from your banks and third-party price feeds and may be delayed or wrong; check important numbers with the source.</p>
 </footer>
 </div>
 </body>
