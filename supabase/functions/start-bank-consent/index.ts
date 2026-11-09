@@ -14,6 +14,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { serveWithCors } from "../_shared/origins.ts";
 import { isBankName, isCountryCode, MAX_OPEN_CONSENTS } from "../_shared/validate.ts";
+import { CONSENT_WINDOW_MS } from "../_shared/consent-claim.ts";
 
 Deno.serve(serveWithCors(async (req, json, origin) => {
   if (req.method !== "POST") {
@@ -53,7 +54,7 @@ Deno.serve(serveWithCors(async (req, json, origin) => {
   await supabase
     .from("pending_bank_consents")
     .delete()
-    .lt("created_at", new Date(Date.now() - 15 * 60 * 1000).toISOString());
+    .lt("created_at", new Date(Date.now() - CONSENT_WINDOW_MS).toISOString());
   // Every request costs an Enable Banking call; cap how many one user can have open at once.
   const { count: openConsents, error: countError } = await supabase
     .from("pending_bank_consents")

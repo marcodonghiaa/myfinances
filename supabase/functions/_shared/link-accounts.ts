@@ -152,8 +152,10 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
     // batch schedule, just run once here for the accounts that just linked.
     // Best-effort: a failure here doesn't fail the link, the batch job
     // catches it up at the next sync regardless.
+    // New accounts skip it: complete-bank-consent starts their first sync (balance included)
+    // right away, and a second balance call would spend one of the bank's few daily calls.
     const today = new Date().toISOString().slice(0, 10);
-    for (const row of savedRows) {
+    for (const row of savedRows.filter((r) => !newUids.includes(r.uid))) {
       try {
         const balRes = await fetch(
           `https://api.enablebanking.com/accounts/${row.ebUid}/balances`,
@@ -197,58 +199,4 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
   } catch (err) {
     return fail(err);
   }
-}
-
-// A code whose link was refused (another user's state, or expired) must not stay redeemable:
-// whoever obtained it could pair it with a state of their own. Exchange it and close the session
-// straight away. Best effort: Enable Banking codes are short-lived anyway.
-export async function burnCode(
-  code: string,
-  fetchFn: typeof fetch = fetch,
-  sign: () => Promise<string> = signEnableBankingJwt,
-): Promise<void> {
-  try {
-    const token = await sign();
-    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    const res = await fetchFn("https://api.enablebanking.com/sessions", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ code }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && typeof data.session_id === "string") {
-      await fetchFn(`https://api.enablebanking.com/sessions/${encodeURIComponent(data.session_id)}`, {
-        method: "DELETE",
-        headers,
-      });
-    }
-  } catch (err) {
-    console.error(`refused code not closed: ${errorTag(err)}`);
-  }
-}
-
-// Closes Enable Banking sessions so the bank stops sharing data with this app. Best effort per
-// session: one that is already closed or expired is not an error worth stopping for.
-export async function closeSessions(
-  sessionIds: string[],
-  fetchFn: typeof fetch = fetch,
-  sign: () => Promise<string> = signEnableBankingJwt,
-): Promise<number> {
-  if (sessionIds.length === 0) return 0;
-  const token = await sign();
-  let closed = 0;
-  for (const id of sessionIds) {
-    try {
-      const res = await fetchFn(`https://api.enablebanking.com/sessions/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (res.ok || res.status === 404) closed++;
-      else console.error(`bank session not closed: ${errorTag({ status: res.status })}`);
-    } catch (err) {
-      console.error(`bank session not closed: ${errorTag(err)}`);
-    }
-  }
-  return closed;
 }

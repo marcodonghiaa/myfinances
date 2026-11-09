@@ -6,6 +6,13 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Sync cursors follow their account; bank links keep the server's clock
+- **Migration:** `20261127000000_cursor_fk_and_consent_clock`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions and the dashboard.
+- A deleted account no longer leaves its sync cursor behind; cursors of accounts already deleted are removed.
+- A pending bank link always takes the database's time, so its 15-minute window can't be stretched.
+- The bank's one-time code now reaches the dashboard in the URL fragment (`#bank_code=`), which browsers never send to the dashboard's host or its logs.
+- **Roll back:** `supabase/rollbacks/20261127000000_cursor_fk_and_consent_clock.down.sql` (deleted orphan cursors are not restored).
+
 ### Bank payloads no longer keep other people's IBANs
 - **Migration:** `20261126000000_raw_without_accounts`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions.
 - `transactions.raw` (the bank's payload, kept for support and export) stored the counterparty's account number on transfers. The sync now leaves it out, and the migration removes it from stored rows. Nothing in the app used it; every other field stays.

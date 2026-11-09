@@ -5,7 +5,8 @@
 // deno-lint-ignore no-explicit-any
 type Db = { from(table: string): any };
 
-const CONSENT_WINDOW_MS = 15 * 60 * 1000;
+/** A bank link must finish within 15 minutes of being started. */
+export const CONSENT_WINDOW_MS = 15 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const INVALID_CONSENT = "Invalid or expired consent request";

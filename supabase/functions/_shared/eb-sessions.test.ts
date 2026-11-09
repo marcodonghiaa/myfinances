@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { burnCode, closeSessions } from "./link-accounts.ts";
+import { burnCode, closeSessions } from "./eb-sessions.ts";
 
 const sign = () => Promise.resolve("jwt");
 const quiet = async (fn: () => Promise<void>) => {

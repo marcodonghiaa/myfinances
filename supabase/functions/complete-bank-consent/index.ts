@@ -7,7 +7,8 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
-import { burnCode, linkAccounts } from "../_shared/link-accounts.ts";
+import { linkAccounts } from "../_shared/link-accounts.ts";
+import { burnCode } from "../_shared/eb-sessions.ts";
 import { claimConsent, isConsentInput } from "../_shared/consent-claim.ts";
 import { startFirstSync } from "../_shared/first-sync.ts";
 import { parseSecretKeys } from "../_shared/secret-key.ts";

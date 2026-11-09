@@ -10,7 +10,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
-import { closeSessions } from "../_shared/link-accounts.ts";
+import { closeSessions } from "../_shared/eb-sessions.ts";
 
 const service = createClient(
   Deno.env.get("SUPABASE_URL")!,
