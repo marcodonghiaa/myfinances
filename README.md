@@ -87,6 +87,16 @@ In Enable Banking, sign up only; setup tells you when to create the app and give
 
 ### 2. Run the setup (about 10 minutes)
 
+**One command (Mac, Linux or Windows, needs [Node 20+](https://nodejs.org)):**
+
+```bash
+npx create-alopex
+```
+
+It downloads both apps into `./alopex`, signs you in to Supabase and Vercel in your browser, creates the project, tables, Edge Functions and your login, turns on the scheduled sync inside Supabase (pg_cron: no computer, fork or GitHub Actions needed), walks you through Enable Banking and puts the dashboard online. Run it again in the same folder to update. See [installer/README.md](installer/README.md).
+
+**Or the guided script in Codespaces:**
+
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/alopex?quickstart=1)
 
 This opens a terminal in your browser.
