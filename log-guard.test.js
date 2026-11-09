@@ -20,9 +20,16 @@ const LEAKS = [
   /^console\.\w+\((err|error)\)/,
 ];
 
-// The Deno port of the sync, run by pg_cron: counts only, same rules. The other Edge Functions
-// log to the project's private Supabase logs, not to public Actions logs, so they are not held to this.
-const EDGE_SYNC_PATHS = ['supabase/functions/_shared/bank-sync.ts', 'supabase/functions/sync-bank/index.ts'];
+// The Deno port of the sync, run by pg_cron, plus the functions that touch bank links, holdings
+// and statements: counts and codes only, same rules. Their logs are the project's private Supabase
+// logs, but an error message can still quote a database row or a bank's reply, so none is logged.
+const EDGE_SYNC_PATHS = [
+  'supabase/functions/_shared/bank-sync.ts',
+  'supabase/functions/sync-bank/index.ts',
+  'supabase/functions/bank-consent-callback/index.ts',
+  'supabase/functions/add-holding/index.ts',
+  'supabase/functions/parse-statement/index.ts',
+];
 
 function leakyLines(file) {
   const offenders = [];
