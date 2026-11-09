@@ -7,7 +7,8 @@
 <meta name="description" content="Open-source (MIT) net worth tracker you host yourself. PSD2 sync with 2000+ European banks, plus stocks and crypto. Your data stays in your own Supabase.">
 <!-- SITE_URL: https://alopex.finance, also in robots.txt, sitemap.xml, llms.txt -->
 <link rel="canonical" href="https://alopex.finance/">
-<meta name="theme-color" content="#173F34">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="website">
@@ -67,22 +68,25 @@
 }
 </script>
 <style>
-:root{--forest:#173F34;--mint:#D8ECDD;--bg:#F7F5EE;--ink:#1a2420;--muted:#5f6a65;--line:rgba(26,36,32,.12);--accent:#173F34;--on-accent:#F7F5EE;--soft:#eef0e9;color-scheme:light dark}
-@media (prefers-color-scheme:dark){:root{--bg:#121917;--ink:#eef2ef;--muted:#9ea8a3;--line:rgba(238,242,239,.13);--accent:#D8ECDD;--on-accent:#173F34;--soft:#1b2421}}
+:root{--bg:#fff;--ink:#0a0a0a;--muted:#666;--line:#eaeaea;--accent:#0a0a0a;--on-accent:#fff;--soft:#fafafa;--shadow:0 1px 2px rgba(0,0,0,.04),0 12px 40px -12px rgba(0,0,0,.12);color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--ink:#ededed;--muted:#a1a1a1;--line:#242424;--accent:#ededed;--on-accent:#000;--soft:#111;--shadow:0 0 0 1px #242424}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Geist",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-feature-settings:"tnum","lnum";-webkit-font-smoothing:antialiased}
-::selection{background:var(--mint);color:var(--forest)}
+::selection{background:var(--ink);color:var(--bg)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}
 .wrap{max-width:880px;margin:0 auto;padding:0 20px}
-header{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 0;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.8) blur(12px);-webkit-backdrop-filter:saturate(1.8) blur(12px)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;letter-spacing:-.01em}
-.brand svg{width:26px;height:26px}
+.brand svg{width:28px;height:28px}
 header nav a{font-size:14px;color:var(--muted);text-decoration:none;margin-left:20px}
 header nav a:hover{color:var(--ink)}
-.hero{padding:72px 0 24px}
-h1{font-size:clamp(2.1rem,1.3rem + 3vw,3.4rem);line-height:1.05;letter-spacing:-.035em;font-weight:600;margin:0 0 20px;max-width:18ch;text-wrap:balance}
+.hero{padding:88px 0 24px;text-align:center}
+.hero .mascot{width:72px;height:72px;margin:0 auto 28px;display:block;color:var(--ink)}
+.hero h1,.hero .sub{margin-left:auto;margin-right:auto}
+.hero .ctas{justify-content:center}
+h1{font-size:clamp(2.1rem,1.3rem + 3vw,3.4rem);line-height:1.05;letter-spacing:-.045em;font-weight:600;margin:0 0 20px;max-width:18ch;text-wrap:balance}
 .sub{font-size:1.15rem;color:var(--muted);max-width:52ch;margin:0 0 32px;text-wrap:pretty}
 .ctas{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .btn{display:inline-block;padding:11px 20px;border-radius:999px;text-decoration:none;font-weight:500;font-size:15px;border:1px solid var(--line);transition:background .16s ease,border-color .16s ease}
@@ -90,7 +94,7 @@ h1{font-size:clamp(2.1rem,1.3rem + 3vw,3.4rem);line-height:1.05;letter-spacing:-
 .btn.primary:hover{opacity:.92}
 .btn:not(.primary):hover{border-color:var(--muted)}
 .ctas small{color:var(--muted);font-size:13px;margin-left:4px}
-.shot{margin:48px 0 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;animation:rise .7s cubic-bezier(.16,1,.3,1) both}
+.shot{margin:56px 0 0;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;animation:rise .7s cubic-bezier(.16,1,.3,1) both}
 .shot img{display:block;width:100%;height:auto}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.shot{animation:none}}
@@ -111,7 +115,7 @@ ol.steps li span{color:var(--muted);max-width:60ch}
 .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:600px){.gallery{grid-template-columns:1fr}}
 .gallery figure{margin:0}
-.gallery img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
+.gallery img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .gallery figcaption{font-size:13px;color:var(--muted);margin-top:8px}
 .prose p{color:var(--muted);max-width:62ch;margin:0 0 14px}
 .prose p strong{color:var(--ink);font-weight:500}
@@ -143,7 +147,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 <div class="wrap">
 <header>
   <a class="brand" href="/" aria-label="Alopex home">
-    <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="220" fill="#173F34"/><rect x="284" y="536" width="108" height="204" rx="54" fill="#D8ECDD"/><rect x="458" y="406" width="108" height="334" rx="54" fill="#D8ECDD"/><rect x="632" y="266" width="108" height="474" rx="54" fill="#D8ECDD"/></svg>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M9 7Q10 6 11 7L25 21H39L53 7Q54 6 55 7L56 30Q56 33 54 35L35 55Q32 58 29 55L10 35Q8 33 8 30Z"/><path fill="var(--bg)" d="M14 34Q22 33 27 40L32 47L37 40Q42 33 50 34L36 50Q32 54 28 50Z"/><circle cx="23" cy="29" r="2.5" fill="var(--bg)"/><circle cx="41" cy="29" r="2.5" fill="var(--bg)"/><path fill="currentColor" d="M29 46H35L32 50Z"/></svg>
     Alopex
   </a>
   <nav><a href="#faq">FAQ</a><a href="https://github.com/marcodonghiaa/myfinances">GitHub</a></nav>
@@ -151,6 +155,7 @@ code{font:.9em ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft
 
 <main>
 <div class="hero">
+  <svg class="mascot" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M9 7Q10 6 11 7L25 21H39L53 7Q54 6 55 7L56 30Q56 33 54 35L35 55Q32 58 29 55L10 35Q8 33 8 30Z"/><path fill="var(--bg)" d="M14 34Q22 33 27 40L32 47L37 40Q42 33 50 34L36 50Q32 54 28 50Z"/><circle cx="23" cy="29" r="2.5" fill="var(--bg)"/><circle cx="41" cy="29" r="2.5" fill="var(--bg)"/><path fill="currentColor" d="M29 46H35L32 50Z"/></svg>
   <h1>A self-hosted net worth tracker for European banks</h1>
   <p class="sub">Bank accounts, investments and crypto in one dashboard, synced read-only from 2000+ European banks into a database you own. Open source, MIT.</p>
   <div class="ctas">
