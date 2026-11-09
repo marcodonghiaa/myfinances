@@ -81,11 +81,21 @@ Your own copy takes about **30 minutes**, all in the browser: no computer has to
 | [Supabase](https://supabase.com/dashboard) | your database and login | free tier is enough |
 | [Enable Banking](https://enablebanking.com) | the PSD2 connection to your banks | free for your own accounts |
 | [Vercel](https://vercel.com/signup) (sign in with GitHub) | puts the dashboard online over HTTPS | free Hobby plan |
-| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended |
+| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended. Transaction descriptions go to Google; on the free tier Google may use them to improve its models, a paid-tier key opts out |
 
 In Enable Banking, sign up only; setup tells you when to create the app and gives the exact redirect URL.
 
 ### 2. Run the setup (about 10 minutes)
+
+**One command (Mac, Linux or Windows, needs [Node 20+](https://nodejs.org)):**
+
+```bash
+npx create-alopex
+```
+
+It downloads both apps into `./alopex`, signs you in to Supabase and Vercel in your browser, creates the project, tables, Edge Functions and your login, turns on the scheduled sync inside Supabase (pg_cron: no computer, fork or GitHub Actions needed), walks you through Enable Banking and puts the dashboard online. Run it again in the same folder to update. See [installer/README.md](installer/README.md).
+
+**Or the guided script in Codespaces:**
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/marcodonghiaa/alopex?quickstart=1)
 

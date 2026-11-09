@@ -1,0 +1,10 @@
+{
+  "name": "create-alopex",
+  "version": "0.1.0",
+  "description": "One command to self-host Alopex: Supabase backend, scheduled bank sync and the dashboard on Vercel.",
+  "bin": { "create-alopex": "index.js" },
+  "files": ["index.js", "lib.js"],
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/marcodonghiaa/alopex.git", "directory": "installer" }
+}
