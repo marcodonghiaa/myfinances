@@ -1,6 +1,8 @@
 -- add_manual_transaction gets the same input limits as add_manual_debt: no NaN or amounts above
 -- a trillion, a 3-letter currency, descriptions up to 500 characters and sources up to 60.
 -- Anyone signed in can call it directly, so the dashboard's own checks aren't enough.
+-- It also takes a short lock per user + source + currency, so rows sent in parallel by an
+-- import can no longer create the same manual account twice.
 -- Only the function changes (same signature and grants); existing rows are untouched.
 create or replace function public.add_manual_transaction(
   p_booking_date date,
@@ -48,6 +50,9 @@ begin
     raise exception 'direction must be DBIT or CRDT';
   end if;
 
+  -- Imports send several rows at once: one lock per user + source + currency so only the first
+  -- creates the manual account and the others find it.
+  perform pg_advisory_xact_lock(hashtext(v_uid::text || '|' || v_source || '|' || v_currency));
   select a.uid into v_account from accounts a
   where a.user_id = v_uid and a.manual and a.label = v_source and a.currency = v_currency
     and coalesce(a.account_type, 'checking') not in ('credit_card', 'loan');
