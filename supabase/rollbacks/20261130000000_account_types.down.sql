@@ -2,6 +2,7 @@
 -- Debt balances typed in by hand are deleted (the old net worth would count them as cash);
 -- their manual accounts stay, hidden, like any manual account. Bank credit cards and loans
 -- count as cash again.
+drop function if exists public.delete_manual_debt(uuid);
 drop function if exists public.add_manual_debt(text, numeric, text);
 drop function if exists public.set_manual_balance(uuid, numeric);
 drop function if exists public.set_account_type(uuid, text);

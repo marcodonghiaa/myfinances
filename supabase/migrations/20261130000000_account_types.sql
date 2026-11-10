@@ -211,6 +211,35 @@ $$;
 revoke execute on function public.add_manual_debt(text, numeric, text) from public, anon;
 grant execute on function public.add_manual_debt(text, numeric, text) to authenticated;
 
+-- Removes a debt typed in by hand (a tax bill paid, say): the account and its balances. Only
+-- the caller's manual credit_card / loan accounts. Balances are deleted explicitly, so this
+-- does not rely on an on-delete cascade; anything else hanging on this account (its own
+-- transactions, a cursor) goes by the existing cascades. No other account is touched.
+create function public.delete_manual_debt(p_account uuid)
+returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  v_uid uuid := auth.uid();
+  v_account public.accounts%rowtype;
+begin
+  if v_uid is null then
+    raise exception 'not signed in';
+  end if;
+  select * into v_account from public.accounts where uid = p_account and user_id = v_uid;
+  if not found then
+    raise exception 'account not found';
+  end if;
+  if not v_account.manual or coalesce(v_account.account_type, '') not in ('credit_card', 'loan') then
+    raise exception 'not a manual debt';
+  end if;
+  delete from public.net_worth_snapshots where account_uid = v_account.uid and user_id = v_uid;
+  delete from public.accounts where uid = v_account.uid and user_id = v_uid;
+end;
+$$;
+
+revoke execute on function public.delete_manual_debt(uuid) from public, anon;
+grant execute on function public.delete_manual_debt(uuid) to authenticated;
+
 -- Typed-in transactions never land in a debt account that happens to share their source name:
 -- they get a manual account of their own. Same body as 20261111, plus the type check.
 create or replace function public.add_manual_transaction(
