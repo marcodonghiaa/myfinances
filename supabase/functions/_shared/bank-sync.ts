@@ -1,7 +1,7 @@
 // Deno port of sync-transactions.js + sync-networth.js for ONE account, used by sync-bank.
 // Kept free of Deno.env so the tests run with fakes: fetch and supabase come in as deps.
 
-import { buildRows } from "./transaction-rows.ts";
+import { buildRows, normalizeIban } from "./transaction-rows.ts";
 import { errorTag } from "./log-safe.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -60,6 +60,17 @@ async function getAllTransactions(fetch: Deps["fetch"], token: string, ebId: str
   return all;
 }
 
+// The user's own IBANs, to mark transactions between their accounts. Undefined when unreadable:
+// the rows then leave own_counterparty out, so the upsert keeps what an earlier sync stored.
+async function fetchOwnIbans(supabase: Db, userId: string): Promise<Set<string> | undefined> {
+  const { data, error } = await supabase.from("accounts").select("iban").eq("user_id", userId).not("iban", "is", null);
+  if (error) {
+    console.error(`Own accounts not read: ${errorTag(error)}`);
+    return undefined;
+  }
+  return new Set((data ?? []).map((a: { iban: string | null }) => normalizeIban(a.iban)).filter(Boolean));
+}
+
 // Rows and the cursor stay under the PK (uid). Never throws for EB failures: rejected carries
 // the status when EB refuses the id. cursor = the new last_synced, null when it must not move.
 export async function syncAccountTransactions(
@@ -75,7 +86,8 @@ export async function syncAccountTransactions(
   const dateFrom = new Date(from).toISOString().slice(0, 10);
   try {
     const transactions = await getAllTransactions(fetch, token, ebAccountId(account), dateFrom);
-    const rows = await buildRows(transactions, account.uid, account.user_id);
+    const ownIbans = transactions.length > 0 ? await fetchOwnIbans(supabase, account.user_id) : undefined;
+    const rows = await buildRows(transactions, account.uid, account.user_id, ownIbans);
     if (rows.length > 0) {
       const { error } = await supabase.from("transactions").upsert(rows, { onConflict: "account_uid,entry_reference" });
       if (error) {

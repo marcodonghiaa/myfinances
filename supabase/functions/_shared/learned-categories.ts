@@ -41,13 +41,9 @@ export function applyLearned<T extends { creditor_name?: string | null }>(rows: 
   return { matched, unmatched };
 }
 
-// The update for a learned row. Transfer also leaves spending and income, as when you pick
-// it in the dashboard.
-export function learnedUpdate(category: string): Record<string, string> {
-  return category === "Transfer"
-    ? { category, category_source: "rule", flow_type: "transfer" }
-    : { category, category_source: "rule" };
-}
+// The update for a learned row. A learned Transfer also leaves spending and income: the flow
+// step reads the category (flow.ts), after your flow rules, and never over a flow you set.
+export const learnedUpdate = (category: string): Record<string, string> => ({ category, category_source: "rule" });
 
 // AI-chosen rows that disagree with what you set by hand for the same merchant. Only rows the
 // AI categorized are ever changed: hand-set and rule rows stay as they are.

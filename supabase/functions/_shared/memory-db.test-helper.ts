@@ -1,6 +1,6 @@
 // In-memory stand-in for the supabase query builder, for tests: honors the filters the
 // post-sync steps use (is/eq/in/not/gte, filter match, order, limit, range) and applies updates and deletes to the
-// matching rows, so tests check data, not call shapes.
+// matching rows, so tests check data, not call shapes. insert appends rows.
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
 
@@ -13,11 +13,13 @@ export function memoryDb(tables: Record<string, Row[]>, failWrite?: "delete" | "
       const orders: Array<[string, boolean]> = [];
       let patch: Row | null = null;
       let remove = false;
+      let added: Row[] | null = null;
       let window: [number, number] = [0, Infinity];
       const q = {
         select: () => q,
         update: (u: Row) => ((patch = u), q),
         delete: () => ((remove = true), q),
+        insert: (rows: Row | Row[]) => ((added = [rows].flat()), q),
         is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), q),
         eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), q),
         in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), q),
@@ -32,6 +34,10 @@ export function memoryDb(tables: Record<string, Row[]>, failWrite?: "delete" | "
         limit: (n: number) => ((window = [0, n - 1]), q),
         range: (a: number, b: number) => ((window = [a, b]), q),
         then(resolve: (v: unknown) => void) {
+          if (added) {
+            (tables[table] ??= []).push(...added.map((r) => ({ ...r })));
+            return resolve({ data: null, error: null });
+          }
           const rows = (tables[table] ??= []).filter((r) => filters.every((f) => f(r)));
           if ((remove && failWrite === "delete") || (patch && failWrite === "update")) {
             return resolve({ data: null, error: { code: "XX000", message: "private name" } });

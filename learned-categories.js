@@ -39,12 +39,10 @@ function applyLearned(rows, learned) {
   return { matched, unmatched };
 }
 
-// The update for a learned row. Transfer also leaves spending and income, as when you pick
-// it in the dashboard.
+// The update for a learned row. Never the flow: a learned Transfer leaves spending and income
+// in classify-flow.js (new rows) and post-sync (recent ones), never over a flow you set.
 function learnedUpdate(category) {
-  return category === 'Transfer'
-    ? { category, category_source: 'rule', flow_type: 'transfer' }
-    : { category, category_source: 'rule' };
+  return { category, category_source: 'rule' };
 }
 
 // AI-chosen rows that disagree with what you set by hand for the same merchant. Only rows the

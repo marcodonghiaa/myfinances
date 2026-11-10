@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { categorize, type Classify } from "./categorize.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
+import { classifyFlows } from "./flow.ts";
 
 const tx = (ref: string, creditor: string, over: Record<string, unknown> = {}) => ({
   user_id: "u1", account_uid: "a1", entry_reference: ref, creditor_name: creditor, remittance_info: "",
@@ -16,6 +17,7 @@ const seed = () =>
       tx("past", "FOUND STUDY", { category: "Housing", category_source: "manual", booking_date: "2026-10-01" }),
       tx("mum", "MUM", { category: "Transfer", category_source: "manual", booking_date: "2026-10-01" }),
       tx("mum-new", "MUM"),
+      tx("mum-locked", "MUM", { flow_type: "income", flow_source: "user" }),
     ],
     category_rules: [{ user_id: "u1", match_field: "creditor_name", match_text: "netflix", set_category: "Entertainment", set_transaction_type: "Subscription", priority: 100, created_at: "2026-01-01" }],
     user_categories: [],
@@ -33,7 +35,10 @@ Deno.test("rules first, then your past choices, then the AI for the rest", async
   assertEquals(sent, ["burger"]);
   assertEquals([byRef(db, "netflix").category, byRef(db, "netflix").category_source, byRef(db, "netflix").transaction_type], ["Entertainment", "rule", "Subscription"]);
   assertEquals([byRef(db, "found").category, byRef(db, "found").category_source], ["Housing", "rule"]);
-  assertEquals([byRef(db, "mum-new").category, byRef(db, "mum-new").flow_type], ["Transfer", "transfer"]);
+  await classifyFlows(db); // as post-sync runs it next
+  assertEquals([byRef(db, "mum-new").category, byRef(db, "mum-new").flow_type, byRef(db, "mum-new").flow_source], ["Transfer", "transfer", "rule"]);
+  // A flow you set yourself stays, even when the category is learned.
+  assertEquals([byRef(db, "mum-locked").category, byRef(db, "mum-locked").flow_type], ["Transfer", "income"]);
   assertEquals([byRef(db, "burger").category, byRef(db, "burger").category_source], ["Dine Out", "ai"]);
   assertEquals(result.aiFailed, false);
 });
@@ -54,7 +59,7 @@ Deno.test("an AI answer outside the user's categories or for an unknown row is i
 Deno.test("without an AI key your rules and past choices still apply", async () => {
   const db = seed();
   const result = await categorize(db, null);
-  assertEquals(result.byRules, 3);
+  assertEquals(result.byRules, 4);
   assertEquals(byRef(db, "netflix").category, "Entertainment");
   assertEquals(byRef(db, "found").category, "Housing");
   assertEquals(byRef(db, "burger").category, null);

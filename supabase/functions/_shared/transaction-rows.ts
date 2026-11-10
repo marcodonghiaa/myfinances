@@ -35,7 +35,18 @@ export function rawWithoutAccounts(tx: EbTransaction): EbTransaction {
   return rest;
 }
 
-function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryReference: string): Json {
+// Uppercase, no spaces: how IBANs are compared.
+export const normalizeIban = (iban: unknown) => (typeof iban === "string" ? iban.replace(/\s+/g, "").toUpperCase() : "");
+
+// Whether the other side of the transaction is one of the user's own accounts: true or false
+// when the bank sent the counterparty's IBAN, null when it didn't (or ownIbans is unknown).
+export function ownCounterparty(tx: EbTransaction, ownIbans?: Set<string>): boolean | null {
+  const other = normalizeIban(tx.credit_debit_indicator === "DBIT" ? tx.creditor_account?.iban : tx.debtor_account?.iban);
+  if (!other || !ownIbans) return null;
+  return ownIbans.has(other);
+}
+
+function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryReference: string, ownIbans?: Set<string>): Json {
   const creditorName = (tx.credit_debit_indicator === "CRDT" && tx.debtor?.name) || tx.creditor?.name || null;
   return {
     entry_reference: entryReference,
@@ -51,19 +62,28 @@ function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryRe
     booking_date: tx.booking_date,
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
+    // Left out when the user's IBANs are unknown, so a failed read keeps what was stored.
+    ...(ownIbans && { own_counterparty: ownCounterparty(tx, ownIbans) }),
     raw: rawWithoutAccounts(tx),
     user_id: userId,
   };
 }
 
-export async function buildRows(transactions: EbTransaction[], accountUid: string, userId: string): Promise<Json[]> {
+// ownIbans: the user's own accounts' IBANs, normalized (see normalizeIban); without it rows carry
+// no own_counterparty.
+export async function buildRows(
+  transactions: EbTransaction[],
+  accountUid: string,
+  userId: string,
+  ownIbans?: Set<string>,
+): Promise<Json[]> {
   const seen = new Map<string, number>();
   const byRef = new Map<string, Json>(); // one row per key, last wins
   for (const tx of transactions) {
     // Pending rows wait until booked: their id changes when booked, so they would count twice.
     if (tx.status === "PDNG") continue;
     const ref = await entryReferenceFor(tx, seen);
-    byRef.set(ref, mapToRow(tx, accountUid, userId, ref));
+    byRef.set(ref, mapToRow(tx, accountUid, userId, ref, ownIbans));
   }
   return [...byRef.values()];
 }

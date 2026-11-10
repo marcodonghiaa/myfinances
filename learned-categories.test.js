@@ -17,7 +17,7 @@ test('a new row takes the category you last set by hand for the same merchant', 
 });
 
 test('Transfer learned from you also takes the row out of spending', () => {
-  assert.deepStrictEqual(learnedUpdate('Transfer'), { category: 'Transfer', category_source: 'rule', flow_type: 'transfer' });
+  assert.deepStrictEqual(learnedUpdate('Transfer'), { category: 'Transfer', category_source: 'rule' });
   assert.deepStrictEqual(learnedUpdate('Housing'), { category: 'Housing', category_source: 'rule' });
 });
 

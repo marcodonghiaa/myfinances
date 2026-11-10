@@ -25,6 +25,7 @@ const LEAKS = [
 // logs, but an error message can still quote a database row or a bank's reply, so none is logged.
 const ERROR_TAG_ONLY_PATHS = [
   'supabase/functions/_shared/bank-sync.ts',
+  'supabase/functions/_shared/transfer-pairs.ts',
   'supabase/functions/sync-bank/index.ts',
   'supabase/functions/bank-consent-callback/index.ts',
   'supabase/functions/complete-bank-consent/index.ts',

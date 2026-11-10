@@ -14,9 +14,8 @@ Deno.test("a new row takes the category you last set by hand for the same mercha
   assertEquals(unmatched.map((r) => r.entry_reference), ["r2", "r3"]);
 });
 
-Deno.test("Transfer learned from you also takes the row out of spending", () => {
-  assertEquals(learnedUpdate("Transfer"), { category: "Transfer", category_source: "rule", flow_type: "transfer" });
-  assertEquals(learnedUpdate("Housing"), { category: "Housing", category_source: "rule" });
+Deno.test("a learned row takes the category; the flow step handles Transfer", () => {
+  assertEquals(learnedUpdate("Transfer"), { category: "Transfer", category_source: "rule" });
 });
 
 Deno.test("fetchLearned keeps the most recent hand-set category per merchant, for that user only", async () => {
