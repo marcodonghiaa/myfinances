@@ -22,8 +22,8 @@ async function getEb(fetch, token, path) {
 }
 
 // Older rows lack identification_hash (and iban) or account_type: ask EB once and store them.
-// A bank that sends no type gets 'other', so the call is not repeated. Best effort: any failure
-// here is logged and the balance sync goes on.
+// A bank that sends no type gets 'checking' (what unknown counts as), so the call is not
+// repeated. Best effort: any failure here is logged and the balance sync goes on.
 async function fillMissingIds(fetch, supabase, token, account) {
   const needType = account.account_type === null;
   if (account.identification_hash && !needType) return;
@@ -35,7 +35,7 @@ async function fillMissingIds(fetch, supabase, token, account) {
       if (ids) Object.assign(patch, ids);
       else console.error('Account ids not filled: no hash in details');
     }
-    if (needType) patch.account_type = accountType(details?.cash_account_type) ?? 'other';
+    if (needType) patch.account_type = accountType(details?.cash_account_type) ?? 'checking';
     if (Object.keys(patch).length === 0) return;
     const { error } = await supabase.from('accounts').update(patch).eq('uid', account.uid);
     if (error) throw error;

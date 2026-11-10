@@ -38,7 +38,7 @@ plain deploy from this repo reproduces the same gating described below.
   (`verify_jwt: false`, secret keys are not JWTs). A project still on the legacy
   keys only must create its secret keys first (Settings → API Keys), or every
   call gets 401. An account with no type yet gets it from the bank's
-  account details once (`other` when the bank sends none). Never run it beside the
+  account details once (`checking` when the bank sends none). Never run it beside the
   launchd/Docker sync: banks allow ~4 unattended calls a day per account.
 
 - **post-sync** — what the sync pipeline runs after the bank sync, moved into

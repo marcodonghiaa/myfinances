@@ -14,7 +14,9 @@ alter table public.accounts add constraint accounts_account_type_check
 -- Net worth: a debt account (credit_card, loan) counts -abs(balance), whatever sign its bank
 -- uses. bank_total_eur keeps the other accounts only; liabilities_eur (new, last column, a
 -- positive amount) is the debt, and total_eur subtracts it. A manual account's balance is typed
--- in by hand, so it carries forward without the 30-day limit bank balances have.
+-- in by hand, so it carries forward without the 30-day limit bank balances have, converted at
+-- each day's latest EUR rate (a bank balance is converted on the day it was read).
+-- Deposits (cd_holdings) no longer count: the table stays one more release, then is dropped.
 create or replace view public.v_net_worth_daily
 with (security_invoker = true) as
 with all_dates as (
@@ -27,9 +29,9 @@ with all_dates as (
 select
   d.user_id,
   d.snapshot_date,
-  coalesce(b.bank_total_eur, 0) + coalesce(cd.cd_total_eur, 0) + coalesce(p.portfolio_total_eur, 0) + coalesce(c.crypto_total_eur, 0)
+  coalesce(b.bank_total_eur, 0) + coalesce(p.portfolio_total_eur, 0) + coalesce(c.crypto_total_eur, 0)
     - coalesce(b.liabilities_eur, 0) as total_eur,
-  coalesce(b.bank_total_eur, 0) + coalesce(cd.cd_total_eur, 0) as bank_total_eur,
+  coalesce(b.bank_total_eur, 0) as bank_total_eur,
   coalesce(p.portfolio_total_eur, 0) as portfolio_total_eur,
   coalesce(c.crypto_total_eur, 0) as crypto_total_eur,
   coalesce(p.portfolio_bonds_eur, 0) as portfolio_bonds_eur,
@@ -40,7 +42,13 @@ left join lateral (
     sum(x.amount_eur) filter (where not x.is_debt) as bank_total_eur,
     sum(abs(x.amount_eur)) filter (where x.is_debt) as liabilities_eur
   from (
-    select distinct on (e.account_uid) e.account_uid, e.amount_eur,
+    select distinct on (e.account_uid) e.account_uid,
+      case when a.manual then e.amount * coalesce(
+          (select r.rate_to_eur from fx_rates r
+           where r.currency = e.currency and r.date <= d.snapshot_date
+           order by r.date desc limit 1),
+          case when e.currency = 'EUR' then 1::numeric end)
+        else e.amount_eur end as amount_eur,
       coalesce(a.account_type in ('credit_card', 'loan'), false) as is_debt
     from v_net_worth_eur e
     join accounts a on a.uid = e.account_uid
@@ -50,21 +58,6 @@ left join lateral (
     order by e.account_uid, e.snapshot_date desc
   ) x
 ) b on true
-left join lateral (
-  select sum(
-    cd.principal
-    * power(1 + cd.annual_rate, (d.snapshot_date - cd.start_date)::numeric / 365.25)
-    * coalesce(
-        (select r.rate_to_eur from fx_rates r
-         where r.currency = cd.currency and r.date <= d.snapshot_date
-         order by r.date desc limit 1),
-        case when cd.currency = 'EUR' then 1::numeric end)
-  ) as cd_total_eur
-  from cd_holdings cd
-  where cd.user_id = d.user_id
-    and cd.start_date <= d.snapshot_date
-    and cd.maturity_date > d.snapshot_date
-) cd on true
 left join lateral (
   select
     sum(x.value_eur) as portfolio_total_eur,
@@ -120,13 +113,15 @@ create or replace view public.v_bank_accounts_latest with (security_invoker = tr
    where not a.manual or e.snapshot_date is not null
    order by a.user_id, a.uid, e.snapshot_date desc nulls last;
 
--- Correct an account's type (the bank can be wrong). null = unknown again. Security definer
+-- Correct an account's type (the bank can be wrong). null = unknown again. A manual account
+-- can only be a credit_card or loan. Security definer
 -- because users cannot update accounts themselves; the update is pinned to auth.uid().
 create function public.set_account_type(p_account uuid, p_type text)
 returns void
 language plpgsql security definer set search_path = public as $$
 declare
   v_uid uuid := auth.uid();
+  v_manual boolean;
 begin
   if v_uid is null then
     raise exception 'not signed in';
@@ -134,10 +129,15 @@ begin
   if p_type is not null and p_type not in ('checking', 'savings', 'credit_card', 'loan', 'investment', 'other') then
     raise exception 'unknown account type';
   end if;
-  update accounts set account_type = p_type where uid = p_account and user_id = v_uid;
+  select manual into v_manual from accounts where uid = p_account and user_id = v_uid;
   if not found then
     raise exception 'account not found';
   end if;
+  -- A manual account's balance is typed in only for debts (add_manual_debt).
+  if v_manual and coalesce(p_type, '') not in ('credit_card', 'loan') then
+    raise exception 'manual accounts can only be debts';
+  end if;
+  update accounts set account_type = p_type where uid = p_account and user_id = v_uid;
 end;
 $$;
 
@@ -158,6 +158,9 @@ begin
   end if;
   if p_amount is null then
     raise exception 'amount is required';
+  end if;
+  if p_amount = 'NaN'::numeric or abs(p_amount) > 1e12 then
+    raise exception 'amount is out of range';
   end if;
   select * into v_account from accounts where uid = p_account and user_id = v_uid;
   if not found then
@@ -200,6 +203,9 @@ begin
   if p_amount is null then
     raise exception 'amount is required';
   end if;
+  if p_amount = 'NaN'::numeric or abs(p_amount) > 1e12 then
+    raise exception 'amount is out of range';
+  end if;
   insert into accounts (uid, user_id, currency, label, manual, account_type)
   values (v_account, v_uid, v_currency, v_name, true, 'loan');
   insert into net_worth_snapshots (account_uid, user_id, currency, amount, snapshot_date)
@@ -212,9 +218,8 @@ revoke execute on function public.add_manual_debt(text, numeric, text) from publ
 grant execute on function public.add_manual_debt(text, numeric, text) to authenticated;
 
 -- Removes a debt typed in by hand (a tax bill paid, say): the account and its balances. Only
--- the caller's manual credit_card / loan accounts. Balances are deleted explicitly, so this
--- does not rely on an on-delete cascade; anything else hanging on this account (its own
--- transactions, a cursor) goes by the existing cascades. No other account is touched.
+-- the caller's manual credit_card / loan accounts without transactions. Balances are deleted
+-- explicitly, so this does not rely on an on-delete cascade. No other account is touched.
 create function public.delete_manual_debt(p_account uuid)
 returns void
 language plpgsql security definer set search_path = '' as $$
@@ -231,6 +236,10 @@ begin
   end if;
   if not v_account.manual or coalesce(v_account.account_type, '') not in ('credit_card', 'loan') then
     raise exception 'not a manual debt';
+  end if;
+  -- Typed-in transactions are never wiped with a debt: remove them first.
+  if exists (select 1 from public.transactions where account_uid = v_account.uid) then
+    raise exception 'account has transactions';
   end if;
   delete from public.net_worth_snapshots where account_uid = v_account.uid and user_id = v_uid;
   delete from public.accounts where uid = v_account.uid and user_id = v_uid;

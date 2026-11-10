@@ -184,13 +184,13 @@ Deno.test("balance: fills a missing account type once from the bank's cash_accou
   assertEquals(writes, [{ table: "accounts", op: "update", data: { account_type: "credit_card" }, filters: [["eq", "uid", "pk"]] }]);
 });
 
-Deno.test("balance: a bank that sends no type stores other, so details is not asked again", async () => {
+Deno.test("balance: a bank that sends no type stores checking, so details is not asked again", async () => {
   const { fetch } = fakeFetch({ "/details": { body: {} }, "/balances": { body: BALANCES } });
   const { supabase, writes } = fakeSupabase();
 
   await syncAccountBalance({ fetch, supabase }, "t", account({ account_type: null }), TODAY);
 
-  assertEquals(writes, [{ table: "accounts", op: "update", data: { account_type: "other" }, filters: [["eq", "uid", "pk"]] }]);
+  assertEquals(writes, [{ table: "accounts", op: "update", data: { account_type: "checking" }, filters: [["eq", "uid", "pk"]] }]);
 });
 
 Deno.test("balance: a typed account with a hash skips details", async () => {

@@ -70,8 +70,8 @@ test('fills a missing hash once, then fetches the balance', async () => {
   assert.strictEqual(row.account_uid, 'pk');
 });
 
-test('fills a missing account type once; no type from the bank stores other', async () => {
-  for (const [body, type] of [[{ cash_account_type: 'LOAN' }, 'loan'], [{}, 'other']]) {
+test('fills a missing account type once; no type from the bank stores checking', async () => {
+  for (const [body, type] of [[{ cash_account_type: 'LOAN' }, 'loan'], [{}, 'checking']]) {
     const { fetch, urls } = fakeFetch({ '/details': { body }, '/balances': { body: BALANCES } });
     const { supabase, updates } = fakeSupabase();
     const account = { uid: 'pk', eb_account_uid: 'eb', identification_hash: 'h', account_type: null };

@@ -8,9 +8,10 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
-- Every account gets a type (`accounts.account_type`): checking, savings, credit card, loan, investment or other. New links take it from the bank; accounts linked before get it on their next sync (one extra bank call per account, once). Empty means unknown and counts as checking. You can correct it in the dashboard.
+- Every account gets a type (`accounts.account_type`): checking, savings, credit card, loan, investment or other. New links take it from the bank; accounts linked before get it on their next sync (one extra bank call per account, once). Empty means unknown and counts as checking (a bank that sends no type gets checking). You can correct it in the dashboard.
 - Credit cards and loans subtract from net worth, whatever sign the bank gives their balance. `v_net_worth_daily` has a new last column, `liabilities_eur` (positive); `bank_total_eur` leaves debts out and `total_eur` subtracts them.
-- You can add a debt by hand (a manual loan account with a balance you update). Its balance keeps counting until you change it, without the 30-day limit of bank balances.
+- You can add a debt by hand (a manual loan account with a balance you update, removable once paid). Its balance keeps counting until you change it, without the 30-day limit of bank balances, at each day's exchange rate.
+- CDs no longer count in net worth; data stays in the export until a later release drops the table.
 - **Roll back:** `supabase/rollbacks/20261130000000_account_types.down.sql` (debt balances typed in by hand are deleted; account types are lost). The Edge Functions of this release read `account_type`: revert them too (the Node sync works either way).
 
 ### Transfers between your own accounts stop counting as spend and income

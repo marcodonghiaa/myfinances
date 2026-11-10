@@ -18,11 +18,17 @@ test('debts subtract from net worth, liabilities_eur is the last column', () => 
   assert.match(view, /sum\(x\.amount_eur\) filter \(where not x\.is_debt\) as bank_total_eur/);
   assert.match(view, /sum\(abs\(x\.amount_eur\)\) filter \(where x\.is_debt\) as liabilities_eur/);
   assert.match(view, /- coalesce\(b\.liabilities_eur, 0\) as total_eur/);
+  assert.match(view, /coalesce\(b\.bank_total_eur, 0\) as bank_total_eur,/);
   assert.match(view, /portfolio_bonds_eur,\s+coalesce\(b\.liabilities_eur, 0\) as liabilities_eur\nfrom/);
 });
 
-test('manual balances carry forward without the 30-day limit', () => {
+test('manual balances carry forward without the 30-day limit, at each day\'s rate', () => {
   assert.match(view, /e\.snapshot_date > d\.snapshot_date - 31 or a\.manual/);
+  assert.match(view, /case when a\.manual then e\.amount \* coalesce\(\s+\(select r\.rate_to_eur from fx_rates r\s+where r\.currency = e\.currency and r\.date <= d\.snapshot_date/);
+});
+
+test('deposits no longer count in net worth', () => {
+  assert.doesNotMatch(view, /cd_holdings|cd_total_eur/);
 });
 
 test('the accounts list appends account_type and manual, and shows manual accounts with a balance', () => {
@@ -82,4 +88,20 @@ test('delete_manual_debt removes only the caller\'s manual debt and its balances
   assert.match(body, /if not v_account\.manual or coalesce\(v_account\.account_type, ''\) not in \('credit_card', 'loan'\) then\s+raise exception 'not a manual debt'/);
   assert.match(body, /delete from public\.net_worth_snapshots where account_uid = v_account\.uid and user_id = v_uid;\s+delete from public\.accounts where uid = v_account\.uid and user_id = v_uid;/);
   assert.doesNotMatch(body, /delete from public\.transactions/);
+});
+
+test('a manual account can only be typed as a debt', () => {
+  assert.match(fn('set_account_type'), /if v_manual and coalesce\(p_type, ''\) not in \('credit_card', 'loan'\) then\s+raise exception 'manual accounts can only be debts'/);
+});
+
+test('typed-in amounts are bounded', () => {
+  for (const name of ['add_manual_debt', 'set_manual_balance']) {
+    assert.match(fn(name), /if p_amount = 'NaN'::numeric or abs\(p_amount\) > 1e12 then\s+raise exception 'amount is out of range'/, name);
+  }
+});
+
+test('delete_manual_debt refuses an account with transactions', () => {
+  const body = fn('delete_manual_debt');
+  assert.match(body, /if exists \(select 1 from public\.transactions where account_uid = v_account\.uid\) then\s+raise exception 'account has transactions'/);
+  assert.ok(body.indexOf('account has transactions') < body.indexOf('delete from public.net_worth_snapshots'));
 });
