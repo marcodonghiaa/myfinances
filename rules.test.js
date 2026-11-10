@@ -110,3 +110,19 @@ test('reapply leaves Transfer alone, into it or out of it', () => {
   assert.deepStrictEqual(planRuleReapply([row({ category: 'Transfer' })], [rule()]), []);
   assert.deepStrictEqual(planRuleReapply([row()], [rule({ set_category: 'Transfer' })]), []);
 });
+
+// Polish pass 2 #1: building a regex per row × rule made 20k rows × 200 rules take ~9 s.
+test('each rule builds its matcher once, not once per row', () => {
+  const Original = RegExp;
+  let built = 0;
+  globalThis.RegExp = new Proxy(Original, { construct: (Target, args) => (built++, new Target(...args)) });
+  try {
+    const rows = Array.from({ length: 100 }, (_, i) => row({ entry_reference: `r${i}`, creditor_name: 'Lidl' }));
+    const rules = [rule({ match_text: 'bar', match_mode: 'word' }), rule({ match_text: 'spotify', match_mode: 'word' })];
+    planRuleReapply(rows, rules);
+    applyRules(rows, rules);
+  } finally {
+    globalThis.RegExp = Original;
+  }
+  assert.ok(built <= 4, `built ${built} regexes for 2 rules`);
+});

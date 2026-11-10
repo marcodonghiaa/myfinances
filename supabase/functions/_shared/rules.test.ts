@@ -72,3 +72,19 @@ Deno.test("reapply leaves Transfer alone, into it or out of it", () => {
   assertEquals(planRuleReapply([row({ category: "Transfer" })], [rule()]), []);
   assertEquals(planRuleReapply([row()], [rule({ set_category: "Transfer" })]), []);
 });
+
+// Polish pass 2 #1: building a regex per row × rule made 20k rows × 200 rules take ~7 s.
+Deno.test("each rule builds its matcher once, not once per row", () => {
+  const Original = RegExp;
+  let built = 0;
+  globalThis.RegExp = new Proxy(Original, { construct: (Target, args) => (built++, Reflect.construct(Target, args)) });
+  try {
+    const rows = Array.from({ length: 100 }, (_, i) => row({ entry_reference: `r${i}`, creditor_name: "Lidl" }));
+    const rules = [rule({ match_text: "bar", match_mode: "word" }), rule({ match_text: "spotify", match_mode: "word" })];
+    planRuleReapply(rows, rules);
+    applyRules(rows, rules);
+  } finally {
+    globalThis.RegExp = Original;
+  }
+  assertEquals(built <= 4, true, `built ${built} regexes for 2 rules`);
+});
