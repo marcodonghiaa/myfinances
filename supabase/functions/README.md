@@ -43,12 +43,15 @@ plain deploy from this repo reproduces the same gating described below.
   Supabase: categories for new rows (your rules, your past choices, then Gemini;
   port of `categorize.js`), transaction types (`classify-type.js`), Splitwise
   share categories (`categorize-splitwise.js`), then `flow_type` with its
-  `flow_source` (your flow rules, a counterparty that is one of your own accounts,
-  the bank code, then the direction), suggested transfer pairs between your own
-  accounts (`transfer_pairs`, same amount and currency, opposite sides, within 4
-  days, no tie) and refund pairs (`classify-flow.js`). No bank calls; it only fills empty
-  values and never changes a flow you set (`flow_source = 'user'`), so it can run
-  beside the launchd/Docker sync. Same auth as
+  `flow_source` (your flow rules, a Transfer category from your rules or past
+  choices, a counterparty that is one of your own accounts, the bank code, then the
+  direction; recent `default` rows are re-checked), suggested transfer pairs between
+  your own accounts (`transfer_pairs`, same amount and currency, opposite sides,
+  within 4 days, no tie; stale suggestions are removed) and refund pairs
+  (`classify-flow.js`). No bank calls; it only fills empty values or changes rows
+  whose `flow_source` is `default`, `bank` or `pair`, never a flow you set (`user`)
+  or one from before this release (`legacy`), so it can run beside the
+  launchd/Docker sync. Same auth as
   `sync-bank` (secret key on `apikey`, `verify_jwt: false`).
 
 - **sync-prices** — today's exchange rates (Frankfurter, with a 100-day backfill

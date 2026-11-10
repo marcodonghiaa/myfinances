@@ -80,6 +80,26 @@ Deno.test("transactions: marks rows whose counterparty is one of the user's own 
   assert(rows.every((r) => !("creditor_account" in r.raw)));
 });
 
+Deno.test("transactions: own accounts unreadable leaves own_counterparty out of the upsert", async () => {
+  const { fetch } = fakeFetch({ "/transactions?": { body: { transactions: [TX] } } });
+  const { supabase, writes } = fakeSupabase(null);
+  const failing = {
+    from: (table: string) =>
+      table === "accounts"
+        ? { select: () => { const q = { eq: () => q, not: () => q, then: (r: (v: unknown) => void) => r({ data: null, error: { code: "57014" } }) }; return q; } }
+        : supabase.from(table),
+  };
+  const errors = console.error;
+  console.error = () => {};
+  try {
+    await syncAccountTransactions({ fetch, supabase: failing }, "t", account(), null, TODAY);
+  } finally {
+    console.error = errors;
+  }
+  const [row] = writes[0].data as Record<string, unknown>[];
+  assertEquals("own_counterparty" in row, false);
+});
+
 Deno.test("transactions: date_from re-reads 7 days before the cursor", async () => {
   const { fetch, urls } = fakeFetch({ "/transactions?": { body: { transactions: [] } } });
   const { supabase, writes } = fakeSupabase();

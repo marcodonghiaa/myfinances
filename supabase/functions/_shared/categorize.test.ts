@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { categorize, type Classify } from "./categorize.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
+import { classifyFlows } from "./flow.ts";
 
 const tx = (ref: string, creditor: string, over: Record<string, unknown> = {}) => ({
   user_id: "u1", account_uid: "a1", entry_reference: ref, creditor_name: creditor, remittance_info: "",
@@ -34,6 +35,7 @@ Deno.test("rules first, then your past choices, then the AI for the rest", async
   assertEquals(sent, ["burger"]);
   assertEquals([byRef(db, "netflix").category, byRef(db, "netflix").category_source, byRef(db, "netflix").transaction_type], ["Entertainment", "rule", "Subscription"]);
   assertEquals([byRef(db, "found").category, byRef(db, "found").category_source], ["Housing", "rule"]);
+  await classifyFlows(db); // as post-sync runs it next
   assertEquals([byRef(db, "mum-new").category, byRef(db, "mum-new").flow_type, byRef(db, "mum-new").flow_source], ["Transfer", "transfer", "rule"]);
   // A flow you set yourself stays, even when the category is learned.
   assertEquals([byRef(db, "mum-locked").category, byRef(db, "mum-locked").flow_type], ["Transfer", "income"]);

@@ -60,6 +60,15 @@ Deno.test("precedence: rule, then own account, then bank code, then direction", 
   assertEquals(resolveFlow(row({ own_counterparty: null })), { flow_type: "spend", flow_source: "default" });
 });
 
+// protects=your flow rule beats a learned Transfer category (D); fails_when=the category wins
+Deno.test("learned Transfer category makes a transfer, after your flow rules", () => {
+  const learned = { category: "Transfer", category_source: "rule" };
+  assertEquals(resolveFlow(row(learned)), { flow_type: "transfer", flow_source: "rule" });
+  assertEquals(resolveFlow(row(learned), [rule({ set_flow_type: "spend" })]), { flow_type: "spend", flow_source: "rule" });
+  // The AI's Transfer is only a suggestion (listed for review), not a decision.
+  assertEquals(resolveFlow(row({ category: "Transfer", category_source: "ai" })), { flow_type: "spend", flow_source: "default" });
+});
+
 Deno.test("a rule's spend/income means not a transfer: the row keeps its direction", () => {
   const rules = [rule({ set_flow_type: "spend" })];
   assertEquals(resolveFlow(row({ credit_debit_indicator: "CRDT", own_counterparty: true }), rules), { flow_type: "income", flow_source: "rule" });
@@ -75,6 +84,7 @@ Deno.test("classifyFlows fills only rows without a flow, with their source; user
       row({ entry_reference: "new-own", creditor_name: "Bob", own_counterparty: true }),
       row({ entry_reference: "new-default", creditor_name: "Bob" }),
       row({ entry_reference: "locked", flow_type: "spend", flow_source: "user", own_counterparty: true }),
+      row({ entry_reference: "legacy", flow_type: "spend", flow_source: "legacy", own_counterparty: true }),
     ],
   });
   await classifyFlows(db);
@@ -83,6 +93,36 @@ Deno.test("classifyFlows fills only rows without a flow, with their source; user
     ["new-own", "transfer", "own_account"],
     ["new-default", "spend", "default"],
     ["locked", "spend", "user"],
+    ["legacy", "spend", "legacy"],
+  ]);
+});
+
+// protects=rules and own accounts apply even when the Node sync filled the flow first (C);
+// fails_when=a recent 'default' row keeps spend, or an old, refunded or bank row is touched
+Deno.test("classifyFlows re-resolves recent default rows when something stronger applies", async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const dflt = (ref: string, over = {}) =>
+    row({ entry_reference: ref, creditor_name: "Bob", flow_type: "spend", flow_source: "default", booking_date: today, deleted_at: null, ...over });
+  const db = memoryDb({
+    category_rules: [rule({ match_text: "savings" })],
+    transactions: [
+      dflt("by-rule", { creditor_name: "Me Savings" }),
+      dflt("by-own", { own_counterparty: true }),
+      dflt("by-learned", { category: "Transfer", category_source: "rule" }),
+      dflt("stays"),
+      dflt("old", { own_counterparty: true, booking_date: "2000-01-01" }),
+      dflt("refunded", { own_counterparty: true, flow_type: "refunded" }),
+    ],
+  });
+  const result = await classifyFlows(db);
+  assertEquals(result.reresolved, 3);
+  assertEquals(db.tables.transactions.map((r) => [r.entry_reference, r.flow_type, r.flow_source]), [
+    ["by-rule", "transfer", "rule"],
+    ["by-own", "transfer", "own_account"],
+    ["by-learned", "transfer", "rule"],
+    ["stays", "spend", "default"],
+    ["old", "spend", "default"],
+    ["refunded", "refunded", "default"],
   ]);
 });
 

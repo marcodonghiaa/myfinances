@@ -1,7 +1,6 @@
 // In-memory stand-in for the supabase query builder, for tests: honors the filters the
 // post-sync steps use (is/eq/in/not/gte, filter match, order, limit, range) and applies updates and deletes to the
-// matching rows, so tests check data, not call shapes. insert appends rows; or() understands
-// "col.is.null" and "col.in.(a,b)" terms.
+// matching rows, so tests check data, not call shapes. insert appends rows.
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
 
@@ -21,16 +20,6 @@ export function memoryDb(tables: Record<string, Row[]>, failWrite?: "delete" | "
         update: (u: Row) => ((patch = u), q),
         delete: () => ((remove = true), q),
         insert: (rows: Row | Row[]) => ((added = [rows].flat()), q),
-        or: (expr: string) => {
-          const terms = expr.match(/[^,]+\.(?:is\.null|in\.\([^)]*\))/g) ?? [];
-          const tests = terms.map((t) => {
-            const [c, op, ...rest] = t.split(".");
-            const list = rest.join(".").slice(1, -1).split(",");
-            return op === "is" ? (r: Row) => (r[c] ?? null) === null : (r: Row) => list.includes(r[c]);
-          });
-          filters.push((r) => tests.some((f) => f(r)));
-          return q;
-        },
         is: (c: string, v: unknown) => (filters.push((r) => (r[c] ?? null) === v), q),
         eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), q),
         in: (c: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[c])), q),

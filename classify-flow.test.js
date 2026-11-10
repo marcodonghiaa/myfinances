@@ -3,7 +3,7 @@ const assert = require('node:assert');
 
 process.env.SUPABASE_URL ||= 'http://localhost';
 process.env.SUPABASE_SECRET_KEY ||= 'test';
-const { classifyAll, resolveFlowType, BATCH_SIZE } = require('./classify-flow');
+const { classifyAll, resolveFlowType, flowSourceFor, BATCH_SIZE } = require('./classify-flow');
 
 const batch = (n, start = 0) =>
   Array.from({ length: n }, (_, i) => ({ account_uid: 'a', entry_reference: `r${start + i}` }));
@@ -43,4 +43,15 @@ test('EXCHANGE and TOPUP are transfers; everything else follows the direction', 
   assert.strictEqual(resolveFlowType({ bank_transaction_code: 'EXCHANGE', credit_debit_indicator: 'DBIT' }), 'transfer');
   assert.strictEqual(resolveFlowType({ bank_transaction_code: 'TRANSFER', credit_debit_indicator: 'DBIT' }), 'spend');
   assert.strictEqual(resolveFlowType({ bank_transaction_code: null, credit_debit_indicator: 'CRDT' }), 'income');
+});
+
+// A learned Transfer still leaves spending now that learnedUpdate no longer writes the flow.
+test('a Transfer category from your rules or past choices is a transfer; the AI\'s is not', () => {
+  const learned = { category: 'Transfer', category_source: 'rule', credit_debit_indicator: 'DBIT' };
+  assert.strictEqual(resolveFlowType(learned), 'transfer');
+  assert.strictEqual(flowSourceFor(learned), 'rule');
+  const ai = { ...learned, category_source: 'ai' };
+  assert.strictEqual(resolveFlowType(ai), 'spend');
+  assert.strictEqual(flowSourceFor(ai), 'default');
+  assert.strictEqual(flowSourceFor({ bank_transaction_code: 'TOPUP' }), 'bank');
 });

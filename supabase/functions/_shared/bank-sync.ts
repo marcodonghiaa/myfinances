@@ -61,7 +61,7 @@ async function getAllTransactions(fetch: Deps["fetch"], token: string, ebId: str
 }
 
 // The user's own IBANs, to mark transactions between their accounts. Undefined when unreadable:
-// own_counterparty then stays null (unknown) and the flow falls back to the other signals.
+// the rows then leave own_counterparty out, so the upsert keeps what an earlier sync stored.
 async function fetchOwnIbans(supabase: Db, userId: string): Promise<Set<string> | undefined> {
   const { data, error } = await supabase.from("accounts").select("iban").eq("user_id", userId).not("iban", "is", null);
   if (error) {

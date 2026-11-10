@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { applyLearned, fetchLearned, learnedUpdates, planRelearn } from "./learned-categories.ts";
+import { applyLearned, fetchLearned, learnedUpdate, planRelearn } from "./learned-categories.ts";
 
 // Regression: a merchant you had set to Housing by hand came back as Shopping on its next
 // transaction, because the AI never saw your choices.
@@ -14,21 +14,8 @@ Deno.test("a new row takes the category you last set by hand for the same mercha
   assertEquals(unmatched.map((r) => r.entry_reference), ["r2", "r3"]);
 });
 
-Deno.test("Transfer learned from you also takes the row out of spending, unless you set its flow", () => {
-  const key = { account_uid: "a", entry_reference: "r" };
-  assertEquals(learnedUpdates(key, "Transfer", { guardColumn: "category" }), [
-    { ...key, update: { category: "Transfer", category_source: "rule" }, guardColumn: "category" },
-    {
-      ...key,
-      update: { flow_type: "transfer", flow_source: "rule" },
-      guardColumn: "flow_source",
-      guardIn: ["rule", "own_account", "pair", "bank", "default"],
-      guardOrNull: true,
-    },
-  ]);
-  assertEquals(learnedUpdates(key, "Housing", { guardColumn: "category" }), [
-    { ...key, update: { category: "Housing", category_source: "rule" }, guardColumn: "category" },
-  ]);
+Deno.test("a learned row takes the category; the flow step handles Transfer", () => {
+  assertEquals(learnedUpdate("Transfer"), { category: "Transfer", category_source: "rule" });
 });
 
 Deno.test("fetchLearned keeps the most recent hand-set category per merchant, for that user only", async () => {

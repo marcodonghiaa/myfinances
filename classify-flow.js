@@ -16,19 +16,25 @@ const BATCH_SIZE = 200;
 
 const TRANSFER_CODES = new Set(['EXCHANGE', 'TOPUP']);
 
+// A Transfer category from your rules or past choices (category_source 'rule') is a transfer.
+const learnedTransfer = (row) => row.category === 'Transfer' && row.category_source === 'rule';
+
 function resolveFlowType(row) {
-  if (TRANSFER_CODES.has(row.bank_transaction_code)) return 'transfer';
+  if (learnedTransfer(row) || TRANSFER_CODES.has(row.bank_transaction_code)) return 'transfer';
   return row.credit_debit_indicator === 'DBIT' ? 'spend' : 'income';
 }
 
-// Who decided it (transactions.flow_source): the bank code or the direction. The Edge Function
-// post-sync also applies your flow rules, own accounts and transfer pairs.
-const flowSourceFor = (row) => (TRANSFER_CODES.has(row.bank_transaction_code) ? 'bank' : 'default');
+// Who decided it (transactions.flow_source). The Edge Function post-sync also applies your flow
+// rules, own accounts and transfer pairs, re-resolving recent 'default' rows.
+function flowSourceFor(row) {
+  if (learnedTransfer(row)) return 'rule';
+  return TRANSFER_CODES.has(row.bank_transaction_code) ? 'bank' : 'default';
+}
 
 async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
-    .select('entry_reference, account_uid, bank_transaction_code, credit_debit_indicator')
+    .select('entry_reference, account_uid, bank_transaction_code, credit_debit_indicator, category, category_source')
     .is('flow_type', null)
     .limit(BATCH_SIZE);
   if (error) throw error;
@@ -118,4 +124,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { classifyAll, resolveFlowType, BATCH_SIZE };
+module.exports = { classifyAll, resolveFlowType, flowSourceFor, BATCH_SIZE };

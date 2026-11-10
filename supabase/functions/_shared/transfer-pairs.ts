@@ -2,8 +2,10 @@
 // credited on the other. Banks often send no IBAN to recognise it (own_counterparty), so this
 // step pairs the two sides and marks both as a suggested transfer (flow_source 'pair') that you
 // confirm or reject in the dashboard (resolve_transfer_pair). Only rows whose flow came from the
-// bank code or the direction are candidates: yours, your rules' and your own-account ones stay.
-// Better no pair than a wrong one: any tie skips the rows involved.
+// direction ('default') are changed; a 'bank' row (TOPUP, EXCHANGE: already a transfer) can be the
+// other side, so its counterpart stops counting too. Yours, legacy, rule and own-account rows stay.
+// Better no pair than a wrong one: any tie skips the rows involved. A suggested pair whose rows
+// changed since (you edited one, or the update never landed) is removed again.
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
 import { errorTag } from "./log-safe.ts";
 
@@ -20,6 +22,7 @@ export interface PairRow {
   currency: string;
   credit_debit_indicator: string;
   booking_date: string;
+  flow_source?: string | null;
 }
 export type Pair = { out: PairRow; in: PairRow };
 
@@ -28,11 +31,11 @@ export const pairKey = (out: PairRow, inn: PairRow) => `${sideKey(out)}>${sideKe
 
 const days = (a: PairRow, b: PairRow) => Math.abs(Date.parse(a.booking_date) - Date.parse(b.booking_date)) / DAY_MS;
 
+// Same user, currency and amount: the bucket. Two bank sides add nothing (both already transfers).
+const bucketOf = (r: PairRow) => `${r.user_id}|${r.currency}|${Number(r.amount)}`;
 const matches = (d: PairRow, c: PairRow) =>
-  d.user_id === c.user_id &&
   d.account_uid !== c.account_uid &&
-  d.currency === c.currency &&
-  Number(d.amount) === Number(c.amount) &&
+  !(d.flow_source === "bank" && c.flow_source === "bank") &&
   days(d, c) <= PAIR_WINDOW_DAYS;
 
 // One-to-one: a debit and a credit pair when each is the other's single closest match. A row whose
@@ -40,11 +43,14 @@ const matches = (d: PairRow, c: PairRow) =>
 // round are looked at again without the rows already decided.
 // rejectedKeys: pairKey of pairs you rejected, never proposed again.
 export function matchTransferPairs(rows: PairRow[], rejectedKeys: Set<string> = new Set()): Pair[] {
-  const debits = rows.filter((r) => r.credit_debit_indicator === "DBIT");
-  const credits = rows.filter((r) => r.credit_debit_indicator === "CRDT");
-  let edges = debits.flatMap((d) =>
-    credits.filter((c) => matches(d, c) && !rejectedKeys.has(pairKey(d, c))).map((c) => ({ d, c, dist: days(d, c) }))
-  );
+  let edges: Array<{ d: PairRow; c: PairRow; dist: number }> = [];
+  for (const bucket of Map.groupBy(rows, bucketOf).values()) {
+    const debits = bucket.filter((r) => r.credit_debit_indicator === "DBIT");
+    const credits = bucket.filter((r) => r.credit_debit_indicator === "CRDT");
+    for (const d of debits) {
+      for (const c of credits) if (matches(d, c) && !rejectedKeys.has(pairKey(d, c))) edges.push({ d, c, dist: days(d, c) });
+    }
+  }
   const pairs: Pair[] = [];
   while (edges.length > 0) {
     // Each row's closest distance and how many matches share it.
@@ -83,8 +89,8 @@ async function fetchCandidates(db: Db): Promise<PairRow[]> {
   for (let from = 0;; from += PAGE) {
     const { data, error } = await db
       .from("transactions")
-      .select("user_id, account_uid, entry_reference, amount, currency, credit_debit_indicator, booking_date")
-      .in("flow_type", ["spend", "income"])
+      .select("user_id, account_uid, entry_reference, amount, currency, credit_debit_indicator, booking_date, flow_source")
+      .in("flow_type", ["spend", "income", "transfer"]) // 'default' is spend/income, 'bank' transfer
       .in("flow_source", ["default", "bank"])
       .is("deleted_at", null)
       .gte("booking_date", since)
@@ -97,7 +103,7 @@ async function fetchCandidates(db: Db): Promise<PairRow[]> {
   }
 }
 
-type PairRecord = { out_account_uid: string; out_ref: string; in_account_uid: string; in_ref: string; status: string };
+type PairRecord = { id: string; out_account_uid: string; out_ref: string; in_account_uid: string; in_ref: string; status: string };
 
 // ponytail: reads every pair ever made; a handful per month for one person.
 async function fetchPairs(db: Db): Promise<PairRecord[]> {
@@ -105,7 +111,7 @@ async function fetchPairs(db: Db): Promise<PairRecord[]> {
   for (let from = 0;; from += PAGE) {
     const { data, error } = await db
       .from("transfer_pairs")
-      .select("out_account_uid, out_ref, in_account_uid, in_ref, status")
+      .select("id, out_account_uid, out_ref, in_account_uid, in_ref, status")
       .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
@@ -114,10 +120,53 @@ async function fetchPairs(db: Db): Promise<PairRecord[]> {
   }
 }
 
-// Pairs this run's candidates and marks both sides. Returns how many pairs were suggested.
+type Side = { account_uid: string; entry_reference: string; credit_debit_indicator: string; flow_source: string | null; deleted_at: string | null };
+const LIVE_SIDE = ["pair", "bank"];
+
+// Suggested pairs whose rows are no longer both as pairing left them are deleted; a side still
+// 'pair' goes back to its direction ('default'), to be paired or re-resolved again.
+async function dropStalePairs(db: Db, pairs: PairRecord[]): Promise<PairRecord[]> {
+  const suggested = pairs.filter((p) => p.status === "suggested");
+  const sides = new Map<string, Side>();
+  for (const [account, refs] of Map.groupBy(suggested.flatMap((p) => [[p.out_account_uid, p.out_ref], [p.in_account_uid, p.in_ref]]), ([a]) => a)) {
+    const list = refs.map(([, r]) => r);
+    for (let i = 0; i < list.length; i += 50) {
+      const { data, error } = await db
+        .from("transactions")
+        .select("account_uid, entry_reference, credit_debit_indicator, flow_source, deleted_at")
+        .eq("account_uid", account)
+        .in("entry_reference", list.slice(i, i + 50));
+      if (error) throw error;
+      for (const r of data as Side[]) sides.set(sideKey(r), r);
+    }
+  }
+  const sidesOf = (p: PairRecord) => [sides.get(`${p.out_account_uid}:${p.out_ref}`), sides.get(`${p.in_account_uid}:${p.in_ref}`)];
+  const live = (s?: Side) => !!s && !s.deleted_at && LIVE_SIDE.includes(s.flow_source ?? "");
+  const stale = suggested.filter((p) => !sidesOf(p).every(live));
+  if (stale.length === 0) return pairs;
+  const { error } = await db.from("transfer_pairs").delete().in("id", stale.map((p) => p.id));
+  if (error) {
+    console.error(`Stale transfer pairs not removed: ${errorTag(error)}`);
+    return pairs;
+  }
+  await applyGroupedUpdates(
+    db,
+    stale.flatMap(sidesOf).filter((s): s is Side => s?.flow_source === "pair").map((s) => ({
+      account_uid: s.account_uid,
+      entry_reference: s.entry_reference,
+      update: { flow_type: s.credit_debit_indicator === "DBIT" ? "spend" : "income", flow_source: "default" },
+      guardColumn: "flow_source",
+      guardIn: ["pair"],
+    })),
+  );
+  const gone = new Set(stale);
+  return pairs.filter((p) => !gone.has(p));
+}
+
+// Pairs this run's candidates and marks the default sides. Returns how many pairs were suggested.
 export async function pairTransfers(db: Db, timeLeft: () => boolean = () => true): Promise<number> {
   if (!timeLeft()) return 0;
-  const existing = await fetchPairs(db);
+  const existing = await dropStalePairs(db, await fetchPairs(db));
   const taken = new Set<string>();
   const rejected = new Set<string>();
   for (const p of existing) {
@@ -149,7 +198,7 @@ export async function pairTransfers(db: Db, timeLeft: () => boolean = () => true
         entry_reference: r.entry_reference,
         update: { flow_type: "transfer", flow_source: "pair" },
         guardColumn: "flow_source",
-        guardIn: ["default", "bank"],
+        guardIn: ["default"], // a bank side is already a transfer and keeps its source
       }))
     ),
   );

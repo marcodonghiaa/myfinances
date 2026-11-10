@@ -4,7 +4,7 @@
 // or it fails) your rules and past choices still apply.
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
 import { CATEGORIES, categoriesFor } from "./categories.ts";
-import { applyLearned, fetchLearned, learnedUpdates, planRelearn } from "./learned-categories.ts";
+import { applyLearned, fetchLearned, learnedUpdate, planRelearn } from "./learned-categories.ts";
 import { errorTag } from "./log-safe.ts";
 import { applyRules, type Rule } from "./rules.ts";
 import { createStallGuard } from "./stall-guard.ts";
@@ -58,7 +58,12 @@ async function learnFrom(db: Db, rows: Row[]): Promise<Row[]> {
   const { matched, unmatched } = applyLearned(rows, learned);
   await applyGroupedUpdates(
     db,
-    matched.flatMap(({ row, category }) => learnedUpdates(row, category, { guardColumn: "category" })),
+    matched.map(({ row, category }) => ({
+      account_uid: row.account_uid,
+      entry_reference: row.entry_reference,
+      update: learnedUpdate(category),
+      guardColumn: "category",
+    })),
   );
   return unmatched;
 }
@@ -133,7 +138,13 @@ async function relearnAiRows(db: Db): Promise<number> {
     const plan = planRelearn(userRows, learned);
     await applyGroupedUpdates(
       db,
-      plan.flatMap(({ row, category }) => learnedUpdates(row, category, { guardColumn: "category_source", guardIn: ["ai"] })),
+      plan.map(({ row, category }) => ({
+        account_uid: row.account_uid,
+        entry_reference: row.entry_reference,
+        update: learnedUpdate(category),
+        guardColumn: "category_source",
+        guardIn: ["ai"],
+      })),
     );
     changed += plan.length;
   }

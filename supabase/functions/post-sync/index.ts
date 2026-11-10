@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const flows = await classifyFlows(supabase, timeLeft);
     const transferPairs = await pairTransfers(supabase, timeLeft);
     const refunds = timeLeft() ? await markRefunds(supabase) : 0;
-    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, transferPairs, refunds, stuck: flows.stuck, ms: Date.now() - started };
+    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, flowsReresolved: flows.reresolved, transferPairs, refunds, stuck: flows.stuck, ms: Date.now() - started };
     console.log(`post-sync: ${JSON.stringify(result)}`);
     const failed = flows.stuck || categories.aiFailed || types.typeAiFailed || splitwise.splitwiseAiFailed;
     return Response.json(result, { status: failed ? 500 : 200 });

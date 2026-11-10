@@ -62,13 +62,15 @@ function mapToRow(tx: EbTransaction, accountUid: string, userId: string, entryRe
     booking_date: tx.booking_date,
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
-    own_counterparty: ownCounterparty(tx, ownIbans),
+    // Left out when the user's IBANs are unknown, so a failed read keeps what was stored.
+    ...(ownIbans && { own_counterparty: ownCounterparty(tx, ownIbans) }),
     raw: rawWithoutAccounts(tx),
     user_id: userId,
   };
 }
 
-// ownIbans: the user's own accounts' IBANs, normalized (see normalizeIban).
+// ownIbans: the user's own accounts' IBANs, normalized (see normalizeIban); without it rows carry
+// no own_counterparty.
 export async function buildRows(
   transactions: EbTransaction[],
   accountUid: string,
