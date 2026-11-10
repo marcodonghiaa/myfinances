@@ -2,19 +2,22 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 
-const code = fs.readFileSync('supabase/migrations/20261210000001_require_mfa.sql', 'utf8').replace(/--.*$/gm, '');
+const strip = (f) => fs.readFileSync(f, 'utf8').replace(/--.*$/gm, '');
+const up = strip('supabase/migrations/20261203000000_require_mfa.sql');
+const down = strip('supabase/rollbacks/20261203000000_require_mfa.down.sql');
 
 test('mfa_satisfied: aal2, or no verified factor of the caller', () => {
-  assert.match(code, /auth\.jwt\(\) ->> 'aal'\), 'aal1'\) = 'aal2'/);
-  assert.match(code, /f\.user_id = \(select auth\.uid\(\)\) and f\.status = 'verified'/);
-  assert.match(code, /security definer\s+set search_path to ''/);
+  assert.match(up, /auth\.jwt\(\) ->> 'aal'\), 'aal1'\) = 'aal2'/);
+  assert.match(up, /f\.user_id = \(select auth\.uid\(\)\) and f\.status = 'verified'/);
+  assert.match(up, /revoke execute on function public\.mfa_satisfied\(\) from public, anon;/);
 });
 
-test('anon cannot call mfa_satisfied', () => {
-  assert.match(code, /revoke execute on function public\.mfa_satisfied\(\) from public, anon;/);
+test('every Data API request goes through require_mfa, which every API role can run', () => {
+  assert.match(up, /if not public\.mfa_satisfied\(\) then\s+raise exception/);
+  assert.match(up, /grant execute on function public\.require_mfa\(\) to anon, authenticated, service_role;/);
+  assert.match(up, /alter role authenticator set pgrst\.db_pre_request to 'public\.require_mfa';\s+notify pgrst, 'reload config';/);
 });
 
-test('policy is restrictive on every RLS table, for reads and writes', () => {
-  assert.match(code, /c\.relkind = 'r' and c\.relrowsecurity/);
-  assert.match(code, /as restrictive for all to authenticated using \(\(select public\.mfa_satisfied\(\)\)\) with check \(\(select public\.mfa_satisfied\(\)\)\)/);
+test('rollback removes the hook before dropping the functions', () => {
+  assert.match(down, /alter role authenticator reset pgrst\.db_pre_request;\s+notify pgrst, 'reload config';\s+drop function if exists public\.require_mfa\(\);\s+drop function if exists public\.mfa_satisfied\(\);/);
 });

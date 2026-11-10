@@ -7,10 +7,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 ## Release notes, newest first
 
 ### Two-step sign-in
-- **Migration:** `20261210000001_require_mfa`. Apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
-- Settings has **Two-step sign-in**: scan a QR code with an authenticator app (1Password, Google Authenticator, Aegis, ...) and type its 6-digit code. From then on, sign-in asks for a code. The database enforces it: a session that skipped the code reads and changes nothing, and the Edge Functions refuse it. Users without an authenticator are not affected.
+- **Migration:** `20261203000000_require_mfa`. Apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
+- It sets PostgREST's pre-request hook (`pgrst.db_pre_request`) to `public.require_mfa`. If you already use your own hook, call `public.require_mfa()` from it and set yours back.
+- Settings has **Two-step sign-in**: scan a QR code with an authenticator app (1Password, Google Authenticator, Aegis, ...) and type its 6-digit code. From then on, sign-in asks for a code. The database enforces it: a session that skipped the code gets 403 on every API call (tables, views and functions), and the Edge Functions refuse it. Users without an authenticator are not affected.
 - **Lost your phone?** There are no backup codes: add a second authenticator in Settings while you still have the first. If every authenticator is gone, the instance owner removes them in the Supabase SQL editor: `delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'you@example.com');`, then sets it up again.
-- **Roll back:** `supabase/rollbacks/20261210000001_require_mfa.down.sql` (after reverting the Edge Functions).
+- **Roll back:** `supabase/rollbacks/20261203000000_require_mfa.down.sql` (after reverting the Edge Functions).
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
