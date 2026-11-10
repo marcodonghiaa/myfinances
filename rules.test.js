@@ -88,3 +88,25 @@ test('exact matches the whole field, ignoring case and outer spaces', () => {
 test('blank match text never matches', () => {
   assert.ok(!matchRule(row(), rule({ match_text: '   ' })));
 });
+
+test('word treats accented letters as letters, in either Unicode form', () => {
+  const word = (text) => rule({ match_text: text, match_mode: 'word' });
+  assert.ok(!matchRule(row({ creditor_name: 'Café Roma' }), word('caf')));
+  assert.ok(!matchRule(row({ creditor_name: 'Élan Vital' }), word('lan')));
+  assert.ok(matchRule(row({ creditor_name: 'Café Roma' }), word('café'))); // decomposed é
+  assert.ok(!matchRule(row({ creditor_name: 'Café Roma' }), word('cafe'))); // combining mark is part of the word
+});
+
+test('word checks a boundary only on letter or digit edges', () => {
+  assert.ok(matchRule(row({ creditor_name: 'AMAZON.IT' }), rule({ match_text: 'amazon.', match_mode: 'word' })));
+  assert.ok(matchRule(row({ creditor_name: 'PAYPAL*NETFLIX' }), rule({ match_text: '*netflix', match_mode: 'word' })));
+});
+
+test('contains keeps the text as typed, spaces included', () => {
+  assert.ok(!matchRule(row({ creditor_name: 'NETFLIX.COM' }), rule({ match_text: ' netflix' })));
+});
+
+test('reapply leaves Transfer alone, into it or out of it', () => {
+  assert.deepStrictEqual(planRuleReapply([row({ category: 'Transfer' })], [rule()]), []);
+  assert.deepStrictEqual(planRuleReapply([row()], [rule({ set_category: 'Transfer' })]), []);
+});

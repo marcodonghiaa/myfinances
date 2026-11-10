@@ -50,3 +50,25 @@ Deno.test("contains (default for older rules) matches anywhere; word and exact d
   assertEquals(matchRule(row({ creditor_name: "NETFLIX.COM" }), rule({ match_text: "netflix", match_mode: "exact" })), false);
   assertEquals(matchRule(row(), rule({ match_text: "  " })), false);
 });
+
+Deno.test("word treats accented letters as letters, in either Unicode form", () => {
+  const word = (text: string) => rule({ match_text: text, match_mode: "word" });
+  assertEquals(matchRule(row({ creditor_name: "Café Roma" }), word("caf")), false);
+  assertEquals(matchRule(row({ creditor_name: "Élan Vital" }), word("lan")), false);
+  assertEquals(matchRule(row({ creditor_name: "Cafe\u0301 Roma" }), word("café")), true); // decomposed é
+  assertEquals(matchRule(row({ creditor_name: "Cafe\u0301 Roma" }), word("cafe")), false);
+});
+
+Deno.test("word checks a boundary only on letter or digit edges", () => {
+  assertEquals(matchRule(row({ creditor_name: "AMAZON.IT" }), rule({ match_text: "amazon.", match_mode: "word" })), true);
+  assertEquals(matchRule(row({ creditor_name: "PAYPAL*NETFLIX" }), rule({ match_text: "*netflix", match_mode: "word" })), true);
+});
+
+Deno.test("contains keeps the text as typed, spaces included", () => {
+  assertEquals(matchRule(row(), rule({ match_text: " netflix" })), false);
+});
+
+Deno.test("reapply leaves Transfer alone, into it or out of it", () => {
+  assertEquals(planRuleReapply([row({ category: "Transfer" })], [rule()]), []);
+  assertEquals(planRuleReapply([row()], [rule({ set_category: "Transfer" })]), []);
+});
