@@ -25,7 +25,8 @@ plain deploy from this repo reproduces the same gating described below.
   with the service role. `verify_jwt: true`.
 - **reapply-rules** — the Rules page's "Apply to past transactions": `{ "apply": false }`
   previews how many transactions your rules would re-categorize (with a few examples),
-  `{ "apply": true }` does it. Runs as the user (RLS); categories set by hand never change.
+  `{ "apply": true }` does it. The JWT identifies the user; reads and writes use the service key
+  scoped to that user. Categories set by hand, and Transfer rows, never change.
   `verify_jwt: true`.
 - **parse-statement** — reads the transactions out of a bank statement PDF with Gemini
   for the dashboard's import (`{ pdf: <base64> }` → `{ rows }`). The PDF is never stored and
