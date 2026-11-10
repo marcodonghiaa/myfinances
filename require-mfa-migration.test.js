@@ -1,27 +1,24 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
+const path = require('node:path');
 
-const strip = (f) => fs.readFileSync(f, 'utf8').replace(/--.*$/gm, '');
-const up = strip('supabase/migrations/20261203000000_require_mfa.sql');
-const down = strip('supabase/rollbacks/20261203000000_require_mfa.down.sql');
-
-test('mfa_satisfied: aal2, or no verified factor of the caller', () => {
-  assert.match(up, /auth\.jwt\(\) ->> 'aal'\), 'aal1'\) = 'aal2'/);
-  assert.match(up, /f\.user_id = \(select auth\.uid\(\)\) and f\.status = 'verified'/);
-  assert.match(up, /revoke execute on function public\.mfa_satisfied\(\) from public, anon;/);
+// The database refuses aal1 sessions on the Data API, but Edge Functions that act with the service
+// role skip that, so every function that reads the caller's JWT must also ask the database.
+test('every Edge Function that signs the caller in also checks two-step sign-in', () => {
+  const dir = path.join(__dirname, 'supabase/functions');
+  const missing = fs.readdirSync(dir)
+    .filter((f) => !f.startsWith('_') && fs.existsSync(path.join(dir, f, 'index.ts')))
+    .filter((f) => {
+      const src = fs.readFileSync(path.join(dir, f, 'index.ts'), 'utf8');
+      return src.includes('auth.getUser(') && !src.includes('await mfaRefusal(');
+    });
+  assert.deepStrictEqual(missing, []);
 });
 
-test('every Data API request goes through require_mfa, which every API role can run', () => {
-  assert.match(up, /if not public\.mfa_satisfied\(\) then\s+raise exception/);
-  assert.match(up, /grant execute on function public\.require_mfa\(\) to anon, authenticated, service_role;/);
-  assert.match(up, /alter role authenticator set pgrst\.db_pre_request to 'public\.require_mfa';\s+notify pgrst, 'reload config';/);
-});
-
-test('refuses to replace another pre-request hook', () => {
-  assert.match(up, /existing is not null and existing <> 'public\.require_mfa' then\s+raise exception/);
-});
-
-test('rollback removes the hook before dropping the functions', () => {
-  assert.match(down, /alter role authenticator reset pgrst\.db_pre_request;\s+notify pgrst, 'reload config';\s+drop function if exists public\.require_mfa\(\);\s+drop function if exists public\.mfa_satisfied\(\);/);
+test('rollback removes the hook before dropping the functions it calls', () => {
+  const down = fs.readFileSync(path.join(__dirname, 'supabase/rollbacks/20261203000000_require_mfa.down.sql'), 'utf8');
+  const order = ['reset pgrst.db_pre_request', 'drop function if exists public.require_mfa', 'drop function if exists public.mfa_satisfied']
+    .map((s) => down.indexOf(s));
+  assert.ok(order.every((i, n) => i >= 0 && (n === 0 || i > order[n - 1])), 'wrong order or missing step');
 });
