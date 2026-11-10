@@ -18,6 +18,10 @@ test('every Data API request goes through require_mfa, which every API role can 
   assert.match(up, /alter role authenticator set pgrst\.db_pre_request to 'public\.require_mfa';\s+notify pgrst, 'reload config';/);
 });
 
+test('refuses to replace another pre-request hook', () => {
+  assert.match(up, /existing is not null and existing <> 'public\.require_mfa' then\s+raise exception/);
+});
+
 test('rollback removes the hook before dropping the functions', () => {
   assert.match(down, /alter role authenticator reset pgrst\.db_pre_request;\s+notify pgrst, 'reload config';\s+drop function if exists public\.require_mfa\(\);\s+drop function if exists public\.mfa_satisfied\(\);/);
 });
