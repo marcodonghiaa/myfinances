@@ -77,7 +77,7 @@ Deno.test("a failed statement is logged by code, never by message, and the other
   const original = console.error;
   console.error = (...a: unknown[]) => logged.push(a.join(" "));
   try {
-    await applyGroupedUpdates(db, [item("1", { update: { category: "Health" } }), item("2")]);
+    assertEquals(await applyGroupedUpdates(db, [item("1", { update: { category: "Health" } }), item("2")]), 1);
   } finally {
     console.error = original;
   }

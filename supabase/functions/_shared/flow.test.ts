@@ -257,3 +257,16 @@ Deno.test("refund candidates: a pair across pages is found, a row read twice pai
   assertEquals(await markRefunds(db), { pairs: 1, failed: 0 });
   assertEquals(rows.filter((r) => r.flow_type === "refunded").map((r) => r.entry_reference), ["d", "y1"]);
 });
+
+// protects=a failed refund write shows up (post-sync then answers 500) instead of only a log line;
+// fails_when=markRefunds reports failed: 0 when its updates error
+Deno.test("markRefunds counts refund writes that failed", async () => {
+  const errors = console.error;
+  console.error = () => {};
+  try {
+    const rows = [charge("d", "Shop", 10), credit("c", "Shop", 8)];
+    assertEquals(await markRefunds(memoryDb({ transactions: rows }, "update")), { pairs: 1, failed: 2 });
+  } finally {
+    console.error = errors;
+  }
+});
