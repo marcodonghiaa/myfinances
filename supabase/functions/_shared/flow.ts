@@ -8,6 +8,7 @@
 // sync filling the flow first) still applies. Rows you decided ('user', 'legacy') are never read.
 // Then refunds are paired.
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
+import { errorTag } from "./log-safe.ts";
 import { matchRefunds, type RefundRow, WINDOW_DAYS } from "./refunds.ts";
 import { matchRule, type Rule } from "./rules.ts";
 
@@ -208,11 +209,16 @@ async function repairHalfPairs(db: Db): Promise<number> {
   const charges = new Map<string, PairSide>();
   const byAccount = new Map<string, string[]>();
   for (const c of credits) if (c.refund_of) byAccount.set(c.account_uid, [...(byAccount.get(c.account_uid) ?? []), c.refund_of]);
+  // A lookup that fails skips that account's repair this run (counted, logged) instead of stopping
+  // refunds for every user; its rows aren't touched blind.
+  const skipped = new Set<string>();
   for (const [account_uid, refs] of byAccount) {
-    for (let i = 0; i < refs.length; i += 50) {
+    for (let i = 0; i < refs.length && !skipped.has(account_uid); i += 50) {
       const { data, error } = await db.from("transactions").select(SIDE_COLUMNS).eq("account_uid", account_uid).in("entry_reference", refs.slice(i, i + 50));
-      if (error) throw error;
-      for (const r of data as PairSide[]) charges.set(keyOf(r), r);
+      if (error) {
+        console.error(`Refund repair skipped one account: ${errorTag(error)}`);
+        skipped.add(account_uid);
+      } else for (const r of data as PairSide[]) charges.set(keyOf(r), r);
     }
   }
 
@@ -220,6 +226,7 @@ async function repairHalfPairs(db: Db): Promise<number> {
   const items = [];
   const liveCredits = new Set<string>(); // "account|charge ref" of credits still paired
   for (const c of credits) {
+    if (skipped.has(c.account_uid)) continue;
     const charge = c.refund_of ? charges.get(keyOf({ account_uid: c.account_uid, entry_reference: c.refund_of })) : undefined;
     const live = charge && !charge.deleted_at;
     if (live && charge.flow_type === "refunded") liveCredits.add(keyOf(charge));
@@ -231,10 +238,10 @@ async function repairHalfPairs(db: Db): Promise<number> {
     }
   }
   for (const d of refunded) {
-    if (d.credit_debit_indicator !== "DBIT" || liveCredits.has(keyOf(d)) || !fixable(d)) continue;
+    if (d.credit_debit_indicator !== "DBIT" || skipped.has(d.account_uid) || liveCredits.has(keyOf(d)) || !fixable(d)) continue;
     items.push({ ...d, update: { flow_type: "spend" }, guardColumn: "flow_source", guardIn: REFUND_SOURCES, alsoIn: ["flow_type", ["refunded"]] as [string, string[]] });
   }
-  return await applyGroupedUpdates(db, items);
+  return skipped.size + await applyGroupedUpdates(db, items);
 }
 
 // Both sides of a pair become 'refunded' (excluded from spend and income); the credit remembers

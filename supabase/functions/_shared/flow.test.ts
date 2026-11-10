@@ -270,3 +270,36 @@ Deno.test("markRefunds counts refund writes that failed", async () => {
     console.error = errors;
   }
 });
+
+// protects=one account's failing lookup (e.g. a bad stored value) doesn't stop refunds for every
+// other user; fails_when=markRefunds throws, or touches the failed account's rows blind
+Deno.test("a failed charge lookup on one account is counted, the others still repair and pair", async () => {
+  const errors = console.error;
+  console.error = () => {};
+  try {
+    const rows = [
+      credit("bad-c", "Shop", 8, { account_uid: "bad", flow_type: "refunded", refund_of: "bad-d" }),
+      charge("bad-d", "Shop", 10, { account_uid: "bad", flow_type: "refunded" }),
+      charge("d1", "Shop", 10), credit("c1", "Shop", 8, { flow_type: "refunded", refund_of: "d1" }), // half pair
+      charge("d2", "Store", 10), credit("c2", "Store", 8), // new pair
+    ];
+    const mem = memoryDb({ transactions: rows });
+    const db = {
+      from(t: string) {
+        const q = mem.from(t);
+        const eq = q.eq;
+        q.eq = (c: string, v: unknown) => {
+          if (c === "account_uid" && v === "bad") q.then = (resolve: (v: unknown) => void) => resolve({ data: null, error: { code: "XX000" } });
+          return eq(c, v);
+        };
+        return q;
+      },
+    };
+    assertEquals(await markRefunds(db), { pairs: 1, failed: 1 });
+    assertEquals(rows.map((r) => [r.entry_reference, r.flow_type]), [
+      ["bad-c", "refunded"], ["bad-d", "refunded"], ["d1", "refunded"], ["c1", "refunded"], ["d2", "refunded"], ["c2", "refunded"],
+    ]);
+  } finally {
+    console.error = errors;
+  }
+});
