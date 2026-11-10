@@ -66,6 +66,11 @@ test('category_budgets RLS with two users', { skip }, async (t) => {
     );
   });
 
+  // TRUNCATE skips RLS: with it one user could empty every user's budgets.
+  await t.test("a signed-in user can't empty the whole table", () => {
+    assert.match(as('authenticated', B, 'truncate public.category_budgets'), /permission denied/);
+  });
+
   await t.test('signed-out visitors get nothing', () => {
     assert.match(as('anon', null, 'select count(*) from public.category_budgets'), /permission denied/);
     assert.strictEqual(as('authenticated', null, 'select count(*) from public.category_budgets'), '0');

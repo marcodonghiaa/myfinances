@@ -24,7 +24,7 @@ test('amounts are never negative, rollover is off unless chosen', () => {
 test('each user sees and changes only their own budgets', () => {
   assert.match(up, /alter table public\.category_budgets enable row level security/);
   assert.match(up, /for all to authenticated\s+using \(\(select auth\.uid\(\)\) = user_id\)\s+with check \(\(select auth\.uid\(\)\) = user_id\)/);
-  assert.match(up, /revoke all on public\.category_budgets from anon/);
+  assert.match(up, /revoke all on public\.category_budgets from anon, authenticated;/);
   assert.match(up, /user_id uuid not null default auth\.uid\(\) references auth\.users \(id\) on delete cascade/);
 });
 

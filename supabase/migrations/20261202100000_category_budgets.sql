@@ -21,6 +21,6 @@ create policy "Users manage own budgets" on public.category_budgets
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
-revoke all on public.category_budgets from anon;
+revoke all on public.category_budgets from anon, authenticated;
 grant select, insert, update, delete on public.category_budgets to authenticated;
 grant select, insert, update, delete on public.category_budgets to service_role;
