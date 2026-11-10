@@ -21,6 +21,10 @@ function resolveFlowType(row) {
   return row.credit_debit_indicator === 'DBIT' ? 'spend' : 'income';
 }
 
+// Who decided it (transactions.flow_source): the bank code or the direction. The Edge Function
+// post-sync also applies your flow rules, own accounts and transfer pairs.
+const flowSourceFor = (row) => (TRANSFER_CODES.has(row.bank_transaction_code) ? 'bank' : 'default');
+
 async function fetchUnclassified() {
   const { data, error } = await supabase
     .from('transactions')
@@ -97,7 +101,7 @@ async function main() {
       rows.map((row) => ({
         account_uid: row.account_uid,
         entry_reference: row.entry_reference,
-        update: { flow_type: resolveFlowType(row) },
+        update: { flow_type: resolveFlowType(row), flow_source: flowSourceFor(row) },
         guardColumn: 'flow_type',
       })),
     ),

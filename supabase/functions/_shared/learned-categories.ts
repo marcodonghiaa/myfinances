@@ -1,7 +1,7 @@
 // Deno port of learned-categories.js. What you set by hand is the best guess for the next
 // transaction from the same merchant: before the AI, a new row takes the category you most
 // recently chose for that merchant's other rows (category_source 'manual'). Rules still come first.
-import type { Db } from "./batch-update.ts";
+import type { Db, RowUpdate } from "./batch-update.ts";
 
 const PAGE = 1000;
 
@@ -41,12 +41,25 @@ export function applyLearned<T extends { creditor_name?: string | null }>(rows: 
   return { matched, unmatched };
 }
 
-// The update for a learned row. Transfer also leaves spending and income, as when you pick
-// it in the dashboard.
-export function learnedUpdate(category: string): Record<string, string> {
-  return category === "Transfer"
-    ? { category, category_source: "rule", flow_type: "transfer" }
-    : { category, category_source: "rule" };
+// Flow sources post-sync may overwrite: anything but yours ('user').
+export const MACHINE_FLOW_SOURCES = ["rule", "own_account", "pair", "bank", "default"];
+
+// The updates for a learned row, the category under `guard`. Transfer also leaves spending and
+// income, as when you pick it in the dashboard, unless you set the row's flow yourself.
+// deno-lint-ignore no-explicit-any
+export function learnedUpdates(row: Record<string, any>, category: string, guard: Pick<RowUpdate, "guardColumn" | "guardIn">): RowUpdate[] {
+  const key = { account_uid: row.account_uid, entry_reference: row.entry_reference };
+  const items: RowUpdate[] = [{ ...key, update: { category, category_source: "rule" }, ...guard }];
+  if (category === "Transfer") {
+    items.push({
+      ...key,
+      update: { flow_type: "transfer", flow_source: "rule" },
+      guardColumn: "flow_source",
+      guardIn: MACHINE_FLOW_SOURCES,
+      guardOrNull: true,
+    });
+  }
+  return items;
 }
 
 // AI-chosen rows that disagree with what you set by hand for the same merchant. Only rows the

@@ -6,6 +6,14 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Transfers between your own accounts stop counting as spend and income
+- **Migration:** `20261128000000_transfer_detection`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they write the new columns), then redeploy the dashboard.
+- Every transaction now remembers who decided whether it is spend, income or a transfer (`flow_source`). Every flow set before this release counts as yours and never changes by itself.
+- The sync notes whether the other side of a payment is one of your own accounts (only yes or no is stored, never the IBAN), and such payments become transfers.
+- After each sync, a debit on one of your accounts and the same amount credited on another within 4 days are paired as a suggested transfer. The dashboard lets you confirm it or say it is not a transfer; a rejected pair is never proposed again.
+- A rule can now say how matching rows count (`category_rules.set_flow_type`).
+- **Roll back:** `supabase/rollbacks/20261128000000_transfer_detection.down.sql` (flows already set stay; who set them and the pairs are dropped).
+
 ### Sync cursors follow their account; bank links keep the server's clock
 - **Migration:** `20261127000000_cursor_fk_and_consent_clock`. You apply it with `supabase db push --linked`, then redeploy the Edge Functions and the dashboard.
 - A deleted account no longer leaves its sync cursor behind; cursors of accounts already deleted are removed.

@@ -3,7 +3,8 @@
 // What the launchd pipeline runs after the bank sync, moved into Supabase: merchant keys and
 // alias dedupe for rows the sync didn't key (merchant-key-backfill.ts), categories for new
 // rows (your rules, your past choices, then Gemini; port of categorize.js), then flow_type
-// (spend / income / transfer) and refund pairs (classify-flow.js). Categories go first: a row
+// (spend / income / transfer, see flow.ts for the order), suggested transfer pairs between your own
+// accounts (transfer-pairs.ts) and refund pairs (classify-flow.js). Categories go first: a row
 // that takes Transfer from your past choices also becomes a transfer. Then transaction types
 // (classify-type.js) and Splitwise shares (categorize-splitwise.js). No bank calls, and every update only fills empty values (or moves AI
 // rows to your choice, spend/income to refunded), so it is safe to run beside the launchd sync;
@@ -15,6 +16,7 @@ import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import { retryRejectedToken } from "../_shared/postgrest-retry.ts";
 import { errorTag } from "../_shared/log-safe.ts";
 import { classifyFlows, markRefunds } from "../_shared/flow.ts";
+import { pairTransfers } from "../_shared/transfer-pairs.ts";
 import { categorize, type Classify } from "../_shared/categorize.ts";
 import { buildCategorizePrompt } from "../_shared/categorize-prompt.ts";
 import { type Ask, classifyWithGemini } from "../_shared/gemini.ts";
@@ -58,8 +60,9 @@ Deno.serve(async (req) => {
     const types = await classifyTypes(supabase, ask, aiTimeLeft);
     const splitwise = await categorizeSplitwise(supabase, ask, aiTimeLeft);
     const flows = await classifyFlows(supabase, timeLeft);
+    const transferPairs = await pairTransfers(supabase, timeLeft);
     const refunds = timeLeft() ? await markRefunds(supabase) : 0;
-    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, refunds, stuck: flows.stuck, ms: Date.now() - started };
+    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, transferPairs, refunds, stuck: flows.stuck, ms: Date.now() - started };
     console.log(`post-sync: ${JSON.stringify(result)}`);
     const failed = flows.stuck || categories.aiFailed || types.typeAiFailed || splitwise.splitwiseAiFailed;
     return Response.json(result, { status: failed ? 500 : 200 });

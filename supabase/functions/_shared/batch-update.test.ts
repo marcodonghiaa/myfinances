@@ -100,3 +100,23 @@ Deno.test("guardIn items are guarded by an in-list instead of is-null", async ()
   assertEquals(db.calls[0].is, null);
   assertEquals(db.calls[0].guardIn, { col: "category_source", vals: ["ai", "rule"] });
 });
+
+// protects=a flow you set stays yours; fails_when=the or-null guard misses null rows or touches 'user' ones
+Deno.test("guardOrNull updates rows whose guard column is null or in the list", async () => {
+  const { memoryDb } = await import("./memory-db.test-helper.ts");
+  const db = memoryDb({
+    transactions: [
+      { account_uid: "a", entry_reference: "new", flow_source: null },
+      { account_uid: "a", entry_reference: "auto", flow_source: "default" },
+      { account_uid: "a", entry_reference: "mine", flow_source: "user" },
+    ],
+  });
+  await applyGroupedUpdates(
+    db,
+    ["new", "auto", "mine"].map((ref) => ({
+      account_uid: "a", entry_reference: ref, update: { flow_type: "transfer", flow_source: "rule" },
+      guardColumn: "flow_source", guardIn: ["default"], guardOrNull: true,
+    })),
+  );
+  assertEquals(db.tables.transactions.map((r) => r.flow_source), ["rule", "rule", "user"]);
+});

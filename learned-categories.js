@@ -43,7 +43,7 @@ function applyLearned(rows, learned) {
 // it in the dashboard.
 function learnedUpdate(category) {
   return category === 'Transfer'
-    ? { category, category_source: 'rule', flow_type: 'transfer' }
+    ? { category, category_source: 'rule', flow_type: 'transfer', flow_source: 'rule' }
     : { category, category_source: 'rule' };
 }
 

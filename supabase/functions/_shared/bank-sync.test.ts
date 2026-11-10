@@ -30,10 +30,15 @@ function fakeFetch(responses: Record<string, FakeRes>) {
 }
 
 // Records .upsert(rows, opts) and .update(patch) with its .eq / .is filter chain, once awaited.
-function fakeSupabase(error: unknown = null) {
+// select answers with `accounts` (the user's own accounts' IBANs).
+function fakeSupabase(error: unknown = null, accounts: { iban: string | null }[] = []) {
   const writes: { table: string; op: string; data: unknown; filters?: unknown[] }[] = [];
   const supabase = {
     from: (table: string) => ({
+      select: () => {
+        const query = { eq: () => query, not: () => query, then: (resolve: (v: unknown) => void) => resolve({ data: accounts, error }) };
+        return query;
+      },
       upsert: async (data: unknown, opts: unknown) => (writes.push({ table, op: "upsert", data, filters: [opts] }), { error }),
       update: (data: unknown) => {
         const filters: unknown[] = [];
@@ -60,6 +65,19 @@ Deno.test("transactions: calls EB with eb_account_uid; rows and cursor use uid",
   assertEquals(writes[0].filters, [{ onConflict: "account_uid,entry_reference" }]);
   assert((writes[0].data as { account_uid: string }[]).every((row) => row.account_uid === "pk"));
   assertEquals(result, { upserted: 1, rejected: null, cursor: TODAY });
+});
+
+Deno.test("transactions: marks rows whose counterparty is one of the user's own accounts", async () => {
+  const toOwn = { ...TX, entry_reference: "own", creditor_account: { iban: "IT60 X054 2811 1010 0000 0123 456" } };
+  const toOther = { ...TX, entry_reference: "other", creditor_account: { iban: "DE89370400440532013000" } };
+  const { fetch } = fakeFetch({ "/transactions?": { body: { transactions: [toOwn, toOther, TX] } } });
+  const { supabase, writes } = fakeSupabase(null, [{ iban: "it60x0542811101000000123456" }]);
+
+  await syncAccountTransactions({ fetch, supabase }, "t", account(), null, TODAY);
+
+  const rows = writes[0].data as { entry_reference: string; own_counterparty: boolean | null; raw: object }[];
+  assertEquals(rows.map((r) => [r.entry_reference, r.own_counterparty]), [["own", true], ["other", false], ["r1", null]]);
+  assert(rows.every((r) => !("creditor_account" in r.raw)));
 });
 
 Deno.test("transactions: date_from re-reads 7 days before the cursor", async () => {

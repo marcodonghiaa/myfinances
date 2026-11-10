@@ -1,5 +1,5 @@
 import { assertEquals, assertMatch, assertNotEquals } from "jsr:@std/assert@1";
-import { buildRows, type EbTransaction } from "./transaction-rows.ts";
+import { buildRows, type EbTransaction, normalizeIban, ownCounterparty } from "./transaction-rows.ts";
 
 const tx = (over: EbTransaction = {}): EbTransaction => ({
   entry_reference: "r1",
@@ -82,4 +82,23 @@ Deno.test("raw drops the counterparty account numbers, keeps the rest", async ()
   assertEquals("debtor_account" in raw, false);
   assertEquals(raw.creditor, { name: "Shop" });
   assertEquals(raw.entry_reference, "r1");
+});
+
+Deno.test("own_counterparty: normalised IBAN match, other account false, no IBAN null", () => {
+  const own = new Set([normalizeIban("IT60 X054 2811 1010 0000 0123 456")]);
+  assertEquals(ownCounterparty(tx({ creditor_account: { iban: "it60x0542811101000000123456" } }), own), true);
+  assertEquals(ownCounterparty(tx({ creditor_account: { iban: "DE89370400440532013000" } }), own), false);
+  assertEquals(ownCounterparty(tx({ creditor_account: {} }), own), null);
+  assertEquals(ownCounterparty(tx(), own), null);
+  // A credit's counterparty is the debtor; the creditor is you.
+  const credit = { credit_debit_indicator: "CRDT", creditor_account: { iban: "IT60X0542811101000000123456" } };
+  assertEquals(ownCounterparty(tx({ ...credit, debtor_account: { iban: "DE89 3704 0044 0532 0130 00" } }), own), false);
+  assertEquals(ownCounterparty(tx({ ...credit, debtor_account: { iban: "IT60X0542811101000000123456" } }), own), true);
+  assertEquals(ownCounterparty(tx({ creditor_account: { iban: "IT60X0542811101000000123456" } })), null); // own IBANs unknown
+});
+
+Deno.test("buildRows keeps own_counterparty but not the IBAN", async () => {
+  const [row] = await buildRows([tx({ creditor_account: { iban: "IT60X0542811101000000123456" } })], "acc", "user", new Set(["IT60X0542811101000000123456"]));
+  assertEquals(row.own_counterparty, true);
+  assertEquals("creditor_account" in (row.raw as object), false);
 });

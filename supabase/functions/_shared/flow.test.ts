@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { BATCH_SIZE, classifyAll, markRefunds, resolveFlowType } from "./flow.ts";
+import { BATCH_SIZE, classifyAll, classifyFlows, markRefunds, resolveFlow } from "./flow.ts";
+import { memoryDb } from "./memory-db.test-helper.ts";
 
 const batch = (n: number, start = 0) =>
   Array.from({ length: n }, (_, i) => ({ account_uid: "a", entry_reference: `r${start + i}` }));
@@ -40,11 +41,49 @@ Deno.test("stops starting batches once the time is up", async () => {
   assertEquals(result, { total: 2 * BATCH_SIZE, stuck: false });
 });
 
-Deno.test("EXCHANGE and TOPUP are transfers; everything else follows the direction", () => {
-  assertEquals(resolveFlowType({ bank_transaction_code: "EXCHANGE", credit_debit_indicator: "DBIT" }), "transfer");
-  assertEquals(resolveFlowType({ bank_transaction_code: "TOPUP", credit_debit_indicator: "CRDT" }), "transfer");
-  assertEquals(resolveFlowType({ bank_transaction_code: "TRANSFER", credit_debit_indicator: "DBIT" }), "spend");
-  assertEquals(resolveFlowType({ bank_transaction_code: null, credit_debit_indicator: "CRDT" }), "income");
+Deno.test("EXCHANGE and TOPUP are bank transfers; everything else follows the direction", () => {
+  assertEquals(resolveFlow({ bank_transaction_code: "EXCHANGE", credit_debit_indicator: "DBIT" } as never), { flow_type: "transfer", flow_source: "bank" });
+  assertEquals(resolveFlow({ bank_transaction_code: "TOPUP", credit_debit_indicator: "CRDT" } as never), { flow_type: "transfer", flow_source: "bank" });
+  assertEquals(resolveFlow({ bank_transaction_code: "TRANSFER", credit_debit_indicator: "DBIT" } as never), { flow_type: "spend", flow_source: "default" });
+  assertEquals(resolveFlow({ bank_transaction_code: null, credit_debit_indicator: "CRDT" } as never), { flow_type: "income", flow_source: "default" });
+});
+
+const rule = (over = {}) => ({ user_id: "u1", match_field: "creditor_name", match_text: "me", set_flow_type: "transfer", ...over });
+const row = (over = {}) => ({ user_id: "u1", account_uid: "a", entry_reference: "r", credit_debit_indicator: "DBIT", creditor_name: "Me Savings", ...over });
+
+// protects=the decision order of the plan; fails_when=a weaker signal beats a stronger one
+Deno.test("precedence: rule, then own account, then bank code, then direction", () => {
+  const exchange = { bank_transaction_code: "EXCHANGE" };
+  assertEquals(resolveFlow(row({ own_counterparty: true, ...exchange }), [rule({ set_flow_type: "spend" })]), { flow_type: "spend", flow_source: "rule" });
+  assertEquals(resolveFlow(row({ own_counterparty: true, ...exchange }), [rule({ user_id: "u2" })]), { flow_type: "transfer", flow_source: "own_account" });
+  assertEquals(resolveFlow(row({ own_counterparty: false, ...exchange })), { flow_type: "transfer", flow_source: "bank" });
+  assertEquals(resolveFlow(row({ own_counterparty: null })), { flow_type: "spend", flow_source: "default" });
+});
+
+Deno.test("a rule's spend/income means not a transfer: the row keeps its direction", () => {
+  const rules = [rule({ set_flow_type: "spend" })];
+  assertEquals(resolveFlow(row({ credit_debit_indicator: "CRDT", own_counterparty: true }), rules), { flow_type: "income", flow_source: "rule" });
+  assertEquals(resolveFlow(row(), [rule()]), { flow_type: "transfer", flow_source: "rule" });
+});
+
+// protects=what the user decided never changes by itself; fails_when=classifyFlows touches a row with a flow
+Deno.test("classifyFlows fills only rows without a flow, with their source; user rows stay", async () => {
+  const db = memoryDb({
+    category_rules: [rule({ match_text: "savings" }), { ...rule(), set_flow_type: null }],
+    transactions: [
+      row({ entry_reference: "new-rule" }),
+      row({ entry_reference: "new-own", creditor_name: "Bob", own_counterparty: true }),
+      row({ entry_reference: "new-default", creditor_name: "Bob" }),
+      row({ entry_reference: "locked", flow_type: "spend", flow_source: "user", own_counterparty: true }),
+    ],
+  });
+  await classifyFlows(db);
+  assertEquals(db.tables.transactions.map((r) => [r.entry_reference, r.flow_type, r.flow_source]), [
+    ["new-rule", "transfer", "rule"],
+    ["new-own", "transfer", "own_account"],
+    ["new-default", "spend", "default"],
+    ["locked", "spend", "user"],
+  ]);
 });
 
 // protects=a refund pair stops counting as spend and income; fails_when=either side keeps its
