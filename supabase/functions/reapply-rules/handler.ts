@@ -5,14 +5,21 @@ import { errorTag } from "../_shared/log-safe.ts";
 import { PartialApplyError, reapplyRules } from "../_shared/reapply-rules.ts";
 
 export interface Deps {
-  userIdFor(authorization: string): Promise<string | null>; // who signed this request, or null
+  // Who signed this request; null for a bad or expired token, throws if auth can't be reached.
+  userIdFor(authorization: string): Promise<string | null>;
   admin(): Db; // service-role client: the user's own JWT would trip the hand-edit trigger
 }
 
 export const reapplyHandler = (deps: Deps) => async (req: Request, json: Reply): Promise<Response> => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const authorization = req.headers.get("Authorization");
-  const userId = authorization ? await deps.userIdFor(authorization) : null;
+  let userId: string | null = null;
+  try {
+    userId = authorization ? await deps.userIdFor(authorization) : null;
+  } catch (err) {
+    console.error(`reapply-rules auth check failed: ${errorTag(err)}`);
+    return json({ error: "Sign-in check is unavailable, please try again" }, 503);
+  }
   if (!userId) return json({ error: "Not signed in" }, 401);
 
   const body = await req.json().catch(() => null); // anything but { apply: true } is a preview

@@ -50,3 +50,10 @@ Deno.test("a failed read keeps the plain error", async () => {
   const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
   assertEquals([res.status, await res.json()], [500, { error: "Couldn't apply your rules, please try again" }]);
 });
+
+// Polish pass 2 #4: when the auth server was down the user was told "Not signed in".
+Deno.test("an auth server outage is a 503, not a sign-out", async () => {
+  const handler = reapplyHandler({ userIdFor: () => Promise.reject(new Error("auth down")), admin: () => seed() });
+  const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
+  assertEquals([res.status, await res.json()], [503, { error: "Sign-in check is unavailable, please try again" }]);
+});
