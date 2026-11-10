@@ -1,0 +1,67 @@
+# Form for the "Ideas" discussion category. Keep the field labels stable:
+# the maintainers' idea-intake agent reads answers by these headings.
+title: "Idea: "
+body:
+- type: markdown
+  attributes:
+    value: 'Only the first box is needed; everything else helps but is optional. This page is public, so never paste bank data or keys.
+
+      '
+- type: textarea
+  id: idea
+  attributes:
+    label: What Alopex could do
+    description: Your idea, in a line or two.
+  validations:
+    required: true
+- type: textarea
+  id: problem
+  attributes:
+    label: Problem
+    description: Optional. What is hard, slow or missing today? One real example helps most.
+    placeholder: Every month I add up my two credit cards by hand to know what I owe.
+- type: textarea
+  id: today
+  attributes:
+    label: How you handle it today
+    description: Optional. Another app, a spreadsheet, by hand, or not at all.
+- type: dropdown
+  id: area
+  attributes:
+    label: Area
+    options:
+    - Bank sync
+    - Investments and crypto
+    - Spending and categories
+    - Subscriptions
+    - Shared costs (Splitwise)
+    - Budgets and planning
+    - Install and self-hosting
+    - Other
+- type: dropdown
+  id: frequency
+  attributes:
+    label: How often you hit this
+    options:
+    - Every day
+    - Every week
+    - Every month
+    - A few times a year
+- type: dropdown
+  id: importance
+  attributes:
+    label: How much it matters to you
+    options:
+    - Nice to have
+    - Important
+    - I would switch apps for it
+- type: input
+  id: context
+  attributes:
+    label: Bank, broker or country
+    description: Optional. Only names, for example "Fineco, Italy".
+- type: input
+  id: elsewhere
+  attributes:
+    label: Seen it in another app
+    description: Optional. Which app does this well?

@@ -1,20 +1,67 @@
 # Alopex
 
-> Alopex is an open-source (MIT), self-hosted net worth tracker for people with European bank accounts. It syncs balances and transactions read-only from 2000+ banks over PSD2 (via Enable Banking), prices stocks and crypto, and stores everything in the user's own Supabase project. There is no Alopex server: the publisher never sees user data.
+> Alopex is a free, open-source (MIT) net worth tracker for people who bank in Europe. It syncs balances and transactions read-only from 2000+ European banks over PSD2 (through Enable Banking), prices stocks, ETFs and crypto, and stores everything in the user's own Supabase database. There is no Alopex server, so the project never sees user data.
 
-Key facts:
-- License: MIT. Author: Marco D'Onghia.
-- Bank sync: PSD2 account information (read-only) via Enable Banking, 2000+ European banks (e.g. Revolut, Wise, Fineco). Syncs every 6 hours. Consent lasts 180 days. No US/Canadian banks.
-- Investments: holdings entered by the user, priced via Yahoo Finance; crypto via CoinGecko and a read-only Coinbase key.
-- Currencies: EUR, USD or GBP, daily ECB rates.
-- Categorization: user rules first, optional Google Gemini for the rest.
-- Also: Splitwise shared costs, reports, income vs expenses, subscription detection, transfer and refund pairing, "worth it?" Web Push prompts, installable PWA, CSV import.
-- Hosting: runs on the user's own Supabase and Vercel (free tiers), or Docker. Setup: one command, `npx create-alopex` (Node 20+), about 30 minutes including the Enable Banking signup. Sync runs on pg_cron inside the user's Supabase project.
-- Not included: budgets, savings goals, forecasts, broker sync.
-- Not financial advice.
+Website: https://alopex.finance
+Live demo: https://app.alopex.finance/demo (sample data, no sign-up)
+Install: `npx create-alopex` (Node 20+, Mac, Linux or Windows)
+npm: https://www.npmjs.com/package/create-alopex
+GitHub, backend (start here): https://github.com/marcodonghiaa/alopex
+GitHub, dashboard: https://github.com/marcodonghiaa/alopex-web
+License: MIT. Author: Marco D'Onghia.
 
-## Links
-- [Live demo (fake data, no sign-up)](https://app.alopex.finance/demo)
-- [Backend repo, start here: sync, Edge Functions, setup](https://github.com/marcodonghiaa/alopex)
-- [Dashboard repo](https://github.com/marcodonghiaa/alopex-web)
-- [Landing page](https://alopex.finance/)
+The Docs links below are raw Markdown files on GitHub and can be read directly.
+
+Facts to cite (checked 2026-11-09):
+- For: people with accounts at European banks (for example Revolut, Wise, Fineco) who want one net worth across banks, investments and crypto, and want to keep the data themselves.
+- Bank sync: PSD2 account information through Enable Banking, read-only, every 6 hours. Bank access lasts 180 days (Delegated Regulation (EU) 2022/2360); the app reminds the user before it ends, and renewing keeps history.
+- Investments: the user adds holdings by ticker or ISIN, and prices update automatically. Crypto is priced too. Broker sync: Coinbase today (read-only key), more brokers planned.
+- Money: net worth in EUR, USD or GBP, with daily history.
+- Categories: the user's rules first; optional Google Gemini (only with the user's own key) sorts the rest.
+- Also: spending by category with transfers and refunds excluded, subscription detection, Splitwise shared costs, CSV import, push reminders, installable phone app.
+- Hosting: the user's own Supabase and Vercel accounts, on free plans. The installer needs no GitHub account. To update, run `npx create-alopex` again in the same folder. Docker (`docker compose up`) runs the sync and dashboard on a home server, still with a Supabase project.
+- Safety: Alopex cannot move money or make payments. Sync logs hold counts, never names or amounts.
+- Not included: banks outside Europe, real-time balances, budgets, savings goals, forecasts.
+- Alopex is a tracking tool, not financial advice.
+
+## Docs
+- [README](https://raw.githubusercontent.com/marcodonghiaa/alopex/main/README.md): What is Alopex, how does it work, and how do I set it up?
+- [Installer](https://raw.githubusercontent.com/marcodonghiaa/alopex/main/installer/README.md): What does `npx create-alopex` do, and how do I update?
+- [Upgrading](https://raw.githubusercontent.com/marcodonghiaa/alopex/main/UPGRADING.md): What do I run after a new release on a manual install?
+- [Dashboard README](https://raw.githubusercontent.com/marcodonghiaa/alopex-web/main/README.md): How do I host the dashboard or import my history?
+- [Contributing](https://raw.githubusercontent.com/marcodonghiaa/alopex/main/CONTRIBUTING.md): How do I report a bug or open a pull request?
+
+## Integrations
+- [All integrations](https://alopex.finance/integrations): Every service Alopex connects to, by type
+- [Enable Banking](https://alopex.finance/integrations/enable-banking): Read-only PSD2 sync for 2000+ banks in 31 European countries
+- [Coinbase](https://alopex.finance/integrations/coinbase): Coinbase balances in net worth with a read-only API key
+- [Splitwise](https://alopex.finance/integrations/splitwise): Import a Splitwise group export; your share and who owes you
+- [Google Gemini](https://alopex.finance/integrations/gemini): Optional AI categories and subscription detection with your own key
+- [Supabase](https://alopex.finance/integrations/supabase): Your own database; the sync runs inside it every 6 hours
+- [Vercel](https://alopex.finance/integrations/vercel): The dashboard on your own Vercel account, deployed by the installer
+- [CSV and PDF import](https://alopex.finance/integrations/csv-import): Past net worth, bank statements and trades
+- [Docker](https://alopex.finance/integrations/docker): Run the sync and dashboard on your own server
+
+## Roadmap
+- [Roadmap](https://alopex.finance/roadmap): What is in development and next; each item is a GitHub issue you can vote on
+- [Changelog](https://alopex.finance/changelog): Everything that shipped, newest first
+
+## Comparisons
+- [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, broker sync, where data lives, export
+- Monarch Money: $99.99 a year ($14.99 a month), US and Canadian institutions, syncs brokerage holdings, CSV export, closed source, data on Monarch servers. Sources: https://www.monarch.com/pricing , https://help.monarch.com/hc/en-us/articles/41855507661076-Investments-in-Monarch
+- Finary: free for 2 accounts, paid from €54.99 a year, syncs banks and brokers (20,000 institutions via Powens or Plaid), CSV export only for Finary Invest trades, closed source, data on Finary servers. Sources: https://finary.com/en/pricing , https://help.finary.com/en/articles/8117358-how-can-i-download-my-transaction-history
+- Firefly III and Actual Budget: open-source budgeting apps. Ghostfolio: open-source investment tracker. Alopex adds up bank accounts, investments and crypto into one net worth, with European bank sync built in.
+
+## FAQ
+- [Is there an open-source alternative to Monarch Money for European banks?](https://alopex.finance/#faq): Yes, Alopex: MIT-licensed, self-hosted, PSD2 sync for 2000+ European banks.
+- [Is Alopex free? What's the catch?](https://alopex.finance/#faq): Free on free plans of Supabase, Vercel and Enable Banking; the user runs it and renews bank access every 180 days.
+- [Do I need a server?](https://alopex.finance/#faq): No. Sync runs on a schedule inside the user's Supabase project; the dashboard runs on Vercel.
+- [Can Alopex move money?](https://alopex.finance/#faq): No. Bank access and the Coinbase key are both read-only.
+
+## Optional
+- [Issues](https://github.com/marcodonghiaa/alopex/issues): Bug reports and corrections
+- [License](https://github.com/marcodonghiaa/alopex/blob/main/LICENSE): MIT license text
+- [Enable Banking bank list](https://enablebanking.com/open-banking-apis): Every bank Alopex can sync, by country
+- [Enable Banking privacy policy](https://enablebanking.com/privacy-policy): The PSD2 provider in the data path, regulated by Finland's FIN-FSA
+
+Last updated: 2026-11-10

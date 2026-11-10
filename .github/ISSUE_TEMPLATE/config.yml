@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Suggest an idea
+    url: https://github.com/marcodonghiaa/alopex/discussions/new?category=ideas
+    about: Post feature ideas in Discussions, where others can upvote them. See the roadmap at https://alopex.finance/roadmap
