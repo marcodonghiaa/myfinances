@@ -1,20 +1,23 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { mfaSatisfied } from "./mfa.ts";
+import { mfaRefusal } from "./mfa.ts";
 
 const client = (data: unknown, error: { code?: string; message?: string } | null = null) => ({
   rpc: () => Promise.resolve({ data, error }),
 });
 
-Deno.test("mfaSatisfied passes only an explicit true", async () => {
-  assertEquals(await mfaSatisfied(client(true)), true);
-  assertEquals(await mfaSatisfied(client(false)), false);
-  assertEquals(await mfaSatisfied(client(null)), false);
+Deno.test("mfaRefusal lets only an explicit true through", async () => {
+  assertEquals(await mfaRefusal(client(true)), null);
+  assertEquals((await mfaRefusal(client(false)))?.status, 403);
+  assertEquals((await mfaRefusal(client(null)))?.status, 403);
 });
 
-Deno.test("mfaSatisfied fails closed when the database refuses the session", async () => {
-  assertEquals(await mfaSatisfied(client(null, { code: "42501", message: "Enter your authenticator code first" })), false);
+Deno.test("mfaRefusal: database refuses the session → 403 mfa_required", async () => {
+  const r = await mfaRefusal(client(null, { code: "42501", message: "Enter your authenticator code first" }));
+  assertEquals(r?.status, 403);
+  assertEquals((r?.body as { code: string }).code, "mfa_required");
 });
 
-Deno.test("mfaSatisfied fails closed on any other error", async () => {
-  assertEquals(await mfaSatisfied(client(true, { code: "PGRST202", message: "missing" })), false);
+Deno.test("mfaRefusal: any other error → 503, still refused", async () => {
+  const r = await mfaRefusal(client(true, { code: "PGRST202", message: "missing" }));
+  assertEquals(r?.status, 503);
 });
