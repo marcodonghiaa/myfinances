@@ -1,7 +1,7 @@
 // Pairs each incoming refund with the earlier charge it reverses, so neither
 // counts as spend or income. Match key: same account, merchant, amount and
 // currency; the credit must land 0-90 days after the debit. Full refunds only
-// -- partial ones are marked by hand in the dashboard.
+// -- partial ones stay spend and income (the dashboard has no way to mark a refund yet).
 const WINDOW_DAYS = 90;
 const DAY_MS = 86_400_000;
 

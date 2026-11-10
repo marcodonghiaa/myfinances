@@ -144,6 +144,11 @@ export async function classifyFlows(db: Db, timeLeft: () => boolean = () => true
   return { ...result, reresolved: await reresolveDefaults(db, rules, timeLeft) };
 }
 
+// Flows refund pairing may change: the direction by default, and flows set before flow_source
+// existed (legacy, also what this pairing always read). A flow you or a rule decided is never
+// touched, so moving a wrong pair back to spend sticks.
+const REFUND_SOURCES = ["default", "legacy"];
+
 // Rows still counted as spend/income, recent enough to hold either side of a refund pair.
 // ponytail: no time budget inside, fine for one person's 180 days (a few pages); pass timeLeft
 // and skip refunds for the run if it ever gets near the 150 s wall clock.
@@ -155,7 +160,7 @@ async function fetchRefundCandidates(db: Db): Promise<RefundRow[]> {
       .from("transactions")
       .select("entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date")
       .in("flow_type", ["spend", "income"])
-      .eq("flow_source", "default") // a flow you, a rule or a past choice decided is never touched
+      .in("flow_source", REFUND_SOURCES)
       .is("deleted_at", null)
       .gte("booking_date", since)
       .order("entry_reference")
@@ -171,7 +176,7 @@ async function fetchRefundCandidates(db: Db): Promise<RefundRow[]> {
 // which charge it reverses.
 export async function markRefunds(db: Db): Promise<number> {
   const pairs = matchRefunds(await fetchRefundCandidates(db));
-  const guardIn = ["default"]; // flow_source: a later decision by you or a rule wins
+  const guardIn = REFUND_SOURCES; // flow_source: a later decision by you or a rule wins
   await applyGroupedUpdates(
     db,
     pairs.flatMap(({ debit, credit }) => [

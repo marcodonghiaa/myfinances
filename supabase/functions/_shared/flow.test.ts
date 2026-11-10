@@ -129,7 +129,7 @@ Deno.test("classifyFlows re-resolves recent default rows when something stronger
 // protects=a refund pair stops counting as spend and income, but never overrides a flow you, a
 // rule or a past choice decided; fails_when=either side keeps its flow, the credit loses its link
 // to the charge, or candidates/updates ignore flow_source
-Deno.test("markRefunds pairs only rows whose flow nobody decided", async () => {
+Deno.test("markRefunds pairs only rows whose flow nobody decided (default or legacy)", async () => {
   const candidates = [
     { account_uid: "a", entry_reference: "d1", amount: 9.99, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: "Twitter", booking_date: "2026-10-01" },
     { account_uid: "a", entry_reference: "c1", amount: 9.99, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: "Twitter", booking_date: "2026-10-03" },
@@ -161,9 +161,9 @@ Deno.test("markRefunds pairs only rows whose flow nobody decided", async () => {
     },
   };
   assertEquals(await markRefunds(db), 1);
-  assertEquals(filters, [["flow_type", ["spend", "income"]], ["flow_source", "default"]]);
+  assertEquals(filters, [["flow_type", ["spend", "income"]], ["flow_source", ["default", "legacy"]]]);
   assertEquals(updates, [
-    { update: { flow_type: "refunded" }, refs: ["d1"], guard: ["flow_source", ["default"]] },
-    { update: { flow_type: "refunded", refund_of: "d1" }, refs: ["c1"], guard: ["flow_source", ["default"]] },
+    { update: { flow_type: "refunded" }, refs: ["d1"], guard: ["flow_source", ["default", "legacy"]] },
+    { update: { flow_type: "refunded", refund_of: "d1" }, refs: ["c1"], guard: ["flow_source", ["default", "legacy"]] },
   ]);
 });
