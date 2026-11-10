@@ -6,12 +6,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
-### Two-step sign-in, and notes and tags on transactions
-- **Migrations:** `20261210000000_transaction_notes_tags` and `20261210000001_require_mfa`. Apply them with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
+### Two-step sign-in
+- **Migration:** `20261210000001_require_mfa`. Apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
 - Settings has **Two-step sign-in**: scan a QR code with an authenticator app (1Password, Google Authenticator, Aegis, ...) and type its 6-digit code. From then on, sign-in asks for a code. The database enforces it: a session that skipped the code reads and changes nothing, and the Edge Functions refuse it. Users without an authenticator are not affected.
 - **Lost your phone?** There are no backup codes: add a second authenticator in Settings while you still have the first. If every authenticator is gone, the instance owner removes them in the Supabase SQL editor: `delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'you@example.com');`, then sets it up again.
-- Transactions get a free-text note and tags (`transactions.note`, `transactions.tags`). Filter the Transactions page by tag. The sync never writes them, so a re-sync keeps them; they are in the data export. `v_transactions_eur` has two new last columns, `note` and `tags`.
-- **Roll back:** `supabase/rollbacks/20261210000001_require_mfa.down.sql` (after reverting the Edge Functions), then `supabase/rollbacks/20261210000000_transaction_notes_tags.down.sql` (notes and tags columns stay, the old dashboard ignores them).
+- **Roll back:** `supabase/rollbacks/20261210000001_require_mfa.down.sql` (after reverting the Edge Functions).
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
