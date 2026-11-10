@@ -18,7 +18,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600&display=swap">
+<link rel="stylesheet" id="gf" media="print" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600&display=swap"></noscript>
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -435,7 +437,7 @@ ol.steps li::before{margin:0;grid-row:span 2}
 .ibody h2{font-size:1.25rem;letter-spacing:-.02em;margin:0 0 var(--s2)}
 .ibody ul,.ibody ol{margin:0;padding-left:1.2em;color:var(--muted)}.ibody li{margin:0 0 10px}
 .ibody .full{grid-column:1/-1}
-.ibody details{border-top:1px solid var(--line);padding:var(--s2) 0}.ibody summary{cursor:pointer;font-weight:500}.ibody details p{color:var(--muted);margin:10px 0 0}
+.ibody details{border-top:1px solid var(--line);padding:0}.ibody details[open]{padding-bottom:var(--s2)}.ibody summary{cursor:pointer;font-weight:500;padding:var(--s2) 0}.ibody details p{color:var(--muted);margin:calc(10px - var(--s2)) 0 0}
 .icta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:0 0 var(--s5)}
 .igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);margin:0 0 var(--s4)}
 .icard{display:block;border:1px solid var(--line);border-radius:12px;padding:var(--s3);text-decoration:none;color:var(--ink);background:var(--bg);transition:border-color .16s ease}
