@@ -24,11 +24,12 @@ function fakeFetch(responses) {
   return { fetch, urls };
 }
 
-// Records .from(t).upsert(rows, opts).
-function fakeSupabase(error = null) {
+// Records .from(t).upsert(rows, opts); accounts.select(...) answers with ownAccounts.
+function fakeSupabase(error = null, ownAccounts = { data: [], error: null }) {
   const upserts = [];
+  const accounts = { select: () => accounts, eq: () => accounts, not: async () => ownAccounts };
   const supabase = {
-    from: (table) => ({
+    from: (table) => (table === 'accounts' ? accounts : {
       upsert: async (rows, opts) => {
         upserts.push({ table, rows, opts });
         return { error };
@@ -89,4 +90,29 @@ test('a failed upsert leaves the cursor', async () => {
 
   assert.deepStrictEqual(result, { upserted: 0, rejected: null });
   assert.deepStrictEqual(lastSync, { pk: '2026-10-20' });
+});
+
+// protects=a payment between your own accounts is stored as such, so it counts as a transfer, not
+// spend; fails_when=the Node sync stores rows without own_counterparty (parity with the Deno sync)
+test('marks a counterparty that is one of your own accounts', async () => {
+  const own = { ...TX, entry_reference: 'own', creditor_account: { iban: 'it60 x054 2811 1010 0000 0123 456' } };
+  const other = { ...TX, entry_reference: 'other', creditor_account: { iban: 'DE89370400440532013000' } };
+  const unknown = { ...TX, entry_reference: 'unknown' };
+  const { fetch } = fakeFetch({ '/transactions?': { body: { transactions: [own, other, unknown] } } });
+  const { supabase, upserts } = fakeSupabase(null, { data: [{ iban: 'IT60X0542811101000000123456' }], error: null });
+
+  await syncAccountTransactions({ fetch, supabase }, 't', { uid: 'pk' }, 'user', {}, '2026-10-27');
+
+  assert.deepStrictEqual(upserts[0].rows.map((r) => [r.entry_reference, r.own_counterparty]), [
+    ['own', true], ['other', false], ['unknown', null],
+  ]);
+});
+
+test('own accounts unreadable: rows leave own_counterparty out, keeping what was stored', async () => {
+  const { fetch } = fakeFetch({ '/transactions?': { body: { transactions: [TX] } } });
+  const { supabase, upserts } = fakeSupabase(null, { data: null, error: { code: '42501' } });
+
+  await syncAccountTransactions({ fetch, supabase }, 't', { uid: 'pk' }, 'user', {}, '2026-10-27');
+
+  assert.equal('own_counterparty' in upserts[0].rows[0], false);
 });

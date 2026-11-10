@@ -74,3 +74,13 @@ test('raw drops the counterparty account numbers, keeps the rest', () => {
   assert.equal('debtor_account' in row.raw, false);
   assert.deepEqual(row.raw.creditor, { name: 'Shop' });
 });
+
+test('own_counterparty: only set when your own IBANs are known', () => {
+  const debit = tx({ creditor_account: { iban: 'DE89 3704 0044 0532 0130 00' } });
+  const own = new Set(['DE89370400440532013000']);
+  assert.strictEqual(buildRows([debit], 'acc', 'user', own)[0].own_counterparty, true);
+  assert.strictEqual(buildRows([debit], 'acc', 'user', new Set())[0].own_counterparty, false);
+  assert.equal('own_counterparty' in buildRows([debit], 'acc', 'user')[0], false);
+  const credit = tx({ credit_debit_indicator: 'CRDT', creditor_account: { iban: 'DE89370400440532013000' } });
+  assert.strictEqual(buildRows([credit], 'acc', 'user', own)[0].own_counterparty, null); // payer IBAN missing
+});

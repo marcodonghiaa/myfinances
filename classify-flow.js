@@ -44,14 +44,15 @@ async function fetchUnclassified() {
 const PAGE_SIZE = 1000; // PostgREST caps a response at 1000 rows
 
 // Rows still counted as spend/income, recent enough to hold either side of a refund pair.
-async function fetchRefundCandidates() {
+async function fetchRefundCandidates(db) {
   const since = new Date(Date.now() - 2 * WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
   const rows = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('transactions')
       .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date')
       .in('flow_type', ['spend', 'income'])
+      .eq('flow_source', 'default') // a flow you, a rule or a past choice decided is never touched
       .is('deleted_at', null)
       .gte('booking_date', since)
       .order('entry_reference')
@@ -64,14 +65,14 @@ async function fetchRefundCandidates() {
 
 // Both sides of a pair become 'refunded' (excluded from spend and income); the
 // credit remembers which charge it reverses.
-async function markRefunds() {
-  const pairs = matchRefunds(await fetchRefundCandidates());
-  const guardIn = ['spend', 'income'];
+async function markRefunds(db = supabase) {
+  const pairs = matchRefunds(await fetchRefundCandidates(db));
+  const guardIn = ['default']; // flow_source: a later decision by you or a rule wins
   await applyGroupedUpdates(
-    supabase,
+    db,
     pairs.flatMap(({ debit, credit }) => [
-      { ...debit, update: { flow_type: 'refunded' }, guardColumn: 'flow_type', guardIn },
-      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, guardColumn: 'flow_type', guardIn },
+      { ...debit, update: { flow_type: 'refunded' }, guardColumn: 'flow_source', guardIn },
+      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, guardColumn: 'flow_source', guardIn },
     ]),
   );
   return pairs.length;
@@ -124,4 +125,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { classifyAll, resolveFlowType, flowSourceFor, BATCH_SIZE };
+module.exports = { classifyAll, resolveFlowType, flowSourceFor, markRefunds, BATCH_SIZE };

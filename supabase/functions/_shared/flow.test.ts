@@ -126,13 +126,15 @@ Deno.test("classifyFlows re-resolves recent default rows when something stronger
   ]);
 });
 
-// protects=a refund pair stops counting as spend and income; fails_when=either side keeps its
-// flow, the credit loses its link to the charge, or a row the user moved off spend is touched
-Deno.test("markRefunds marks both sides refunded, guarded on spend/income", async () => {
+// protects=a refund pair stops counting as spend and income, but never overrides a flow you, a
+// rule or a past choice decided; fails_when=either side keeps its flow, the credit loses its link
+// to the charge, or candidates/updates ignore flow_source
+Deno.test("markRefunds pairs only rows whose flow nobody decided", async () => {
   const candidates = [
     { account_uid: "a", entry_reference: "d1", amount: 9.99, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: "Twitter", booking_date: "2026-10-01" },
     { account_uid: "a", entry_reference: "c1", amount: 9.99, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: "Twitter", booking_date: "2026-10-03" },
   ];
+  const filters: unknown[] = [];
   const updates: Array<{ update: unknown; refs: unknown; guard: unknown }> = [];
   const db = {
     from: () => {
@@ -145,13 +147,13 @@ Deno.test("markRefunds marks both sides refunded, guarded on spend/income", asyn
         order: () => q,
         range: async () => ({ data: candidates, error: null }),
         update: (u: unknown) => ((update = u), q),
-        eq: () => q,
+        eq: (col: string, val: unknown) => (update || filters.push([col, val]), q),
         in: (col: string, vals: unknown) => {
           if (col === "entry_reference") refs = vals;
           else if (update) {
-            updates.push({ update, refs, guard: vals });
+            updates.push({ update, refs, guard: [col, vals] });
             return Promise.resolve({ error: null });
-          }
+          } else filters.push([col, vals]);
           return q;
         },
       };
@@ -159,8 +161,9 @@ Deno.test("markRefunds marks both sides refunded, guarded on spend/income", asyn
     },
   };
   assertEquals(await markRefunds(db), 1);
+  assertEquals(filters, [["flow_type", ["spend", "income"]], ["flow_source", "default"]]);
   assertEquals(updates, [
-    { update: { flow_type: "refunded" }, refs: ["d1"], guard: ["spend", "income"] },
-    { update: { flow_type: "refunded", refund_of: "d1" }, refs: ["c1"], guard: ["spend", "income"] },
+    { update: { flow_type: "refunded" }, refs: ["d1"], guard: ["flow_source", ["default"]] },
+    { update: { flow_type: "refunded", refund_of: "d1" }, refs: ["c1"], guard: ["flow_source", ["default"]] },
   ]);
 });

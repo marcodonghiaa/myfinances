@@ -24,7 +24,18 @@ function rawWithoutAccounts(tx) {
   return rest;
 }
 
-function mapToRow(tx, accountUid, userId, entryReference) {
+// Uppercase, no spaces: how IBANs are compared.
+const normalizeIban = (iban) => (typeof iban === 'string' ? iban.replace(/\s+/g, '').toUpperCase() : '');
+
+// Whether the other side of the transaction is one of the user's own accounts: true or false
+// when the bank sent the counterparty's IBAN, null when it didn't (or ownIbans is unknown).
+function ownCounterparty(tx, ownIbans) {
+  const other = normalizeIban(tx.credit_debit_indicator === 'DBIT' ? tx.creditor_account?.iban : tx.debtor_account?.iban);
+  if (!other || !ownIbans) return null;
+  return ownIbans.has(other);
+}
+
+function mapToRow(tx, accountUid, userId, entryReference, ownIbans) {
   return {
     entry_reference: entryReference,
     account_uid: accountUid,
@@ -38,12 +49,16 @@ function mapToRow(tx, accountUid, userId, entryReference) {
     booking_date: tx.booking_date,
     value_date: tx.value_date,
     bank_transaction_code: tx.bank_transaction_code?.code || null,
+    // Left out when the user's IBANs are unknown, so a failed read keeps what was stored.
+    ...(ownIbans && { own_counterparty: ownCounterparty(tx, ownIbans) }),
     raw: rawWithoutAccounts(tx),
     user_id: userId,
   };
 }
 
-function buildRows(transactions, accountUid, userId) {
+// ownIbans: the user's own accounts' IBANs, normalized (see normalizeIban); without it rows carry
+// no own_counterparty.
+function buildRows(transactions, accountUid, userId, ownIbans) {
   const seen = new Map();
   const byRef = new Map(); // Map keeps one row per key, last wins
   for (const tx of transactions) {
@@ -51,9 +66,9 @@ function buildRows(transactions, accountUid, userId) {
     // booked copy (a different id) and counted twice. It is stored once the bank books it.
     if (tx.status === 'PDNG') continue;
     const ref = entryReferenceFor(tx, seen);
-    byRef.set(ref, mapToRow(tx, accountUid, userId, ref));
+    byRef.set(ref, mapToRow(tx, accountUid, userId, ref, ownIbans));
   }
   return [...byRef.values()];
 }
 
-module.exports = { buildRows };
+module.exports = { buildRows, normalizeIban, ownCounterparty };

@@ -155,6 +155,7 @@ async function fetchRefundCandidates(db: Db): Promise<RefundRow[]> {
       .from("transactions")
       .select("entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date")
       .in("flow_type", ["spend", "income"])
+      .eq("flow_source", "default") // a flow you, a rule or a past choice decided is never touched
       .is("deleted_at", null)
       .gte("booking_date", since)
       .order("entry_reference")
@@ -170,12 +171,12 @@ async function fetchRefundCandidates(db: Db): Promise<RefundRow[]> {
 // which charge it reverses.
 export async function markRefunds(db: Db): Promise<number> {
   const pairs = matchRefunds(await fetchRefundCandidates(db));
-  const guardIn = ["spend", "income"];
+  const guardIn = ["default"]; // flow_source: a later decision by you or a rule wins
   await applyGroupedUpdates(
     db,
     pairs.flatMap(({ debit, credit }) => [
-      { ...debit, update: { flow_type: "refunded" }, guardColumn: "flow_type", guardIn },
-      { ...credit, update: { flow_type: "refunded", refund_of: debit.entry_reference }, guardColumn: "flow_type", guardIn },
+      { ...debit, update: { flow_type: "refunded" }, guardColumn: "flow_source", guardIn },
+      { ...credit, update: { flow_type: "refunded", refund_of: debit.entry_reference }, guardColumn: "flow_source", guardIn },
     ]),
   );
   return pairs.length;
