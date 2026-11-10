@@ -61,10 +61,10 @@ Deno.serve(async (req) => {
     const splitwise = await categorizeSplitwise(supabase, ask, aiTimeLeft);
     const flows = await classifyFlows(supabase, timeLeft);
     const transferPairs = await pairTransfers(supabase, timeLeft);
-    const refunds = timeLeft() ? await markRefunds(supabase) : 0;
-    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, flowsReresolved: flows.reresolved, transferPairs, refunds, stuck: flows.stuck, ms: Date.now() - started };
+    const refunds = timeLeft() ? await markRefunds(supabase) : { pairs: 0, failed: 0 };
+    const result = { ...keys, ...categories, ...types, ...splitwise, flows: flows.total, flowsReresolved: flows.reresolved, transferPairs, refunds: refunds.pairs, refundWritesFailed: refunds.failed, stuck: flows.stuck, ms: Date.now() - started };
     console.log(`post-sync: ${JSON.stringify(result)}`);
-    const failed = flows.stuck || categories.aiFailed || types.typeAiFailed || splitwise.splitwiseAiFailed;
+    const failed = flows.stuck || refunds.failed > 0 || categories.aiFailed || types.typeAiFailed || splitwise.splitwiseAiFailed;
     return Response.json(result, { status: failed ? 500 : 200 });
   } catch (err) {
     console.error(`post-sync failed: ${errorTag(err)}`);

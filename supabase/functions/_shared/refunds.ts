@@ -14,6 +14,7 @@ export interface RefundRow {
   creditor_name?: string | null;
   remittance_info?: string | null;
   booking_date: string;
+  refund_of?: string | null; // set on a credit whose pair was undone: it may only pair with that charge
 }
 
 type Ref = { account_uid: string; entry_reference: string };
@@ -44,6 +45,7 @@ export function matchRefunds(rows: RefundRow[]): Array<{ debit: Ref; credit: Ref
     const debit = debits.findLast(
       (d) =>
         !used.has(d) &&
+        (!credit.refund_of || d.entry_reference === credit.refund_of) &&
         d.account_uid === credit.account_uid &&
         d.currency === credit.currency &&
         d.amount === credit.amount &&

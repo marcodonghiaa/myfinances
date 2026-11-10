@@ -126,18 +126,41 @@ Deno.test("classifyFlows re-resolves recent default rows when something stronger
   ]);
 });
 
+// Test rows for the refund tests: a charge d days ago and a credit c days ago, same merchant/amount.
+const day = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
+type Tx = Record<string, unknown>;
+const charge = (ref: string, merchant: string, ago: number, over: Tx = {}): Tx => ({
+  account_uid: "a", entry_reference: ref, amount: 9.99, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: merchant,
+  booking_date: day(ago), flow_type: "spend", flow_source: "default", deleted_at: null, refund_of: null, ...over,
+});
+const credit = (ref: string, merchant: string, ago: number, over: Tx = {}): Tx =>
+  charge(ref, merchant, ago, { credit_debit_indicator: "CRDT", flow_type: "income", ...over });
+const flows = (rows: Tx[]) => rows.map((r) => [r.entry_reference, r.flow_type, r.refund_of]);
+
+// Runs fn once, right after the n-th query (1-based) resolves: a write from elsewhere mid-run.
+function afterQuery(db: ReturnType<typeof memoryDb>, n: number, fn: () => void) {
+  let calls = 0;
+  return {
+    from(t: string) {
+      const q = db.from(t);
+      const then = q.then;
+      q.then = (resolve: (v: unknown) => void) => then((v: unknown) => (++calls === n && fn(), resolve(v)));
+      return q;
+    },
+  };
+}
+
 // protects=a refund pair stops counting as spend and income unless you set either side by hand,
 // including merchants with a "not a transfer" rule; fails_when=a rule-sourced pair stays spend and
 // income, a hand-set side is overwritten, or the credit loses its link to the charge
 Deno.test("markRefunds pairs default, rule and legacy rows, never a flow you set", async () => {
-  const day = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
   const pair = (ref: string, merchant: string, source: string, creditSource = source) => [
-    { account_uid: "a", entry_reference: `${ref}-d`, amount: 9.99, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: merchant, booking_date: day(10), flow_type: "spend", flow_source: source, deleted_at: null },
-    { account_uid: "a", entry_reference: `${ref}-c`, amount: 9.99, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: merchant, booking_date: day(8), flow_type: "income", flow_source: creditSource, deleted_at: null },
+    charge(`${ref}-d`, merchant, 10, { flow_source: source }),
+    credit(`${ref}-c`, merchant, 8, { flow_source: creditSource }),
   ];
   const rows = [...pair("def", "Shop", "default"), ...pair("rul", "PayPal", "rule"), ...pair("leg", "Store", "legacy"), ...pair("usr", "Cafe", "default", "user")];
-  assertEquals(await markRefunds(memoryDb({ transactions: rows })), 3);
-  assertEquals(rows.map((r) => [r.entry_reference, r.flow_type, (r as { refund_of?: string }).refund_of ?? null]), [
+  assertEquals(await markRefunds(memoryDb({ transactions: rows })), { pairs: 3, failed: 0 });
+  assertEquals(flows(rows), [
     ["def-d", "refunded", null], ["def-c", "refunded", "def-d"],
     ["rul-d", "refunded", null], ["rul-c", "refunded", "rul-d"],
     ["leg-d", "refunded", null], ["leg-c", "refunded", "leg-d"],
@@ -145,28 +168,92 @@ Deno.test("markRefunds pairs default, rule and legacy rows, never a flow you set
   ]);
 });
 
-// protects=a rule that turns a row into a transfer between the read and the write wins;
-// fails_when=the refund update only guards flow_source, so a rule transfer becomes refunded
-Deno.test("markRefunds leaves a side that became a transfer after the read", async () => {
-  const day = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
-  const rows = [
-    { account_uid: "a", entry_reference: "d", amount: 5, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: "Shop", booking_date: day(10), flow_type: "spend", flow_source: "default", deleted_at: null },
-    { account_uid: "a", entry_reference: "c", amount: 5, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: "Shop", booking_date: day(8), flow_type: "income", flow_source: "default", deleted_at: null },
-  ];
-  const mem = memoryDb({ transactions: rows });
-  let raced = false;
-  const db = {
-    from(t: string) {
-      const q = mem.from(t);
-      const then = q.then;
-      q.then = (resolve: (v: unknown) => void) =>
-        then((v: unknown) => {
-          if (!raced) (raced = true), Object.assign(rows[0], { flow_type: "transfer", flow_source: "rule" });
-          resolve(v);
-        });
-      return q;
-    },
-  };
+// protects=a rule that turns a row into a transfer between the read and the write wins, and the
+// half pair it leaves is undone on the next run; fails_when=the update only guards flow_source, or
+// the lone refunded credit stays out of income for good
+Deno.test("markRefunds leaves a side that became a transfer after the read, and repairs the other next run", async () => {
+  const rows = [charge("d", "Shop", 10), credit("c", "Shop", 8)];
+  // query 1 is the repair read, 2 the candidates read
+  const db = afterQuery(memoryDb({ transactions: rows }), 2, () => Object.assign(rows[0], { flow_type: "transfer", flow_source: "rule" }));
   await markRefunds(db);
-  assertEquals(rows.map((r) => r.flow_type), ["transfer", "refunded"]);
+  assertEquals(flows(rows), [["d", "transfer", null], ["c", "refunded", "d"]]);
+  await markRefunds(memoryDb({ transactions: rows }));
+  assertEquals(flows(rows), [["d", "transfer", null], ["c", "income", "d"]]);
+});
+
+// protects=a pair whose second write failed is finished, not left half applied; fails_when=one side
+// keeps counting as spend or income forever
+Deno.test("repair finishes a pair whose charge write failed, and re-pairs one whose credit write failed", async () => {
+  const chargeFailed = [charge("d1", "Shop", 10), credit("c1", "Shop", 8, { flow_type: "refunded", refund_of: "d1" })];
+  const creditFailed = [charge("d2", "Store", 10, { flow_type: "refunded" }), credit("c2", "Store", 8)];
+  const rows = [...chargeFailed, ...creditFailed];
+  assertEquals(await markRefunds(memoryDb({ transactions: rows })), { pairs: 1, failed: 0 });
+  assertEquals(flows(rows), [["d1", "refunded", null], ["c1", "refunded", "d1"], ["d2", "refunded", null], ["c2", "refunded", "d2"]]);
+});
+
+// protects=moving a refunded charge to Transfer leaves its refund as income, without stealing last
+// month's identical charge; fails_when=the refund stays 'refunded' or pairs with the older charge
+Deno.test("a charge you moved to Transfer: its refund counts as income and never pairs with an older charge", async () => {
+  const rows = [
+    charge("old", "Netflix", 40),
+    charge("d", "Netflix", 10, { flow_type: "transfer", flow_source: "user" }),
+    credit("c", "Netflix", 8, { flow_type: "refunded", refund_of: "d" }),
+  ];
+  assertEquals(await markRefunds(memoryDb({ transactions: rows })), { pairs: 0, failed: 0 });
+  assertEquals(flows(rows), [["old", "spend", null], ["d", "transfer", null], ["c", "income", "d"]]);
+});
+
+// protects=deleting one side frees the other, and Undo brings the pair back; fails_when=the live side
+// stays refunded, or the restored charge never pairs with its own refund again
+Deno.test("deleting a side frees the other; undoing the delete restores the pair", async () => {
+  const rows = [charge("d", "Shop", 10, { flow_type: "refunded" }), credit("c", "Shop", 8, { flow_type: "refunded", refund_of: "d" })];
+  rows[0].deleted_at = "2026-11-01T00:00:00Z";
+  await markRefunds(memoryDb({ transactions: rows }));
+  assertEquals(flows(rows), [["d", "refunded", null], ["c", "income", "d"]]);
+  rows[0].deleted_at = null; // Undo
+  await markRefunds(memoryDb({ transactions: rows }));
+  assertEquals(flows(rows), [["d", "refunded", null], ["c", "refunded", "d"]]);
+});
+
+// protects=a refund landing up to 90 days after its charge keeps its pair even when the charge is
+// older than the 180-day read window; fails_when=the repair resets a complete pair at the edge
+Deno.test("repair keeps a complete pair whose charge is outside the window", async () => {
+  const rows = [charge("d", "Shop", 185, { flow_type: "refunded" }), credit("c", "Shop", 100, { flow_type: "refunded", refund_of: "d" })];
+  assertEquals(await markRefunds(memoryDb({ transactions: rows })), { pairs: 0, failed: 0 });
+  assertEquals(flows(rows), [["d", "refunded", null], ["c", "refunded", "d"]]);
+});
+
+// protects=refund_of names a charge only within the credit's own account; fails_when=a credit on
+// another account with the same entry_reference keeps a lone charge refunded
+Deno.test("repair matches a credit's charge on the same account only", async () => {
+  const rows = [
+    charge("x", "Shop", 10, { flow_type: "refunded" }), // account a: its credit was deleted
+    credit("c", "Shop", 8, { flow_type: "refunded", refund_of: "x", deleted_at: "2026-11-01T00:00:00Z" }),
+    charge("x", "Shop", 10, { account_uid: "b", flow_type: "refunded" }), // account b: complete pair
+    credit("c", "Shop", 8, { account_uid: "b", flow_type: "refunded", refund_of: "x" }),
+  ];
+  await markRefunds(memoryDb({ transactions: rows }));
+  assertEquals(rows.map((r) => [r.account_uid, r.entry_reference, r.flow_type]), [
+    ["a", "x", "spend"], ["a", "c", "refunded"], ["b", "x", "refunded"], ["b", "c", "refunded"],
+  ]);
+});
+
+// protects=a flow you set by hand is never changed by the repair; fails_when=a 'user' refunded row
+// is reset
+Deno.test("repair never touches a row you set", async () => {
+  const rows = [charge("d", "Shop", 10, { flow_type: "refunded", flow_source: "user" })];
+  await markRefunds(memoryDb({ transactions: rows }));
+  assertEquals(flows(rows), [["d", "refunded", null]]);
+});
+
+// protects=pairs are found across the 1000-row pages, and a row read twice (another write shifted
+// the pages) can't serve two refunds; fails_when=a pair split by a page is missed, or one charge
+// pairs with two credits
+Deno.test("refund candidates: a pair across pages is found, a row read twice pairs once", async () => {
+  const fillers = Array.from({ length: 999 }, (_, i) => charge(`c${String(i).padStart(3, "0")}`, "Filler", 20, { amount: 1000 + i }));
+  const rows = [...fillers, charge("d", "Shop", 10), credit("y1", "Shop", 8), credit("y2", "Shop", 7)];
+  // After the first candidates page (query 2), a sync inserts a row before it: "d" moves to page 2.
+  const db = afterQuery(memoryDb({ transactions: rows }), 2, () => void rows.push(charge("a", "Filler", 20, { amount: 1 })));
+  assertEquals(await markRefunds(db), { pairs: 1, failed: 0 });
+  assertEquals(rows.filter((r) => r.flow_type === "refunded").map((r) => r.entry_reference), ["d", "y1"]);
 });
