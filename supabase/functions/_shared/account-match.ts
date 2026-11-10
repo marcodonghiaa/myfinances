@@ -5,8 +5,21 @@
 
 import type { BankInfo } from "./bank-info.ts";
 
-export interface StoredAccount { uid: string; iban: string | null; currency: string; identification_hash: string | null }
-export type IncomingAccount = Omit<StoredAccount, "uid">;
+export interface StoredAccount {
+  uid: string;
+  iban: string | null;
+  currency: string;
+  identification_hash: string | null;
+  account_type?: string | null;
+}
+export type IncomingAccount = Omit<StoredAccount, "uid" | "account_type">;
+
+// Enable Banking cash_account_type (ISO 20022) -> accounts.account_type. null = not sent.
+const CASH_ACCOUNT_TYPES: Record<string, string> = { CACC: "checking", SVGS: "savings", CARD: "credit_card", LOAN: "loan" };
+export function accountType(cashAccountType: unknown): string | null {
+  if (typeof cashAccountType !== "string" || cashAccountType === "") return null;
+  return CASH_ACCOUNT_TYPES[cashAccountType.toUpperCase()] ?? "other";
+}
 
 export function matchAccount(existing: StoredAccount[], incoming: IncomingAccount): string | null {
   const { iban, currency, identification_hash: hash } = incoming;

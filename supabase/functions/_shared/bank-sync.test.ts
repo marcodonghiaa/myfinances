@@ -174,6 +174,35 @@ Deno.test("balance: fills a missing hash once, then fetches the balance", async 
   assertEquals(row?.account_uid, "pk");
 });
 
+Deno.test("balance: fills a missing account type once from the bank's cash_account_type", async () => {
+  const { fetch, urls } = fakeFetch({ "/details": { body: { cash_account_type: "CARD" } }, "/balances": { body: BALANCES } });
+  const { supabase, writes } = fakeSupabase();
+
+  await syncAccountBalance({ fetch, supabase }, "t", account({ account_type: null }), TODAY);
+
+  assertEquals(urls, [`${EB}/eb/details`, `${EB}/eb/balances`]);
+  assertEquals(writes, [{ table: "accounts", op: "update", data: { account_type: "credit_card" }, filters: [["eq", "uid", "pk"]] }]);
+});
+
+Deno.test("balance: a bank that sends no type stores other, so details is not asked again", async () => {
+  const { fetch } = fakeFetch({ "/details": { body: {} }, "/balances": { body: BALANCES } });
+  const { supabase, writes } = fakeSupabase();
+
+  await syncAccountBalance({ fetch, supabase }, "t", account({ account_type: null }), TODAY);
+
+  assertEquals(writes, [{ table: "accounts", op: "update", data: { account_type: "other" }, filters: [["eq", "uid", "pk"]] }]);
+});
+
+Deno.test("balance: a typed account with a hash skips details", async () => {
+  const { fetch, urls } = fakeFetch({ "/balances": { body: BALANCES } });
+  const { supabase, writes } = fakeSupabase();
+
+  await syncAccountBalance({ fetch, supabase }, "t", account({ account_type: "savings" }), TODAY);
+
+  assertEquals(urls, [`${EB}/eb/balances`]);
+  assertEquals(writes, []);
+});
+
 Deno.test("balance: a 429 on details still returns the balance", async () => {
   const { fetch } = fakeFetch({ "/details": { ok: false, status: 429 }, "/balances": { body: BALANCES } });
   const { supabase, writes } = fakeSupabase();

@@ -2,8 +2,8 @@ const ACCOUNT_COLUMNS = 'uid, currency, label, created_at, iban, identification_
 
 // Newest columns first: 42703 (undefined column) means that migration isn't applied yet, so
 // read again without it. eb_account_uid missing: ebAccountId falls back to uid. manual
-// missing: there are no manual accounts yet.
-const OPTIONAL_COLUMNS = [', eb_account_uid, manual', ', eb_account_uid', ''];
+// missing: there are no manual accounts yet. account_type missing: it is never filled.
+const OPTIONAL_COLUMNS = [', eb_account_uid, manual, account_type', ', eb_account_uid, manual', ', eb_account_uid', ''];
 
 async function selectNewest(supabase, base, filter) {
   for (const extra of OPTIONAL_COLUMNS) {
@@ -53,7 +53,15 @@ function idsPatchFromDetails(details) {
   return { identification_hash: details.identification_hash, ...(iban && { iban }) };
 }
 
+// Enable Banking cash_account_type (ISO 20022) -> accounts.account_type. null = not sent.
+// Same map as supabase/functions/_shared/account-match.ts.
+const CASH_ACCOUNT_TYPES = { CACC: 'checking', SVGS: 'savings', CARD: 'credit_card', LOAN: 'loan' };
+function accountType(cashAccountType) {
+  if (typeof cashAccountType !== 'string' || cashAccountType === '') return null;
+  return CASH_ACCOUNT_TYPES[cashAccountType.toUpperCase()] ?? 'other';
+}
+
 // Statuses with which EB refuses an account id (dead or expired consent).
 const EB_REJECTED_STATUSES = new Set([401, 403, 404, 422]);
 
-module.exports = { getAccounts, getAllUserIds, ebAccountId, idsPatchFromDetails, EB_REJECTED_STATUSES };
+module.exports = { getAccounts, getAllUserIds, ebAccountId, idsPatchFromDetails, accountType, EB_REJECTED_STATUSES };
