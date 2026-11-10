@@ -21,3 +21,19 @@ Deno.test("mfaRefusal: any other error → 503, still refused", async () => {
   const r = await mfaRefusal(client(true, { code: "PGRST202", message: "missing" }));
   assertEquals(r?.status, 503);
 });
+
+// protects=the repo rule "log a tag, never the message" (log-safe.ts);
+// fails_when=a database error's text, which can carry personal data, reaches the logs
+Deno.test("mfaRefusal logs the error code, never its message", async () => {
+  const logged: unknown[][] = [];
+  const original = console.error;
+  console.error = (...args: unknown[]) => void logged.push(args);
+  try {
+    await mfaRefusal(client(null, { code: "PGRST202", message: "for jane@example.com" }));
+  } finally {
+    console.error = original;
+  }
+  const text = JSON.stringify(logged);
+  assertEquals(text.includes("PGRST202"), true);
+  assertEquals(text.includes("jane@example.com"), false);
+});
