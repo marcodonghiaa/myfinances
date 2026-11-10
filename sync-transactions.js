@@ -39,8 +39,9 @@ async function getAllTransactions(fetch, token, ebId, dateFrom) {
   return all;
 }
 
-// The user's own IBANs, to mark transactions between their accounts. Undefined when unreadable:
-// the rows then leave own_counterparty out, so the upsert keeps what an earlier sync stored.
+// The user's own IBANs, to mark transactions between their accounts. Only the Edge post-sync turns
+// that flag into a transfer; Node classify-flow doesn't read it (this path is being retired).
+// Undefined when unreadable: rows then leave own_counterparty out, keeping what was stored.
 async function fetchOwnIbans(supabase, userId) {
   const { data, error } = await supabase.from('accounts').select('iban').eq('user_id', userId).not('iban', 'is', null);
   if (error) {

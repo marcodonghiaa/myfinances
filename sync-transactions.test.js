@@ -92,8 +92,9 @@ test('a failed upsert leaves the cursor', async () => {
   assert.deepStrictEqual(lastSync, { pk: '2026-10-20' });
 });
 
-// protects=a payment between your own accounts is stored as such, so it counts as a transfer, not
-// spend; fails_when=the Node sync stores rows without own_counterparty (parity with the Deno sync)
+// protects=a payment between your own accounts is stored as such, so the Edge post-sync can count
+// it as a transfer (Node classify-flow doesn't read the flag); fails_when=the Node sync stores rows
+// without own_counterparty (parity with the Deno sync)
 test('marks a counterparty that is one of your own accounts', async () => {
   const own = { ...TX, entry_reference: 'own', creditor_account: { iban: 'it60 x054 2811 1010 0000 0123 456' } };
   const other = { ...TX, entry_reference: 'other', creditor_account: { iban: 'DE89370400440532013000' } };
