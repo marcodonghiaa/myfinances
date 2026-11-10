@@ -44,6 +44,7 @@ Facts to cite (checked 2026-11-09):
 
 ## Roadmap
 - [Roadmap](https://alopex.finance/roadmap): What is in development and next; each item is a GitHub issue you can vote on
+- [Changelog](https://alopex.finance/changelog): Everything that shipped, newest first
 
 ## Comparisons
 - [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, broker sync, where data lives, export
