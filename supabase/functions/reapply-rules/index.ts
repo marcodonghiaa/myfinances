@@ -2,30 +2,22 @@
 //
 // The Rules page's "Apply to past transactions". Body: { "apply": false } previews how many
 // transactions your current rules would re-categorize (plus a few examples); { "apply": true }
-// does it. Runs as the signed-in user, so RLS limits it to their own rules and transactions.
-// Categories you set by hand are never changed (see _shared/reapply-rules.ts).
+// does it. The caller's JWT only identifies them; reads and writes use the service key, each
+// scoped to that user, because a write with the user's JWT would mark every changed row as
+// hand-set (trg_mark_manual_category). Categories you set by hand are never changed (see
+// _shared/reapply-rules.ts).
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
-import { errorTag } from "../_shared/log-safe.ts";
-import { reapplyRules } from "../_shared/reapply-rules.ts";
+import { reapplyHandler } from "./handler.ts";
 
-Deno.serve(serveWithCors(async (req, json) => {
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+const url = Deno.env.get("SUPABASE_URL")!;
 
-  const asUser = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
-  );
-  const { data: userData, error: userError } = await asUser.auth.getUser();
-  if (userError || !userData.user) return json({ error: "Not signed in" }, 401);
-
-  const body = await req.json().catch(() => null);
-  try {
-    return json(await reapplyRules(asUser, userData.user.id, body?.apply === true));
-  } catch (err) {
-    console.error(`reapply-rules failed: ${errorTag(err)}`);
-    return json({ error: "Couldn't apply your rules, please try again" }, 500);
-  }
-}));
+Deno.serve(serveWithCors(reapplyHandler({
+  async userIdFor(authorization) {
+    const asUser = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authorization } } });
+    const { data, error } = await asUser.auth.getUser();
+    return error ? null : data.user?.id ?? null;
+  },
+  admin: () => createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!),
+})));

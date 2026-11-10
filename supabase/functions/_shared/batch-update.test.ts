@@ -100,3 +100,10 @@ Deno.test("guardIn items are guarded by an in-list instead of is-null", async ()
   assertEquals(db.calls[0].is, null);
   assertEquals(db.calls[0].guardIn, { col: "category_source", vals: ["ai", "rule"] });
 });
+
+Deno.test("userId scopes every statement to that user and failures are counted", async () => {
+  const db = fakeDb({ failWhen: (c) => c.in?.vals.includes("2") ?? false });
+  const failed = await applyGroupedUpdates(db, [item("1"), item("2", { account_uid: "acc2" })], "u1");
+  assertEquals(db.calls.map((c) => c.eq.user_id), ["u1", "u1"]);
+  assertEquals(failed, 1);
+});

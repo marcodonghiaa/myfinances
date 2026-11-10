@@ -9,7 +9,7 @@
 // Then refunds are paired.
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
 import { matchRefunds, type RefundRow, WINDOW_DAYS } from "./refunds.ts";
-import { matchRule, type Rule } from "./rules.ts";
+import { matchRule, RULE_MATCH_COLUMNS, type Rule } from "./rules.ts";
 
 export const BATCH_SIZE = 200;
 const PAGE_SIZE = 1000; // PostgREST caps a response at 1000 rows
@@ -47,7 +47,7 @@ export function resolveFlow(row: FlowRow, rules: FlowRule[] = []): { flow_type: 
 async function fetchFlowRules(db: Db): Promise<FlowRule[]> {
   const { data, error } = await db
     .from("category_rules")
-    .select("user_id, match_field, match_text, match_mode, set_flow_type")
+    .select(`${RULE_MATCH_COLUMNS}, set_flow_type`)
     .not("set_flow_type", "is", null)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: true });
@@ -59,7 +59,7 @@ async function fetchFlowRules(db: Db): Promise<FlowRule[]> {
 // updates didn't land (applyGroupedUpdates only logs a failure): stop instead of looping.
 export async function classifyAll<T extends { account_uid: string; entry_reference: string }>(
   fetchBatch: () => Promise<T[]>,
-  applyBatch: (rows: T[]) => Promise<void>,
+  applyBatch: (rows: T[]) => Promise<unknown>,
   timeLeft: () => boolean = () => true,
 ) {
   let total = 0;

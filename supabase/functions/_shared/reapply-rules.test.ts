@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import { reapplyRules } from "./reapply-rules.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 
@@ -45,4 +45,19 @@ Deno.test("apply changes AI and rule rows only, never hand-set, deleted or other
 Deno.test("no rules with a category: nothing to do", async () => {
   const db = seed([rule({ set_category: null })]);
   assertEquals(await reapplyRules(db, "u1", true), { changes: 0, sample: [] });
+});
+
+Deno.test("more than one page: every row is planned and applied, the sample stays at 5", async () => {
+  const many = Array.from({ length: 1001 }, (_, i) => tx(`r${String(i).padStart(4, "0")}`, "Bar Roma"));
+  const db = memoryDb({ transactions: many, category_rules: [rule()] });
+  const preview = await reapplyRules(db, "u1", false);
+  assertEquals([preview.changes, preview.sample.length], [1001, 5]);
+  assertEquals((await reapplyRules(db, "u1", true)).changes, 1001);
+  assertEquals(db.tables.transactions.filter((r) => r.category === "Dine Out").length, 1001);
+  assertEquals((await reapplyRules(db, "u1", false)).changes, 0);
+});
+
+Deno.test("a failed write throws instead of reporting success", async () => {
+  const db = memoryDb({ transactions: [tx("ai", "Bar Roma")], category_rules: [rule()] }, "update");
+  await assertRejects(() => reapplyRules(db, "u1", true));
 });
