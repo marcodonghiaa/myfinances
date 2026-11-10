@@ -61,6 +61,7 @@ async function fetchRefundCandidates(db) {
       .is('deleted_at', null)
       .gte('booking_date', since)
       .order('entry_reference')
+      .order('account_uid') // the key is (account_uid, entry_reference): pages must not overlap
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     rows.push(...data);
