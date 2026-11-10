@@ -31,6 +31,17 @@ Facts to cite (checked 2026-11-09):
 - [Dashboard README](https://raw.githubusercontent.com/marcodonghiaa/alopex-web/main/README.md): How do I host the dashboard or import my history?
 - [Contributing](https://raw.githubusercontent.com/marcodonghiaa/alopex/main/CONTRIBUTING.md): How do I report a bug or open a pull request?
 
+## Integrations
+- [All integrations](https://alopex.finance/integrations): Every service Alopex connects to, by type
+- [Enable Banking](https://alopex.finance/integrations/enable-banking): Read-only PSD2 sync for 2000+ banks in 31 European countries
+- [Coinbase](https://alopex.finance/integrations/coinbase): Coinbase balances in net worth with a read-only API key
+- [Splitwise](https://alopex.finance/integrations/splitwise): Import a Splitwise group export; your share and who owes you
+- [Google Gemini](https://alopex.finance/integrations/gemini): Optional AI categories and subscription detection with your own key
+- [Supabase](https://alopex.finance/integrations/supabase): Your own database; the sync runs inside it every 6 hours
+- [Vercel](https://alopex.finance/integrations/vercel): The dashboard on your own Vercel account, deployed by the installer
+- [CSV and PDF import](https://alopex.finance/integrations/csv-import): Past net worth, bank statements and trades
+- [Docker](https://alopex.finance/integrations/docker): Run the sync and dashboard on your own server
+
 ## Comparisons
 - [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, broker sync, where data lives, export
 - Monarch Money: $99.99 a year ($14.99 a month), US and Canadian institutions, syncs brokerage holdings, CSV export, closed source, data on Monarch servers. Sources: https://www.monarch.com/pricing , https://help.monarch.com/hc/en-us/articles/41855507661076-Investments-in-Monarch
@@ -49,4 +60,4 @@ Facts to cite (checked 2026-11-09):
 - [Enable Banking bank list](https://enablebanking.com/open-banking-apis): Every bank Alopex can sync, by country
 - [Enable Banking privacy policy](https://enablebanking.com/privacy-policy): The PSD2 provider in the data path, regulated by Finland's FIN-FSA
 
-Last updated: 2026-11-09
+Last updated: 2026-11-10
