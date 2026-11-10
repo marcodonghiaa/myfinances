@@ -55,7 +55,7 @@ async function fetchRefundCandidates(db) {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await db
       .from('transactions')
-      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date')
+      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date, refund_of')
       .in('flow_type', ['spend', 'income'])
       .in('flow_source', REFUND_SOURCES)
       .is('deleted_at', null)

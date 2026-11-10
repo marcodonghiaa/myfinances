@@ -91,3 +91,12 @@ test('a charge with a different remittance merchant is not paired', () => {
   const credit = refund({ amount: 51.97, creditor_name: null, remittance_info: 'Refund from Booking.com', booking_date: '2026-07-03' });
   assert.strictEqual(matchRefunds([debit, credit]).length, 0);
 });
+
+// protects=a refund whose pair was undone (refund_of kept) never pairs with an older identical
+// charge; fails_when=it takes last month's charge
+test('a credit with refund_of pairs only with that charge', () => {
+  const older = row({ entry_reference: 'old', booking_date: '2026-09-20' });
+  const moved = refund({ refund_of: 'gone' });
+  assert.deepStrictEqual(matchRefunds([older, moved]), []);
+  assert.strictEqual(matchRefunds([older, row(), refund({ refund_of: 'e1' })])[0].debit.entry_reference, 'e1');
+});

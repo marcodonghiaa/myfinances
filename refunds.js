@@ -31,6 +31,7 @@ function matchRefunds(rows) {
     const debit = debits.findLast(
       (d) =>
         !used.has(d) &&
+        (!credit.refund_of || d.entry_reference === credit.refund_of) && // an undone pair re-pairs only with its own charge
         d.account_uid === credit.account_uid &&
         d.currency === credit.currency &&
         d.amount === credit.amount &&
