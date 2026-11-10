@@ -44,7 +44,7 @@ $$;
 revoke execute on function public.require_mfa() from public;
 grant execute on function public.require_mfa() to anon, authenticated, service_role;
 
--- Refuse to replace a hook the instance already has (see UPGRADING.md to chain it).
+-- Install the hook, refusing to replace one the instance already has (see UPGRADING.md to chain it).
 do $$
 declare
   existing text;
@@ -59,7 +59,8 @@ begin
   if existing is not null then
     raise exception 'PostgREST already runs pre-request hook %; call public.require_mfa() from it instead', existing;
   end if;
+  -- Same statement as the check, so a run outside a transaction can't skip it and still overwrite.
+  alter role authenticator set pgrst.db_pre_request to 'public.require_mfa';
 end;
 $$;
-alter role authenticator set pgrst.db_pre_request to 'public.require_mfa';
 notify pgrst, 'reload config';
