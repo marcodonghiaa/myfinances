@@ -9,6 +9,9 @@ import { planRuleReapply, REAPPLY_SOURCES, RULE_MATCH_COLUMNS, type Rule } from 
 const PAGE_SIZE = 1000;
 const SAMPLE_SIZE = 5;
 
+// Some updates failed; the others are saved. Running it again is safe: it only plans what's left.
+export class PartialApplyError extends Error {}
+
 export interface ReapplyResult {
   changes: number;
   sample: Array<{ name: string; from: string | null; to: string }>;
@@ -52,7 +55,7 @@ export async function reapplyRules(db: Db, userId: string, apply: boolean): Prom
   });
   if (apply) {
     const failed = await applyGroupedUpdates(db, items, userId);
-    if (failed) throw new Error(`${failed} update(s) failed`);
+    if (failed) throw new PartialApplyError(`${failed} update(s) failed`);
   }
   return { changes: items.length, sample };
 }

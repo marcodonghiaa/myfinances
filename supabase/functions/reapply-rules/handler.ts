@@ -2,7 +2,7 @@
 import type { Db } from "../_shared/batch-update.ts";
 import type { Reply } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
-import { reapplyRules } from "../_shared/reapply-rules.ts";
+import { PartialApplyError, reapplyRules } from "../_shared/reapply-rules.ts";
 
 export interface Deps {
   userIdFor(authorization: string): Promise<string | null>; // who signed this request, or null
@@ -20,6 +20,9 @@ export const reapplyHandler = (deps: Deps) => async (req: Request, json: Reply):
     return json(await reapplyRules(deps.admin(), userId, body?.apply === true));
   } catch (err) {
     console.error(`reapply-rules failed: ${errorTag(err)}`);
-    return json({ error: "Couldn't apply your rules, please try again" }, 500);
+    const error = err instanceof PartialApplyError
+      ? "Some transactions couldn't be updated. Try again: the ones already updated stay as they are."
+      : "Couldn't apply your rules, please try again";
+    return json({ error }, 500);
   }
 };

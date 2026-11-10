@@ -36,8 +36,17 @@ Deno.test("apply writes, as a rule", async () => {
   assertEquals(db.tables.transactions[0].category_source, "rule");
 });
 
-Deno.test("a failed write is a 500, not a silent success", async () => {
+// Polish pass 2 #3: a failed write said only "Couldn't apply", though other rows may be saved.
+Deno.test("a failed write is a 500 that says what was kept and that retrying is safe", async () => {
   const res = await call(seed("update"), { body: JSON.stringify({ apply: true }) });
   assertEquals(res.status, 500);
-  assertEquals(res.body, { error: "Couldn't apply your rules, please try again" });
+  assertEquals(res.body, {
+    error: "Some transactions couldn't be updated. Try again: the ones already updated stay as they are.",
+  });
+});
+
+Deno.test("a failed read keeps the plain error", async () => {
+  const handler = reapplyHandler({ userIdFor: () => Promise.resolve("u1"), admin: () => ({ from: () => { throw new Error("down"); } }) });
+  const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
+  assertEquals([res.status, await res.json()], [500, { error: "Couldn't apply your rules, please try again" }]);
 });
