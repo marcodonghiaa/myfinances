@@ -6,6 +6,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 
 ## Release notes, newest first
 
+### Monthly budgets per category
+- **Migration:** `20261202100000_category_budgets`. You apply it with `supabase db push --linked`, then redeploy the dashboard. No Edge Function or sync change.
+- Adds `category_budgets`: a budget per category that holds from its month onward until you change it, with optional rollover (a month's leftover or overspend moves into the next). Only spend counts, never transfers or income. Budgets are in the export.
+- **Roll back:** `supabase/rollbacks/20261202100000_category_budgets.down.sql` (budgets are lost).
+
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
 - Every account gets a type (`accounts.account_type`): checking, savings, credit card, loan, investment or other. New links take it from the bank; accounts linked before get it on their next sync (one extra bank call per account, once). Empty means unknown and counts as checking (a bank that sends no type gets checking). You can correct it in the dashboard.
