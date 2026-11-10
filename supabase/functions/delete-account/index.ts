@@ -11,6 +11,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
 import { closeSessions } from "../_shared/eb-sessions.ts";
+import { MFA_REQUIRED, mfaSatisfied } from "../_shared/mfa.ts";
 
 const service = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -27,6 +28,7 @@ Deno.serve(serveWithCors(async (req, json) => {
   );
   const { data: userData, error: userError } = await asUser.auth.getUser();
   if (userError || !userData.user) return json({ error: "Not signed in" }, 401);
+  if (!(await mfaSatisfied(asUser))) return json(MFA_REQUIRED, 403);
   const userId = userData.user.id;
 
   const body = await req.json().catch(() => null);

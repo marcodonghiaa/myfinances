@@ -15,6 +15,7 @@ import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared
 import { serveWithCors } from "../_shared/origins.ts";
 import { isBankName, isCountryCode, MAX_OPEN_CONSENTS } from "../_shared/validate.ts";
 import { CONSENT_WINDOW_MS } from "../_shared/consent-claim.ts";
+import { MFA_REQUIRED, mfaSatisfied } from "../_shared/mfa.ts";
 
 Deno.serve(serveWithCors(async (req, json, origin) => {
   if (req.method !== "POST") {
@@ -30,6 +31,7 @@ Deno.serve(serveWithCors(async (req, json, origin) => {
   if (userError || !userData.user) {
     return json({ error: "Not signed in" }, 401);
   }
+  if (!(await mfaSatisfied(supabase))) return json(MFA_REQUIRED, 403);
 
   let body: { bankName?: string; country?: string };
   try {
