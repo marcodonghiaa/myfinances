@@ -83,4 +83,6 @@ test('own_counterparty: only set when your own IBANs are known', () => {
   assert.equal('own_counterparty' in buildRows([debit], 'acc', 'user')[0], false);
   const credit = tx({ credit_debit_indicator: 'CRDT', creditor_account: { iban: 'DE89370400440532013000' } });
   assert.strictEqual(buildRows([credit], 'acc', 'user', own)[0].own_counterparty, null); // payer IBAN missing
+  const fromOwn = tx({ credit_debit_indicator: 'CRDT', debtor_account: { iban: 'de89370400440532013000' } });
+  assert.strictEqual(buildRows([fromOwn], 'acc', 'user', own)[0].own_counterparty, true); // credit reads the payer
 });

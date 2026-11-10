@@ -71,4 +71,4 @@ function buildRows(transactions, accountUid, userId, ownIbans) {
   return [...byRef.values()];
 }
 
-module.exports = { buildRows, normalizeIban, ownCounterparty };
+module.exports = { buildRows, normalizeIban };
