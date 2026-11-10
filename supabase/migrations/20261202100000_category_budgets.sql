@@ -6,7 +6,7 @@
 -- income excluded), so no view is needed here.
 create table public.category_budgets (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  category text not null check (char_length(btrim(category)) between 1 and 40),
+  category text not null check (category = btrim(category) and char_length(category) between 1 and 100),
   month date not null check (extract(day from month) = 1),
   amount numeric(12, 2) not null check (amount >= 0 and amount < 10000000),
   rollover boolean not null default false,
