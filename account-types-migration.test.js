@@ -65,3 +65,12 @@ test('rollback drops the RPCs, typed-in balances and the column, and restores th
   assert.match(down, /grant select on public\.v_bank_accounts_latest, public\.v_net_worth_daily to authenticated, service_role;/);
   assert.ok(down.indexOf('drop column if exists account_type') > down.indexOf('create view public.v_net_worth_daily'));
 });
+
+test('add_manual_transaction never picks a debt account; rollback restores the old lookup', () => {
+  const body = up.slice(up.indexOf('create or replace function public.add_manual_transaction')).split('$$;')[0];
+  assert.match(body, /a\.currency = v_currency\n\s+and coalesce\(a\.account_type, 'checking'\) not in \('credit_card', 'loan'\);/);
+  assert.match(body, /v_uid uuid := auth\.uid\(\)/);
+  const old = down.slice(down.indexOf('create or replace function public.add_manual_transaction')).split('$$;')[0];
+  assert.match(old, /a\.currency = v_currency;/);
+  assert.ok(down.indexOf('add_manual_transaction') < down.indexOf('drop column if exists account_type'));
+});
