@@ -3,12 +3,23 @@ const REAPPLY_SOURCES = ['ai', 'rule']; // never 'manual' or 'legacy': hand edit
 function matchRule(row, rule) {
   if (rule.user_id !== row.user_id) return false; // rules are per-user; the service role sees everyone's
   if (!rule.match_text) return false; // no text to match -- skip, don't crash or match everything
-  const text = rule.match_text.toLowerCase();
+  const text = rule.match_text.trim().toLowerCase();
+  if (!text) return false;
   const fields =
     rule.match_field === 'any'
       ? [row.creditor_name, row.remittance_info]
       : [row[rule.match_field]];
-  return fields.some((f) => (f || '').toLowerCase().includes(text));
+  return fields.some((f) => matchesText((f || '').toLowerCase(), text, rule.match_mode));
+}
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// 'word': the text must stand alone ("bar" matches "Bar Roma", not "Barclays"); 'exact': the
+// whole field; anything else is the old substring match, so existing rules keep working.
+function matchesText(field, text, mode) {
+  if (mode === 'exact') return field.trim() === text;
+  if (mode === 'word') return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(text)}(?![\\p{L}\\p{N}])`, 'u').test(field);
+  return field.includes(text);
 }
 
 // Deterministic user-authored rules take priority over the AI -- cheaper, faster,
@@ -44,4 +55,4 @@ function planRuleReapply(rows, rules) {
   return items;
 }
 
-module.exports = { matchRule, applyRules, planRuleReapply, REAPPLY_SOURCES };
+module.exports = { matchRule, matchesText, applyRules, planRuleReapply, REAPPLY_SOURCES };

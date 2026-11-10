@@ -30,6 +30,9 @@ verify_jwt = true
 [functions.add-holding]
 verify_jwt = true
 
+[functions.reapply-rules]
+verify_jwt = true
+
 [functions.parse-statement]
 verify_jwt = true
 

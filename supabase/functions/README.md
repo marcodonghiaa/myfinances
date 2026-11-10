@@ -23,6 +23,10 @@ plain deploy from this repo reproduces the same gating described below.
   (crypto) by name, ticker or ISIN, and adds the chosen holding with today's
   price so it shows at once. Writes the holding as the user (RLS), the price
   with the service role. `verify_jwt: true`.
+- **reapply-rules** — the Rules page's "Apply to past transactions": `{ "apply": false }`
+  previews how many transactions your rules would re-categorize (with a few examples),
+  `{ "apply": true }` does it. Runs as the user (RLS); categories set by hand never change.
+  `verify_jwt: true`.
 - **parse-statement** — reads the transactions out of a bank statement PDF with Gemini
   for the dashboard's import (`{ pdf: <base64> }` → `{ rows }`). The PDF is never stored and
   nothing is written: the dashboard adds the rows you confirm. Needs `GEMINI_API_KEY`;

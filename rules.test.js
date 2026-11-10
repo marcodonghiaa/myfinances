@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { applyRules, planRuleReapply } = require('./rules');
+const { applyRules, planRuleReapply, matchRule } = require('./rules');
 
 const rule = (over = {}) => ({
   user_id: 'u1',
@@ -62,4 +62,29 @@ test('reapply skips rows no rule matches', () => {
 
 test('reapply ignores rules without a category', () => {
   assert.deepStrictEqual(planRuleReapply([row()], [rule({ set_category: null })]), []);
+});
+
+test('contains (the default for older rules) matches anywhere, so "bar" hits "Barclays"', () => {
+  assert.ok(matchRule(row({ creditor_name: 'BARCLAYS UK' }), rule({ match_text: 'bar' })));
+  assert.ok(matchRule(row({ creditor_name: 'BARCLAYS UK' }), rule({ match_text: 'bar', match_mode: 'contains' })));
+});
+
+test('word only matches the text on its own', () => {
+  const r = rule({ match_text: 'bar', match_mode: 'word' });
+  assert.ok(!matchRule(row({ creditor_name: 'BARCLAYS UK' }), r));
+  assert.ok(matchRule(row({ creditor_name: 'Bar Roma' }), r));
+  assert.ok(matchRule(row({ creditor_name: 'PAYPAL *BAR-ROMA' }), r));
+  assert.ok(!matchRule(row({ creditor_name: 'Bàrbara' }), rule({ match_text: 'bàr', match_mode: 'word' })));
+  assert.ok(matchRule(row({ creditor_name: 'NETFLIX.COM' }), rule({ match_text: 'netflix.com', match_mode: 'word' })));
+  assert.ok(!matchRule(row({ creditor_name: 'AXB' }), rule({ match_text: 'a.b', match_mode: 'word' })));
+});
+
+test('exact matches the whole field, ignoring case and outer spaces', () => {
+  const r = rule({ match_text: ' Netflix ', match_mode: 'exact' });
+  assert.ok(matchRule(row({ creditor_name: 'NETFLIX ' }), r));
+  assert.ok(!matchRule(row({ creditor_name: 'NETFLIX.COM' }), r));
+});
+
+test('blank match text never matches', () => {
+  assert.ok(!matchRule(row(), rule({ match_text: '   ' })));
 });

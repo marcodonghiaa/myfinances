@@ -26,7 +26,7 @@ export function isTransferCode(code?: string | null): boolean {
 async function fetchTypeRules(db: Db): Promise<Rule[]> {
   const { data, error } = await db
     .from("category_rules")
-    .select("user_id, match_field, match_text, set_transaction_type")
+    .select("user_id, match_field, match_text, match_mode, set_transaction_type")
     .not("set_transaction_type", "is", null)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: true });

@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { applyRules, planRuleReapply, type Rule } from "./rules.ts";
+import { applyRules, matchRule, planRuleReapply, type Rule } from "./rules.ts";
 
 const rule = (over: Partial<Rule> = {}): Rule => ({
   user_id: "u1", match_field: "creditor_name", match_text: "netflix", set_category: "Entertainment", set_transaction_type: null, ...over,
@@ -37,4 +37,16 @@ Deno.test("reapply never plans a change for manual or legacy rows, same category
   assertEquals(planRuleReapply([row({ category: "Entertainment", category_source: "rule" })], [rule()]), []);
   assertEquals(planRuleReapply([row({ creditor_name: "Lidl" })], [rule()]), []);
   assertEquals(planRuleReapply([row()], [rule({ set_category: null })]), []);
+});
+
+Deno.test("contains (default for older rules) matches anywhere; word and exact do not over-match", () => {
+  const barclays = row({ creditor_name: "BARCLAYS UK" });
+  assertEquals(matchRule(barclays, rule({ match_text: "bar" })), true);
+  assertEquals(matchRule(barclays, rule({ match_text: "bar", match_mode: "word" })), false);
+  assertEquals(matchRule(row({ creditor_name: "PAYPAL *BAR-ROMA" }), rule({ match_text: "bar", match_mode: "word" })), true);
+  assertEquals(matchRule(row({ creditor_name: "Bàrbara" }), rule({ match_text: "bàr", match_mode: "word" })), false);
+  assertEquals(matchRule(row({ creditor_name: "AXB" }), rule({ match_text: "a.b", match_mode: "word" })), false);
+  assertEquals(matchRule(row({ creditor_name: "NETFLIX " }), rule({ match_text: " Netflix ", match_mode: "exact" })), true);
+  assertEquals(matchRule(row({ creditor_name: "NETFLIX.COM" }), rule({ match_text: "netflix", match_mode: "exact" })), false);
+  assertEquals(matchRule(row(), rule({ match_text: "  " })), false);
 });
