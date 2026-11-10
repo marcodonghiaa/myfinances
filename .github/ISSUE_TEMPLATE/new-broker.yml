@@ -1,0 +1,55 @@
+name: Add my broker
+description: Ask for a broker or exchange whose export Alopex can't read yet, or report one that stopped working.
+title: "Broker: "
+labels: ["broker"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! A parser is written from a sample of your broker's export, so the sample matters most.
+        **Before you paste anything, remove what identifies you**: your name, address, IBAN, account,
+        order and transaction numbers. Keep the header row, the separators, the date and number formats,
+        ISINs, tickers and currencies exactly as they are. Change amounts if you like, but keep their format.
+        This issue is public.
+  - type: input
+    id: broker
+    attributes:
+      label: Broker or exchange
+      placeholder: e.g. Degiro, Scalable Capital, Fineco
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is it?
+      options:
+        - A broker that isn't supported yet
+        - A supported broker that stopped importing (its format changed)
+    validations:
+      required: true
+  - type: input
+    id: country
+    attributes:
+      label: Country of your account
+      placeholder: e.g. Italy
+  - type: input
+    id: export
+    attributes:
+      label: Where you download the export
+      description: The menu path in the broker's app or website, and the file type (CSV, PDF).
+      placeholder: e.g. Profile > Documents > Transaction export (CSV)
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Anonymized sample
+      description: The header row plus one or two rows of each kind (buy, sell, dividend, fee, split). No personal data.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: What Alopex said (if it stopped working)
+      render: text
