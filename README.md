@@ -58,7 +58,7 @@ A newly linked bank doesn't wait for the next run: its first sync starts right a
 
 `notify` sends "worth it?" prompts hourly and the bank-access reminder daily. Everything covers every user; only the Coinbase sync is single-user (your own API key).
 
-The Node scripts in this repo (`sync-transactions.js`, `classify-flow.js`, ...) do the same work for the Docker, cron or launchd setups below.
+The Node scripts in this repo (`sync-transactions.js`, `classify-flow.js`, ...) are the older Docker, cron or launchd path. They do less than the Edge Functions: no flow rules, own-account or transfer pairing, merchant keys or subscription radar. New installs should use `npx create-alopex`.
 
 Bank linking from the dashboard runs as three Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
 
