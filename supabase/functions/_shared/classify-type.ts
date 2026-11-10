@@ -4,7 +4,7 @@
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
 import { type Ask, UNTRUSTED_TEXT_NOTE } from "./gemini.ts";
 import { errorTag } from "./log-safe.ts";
-import { applyRules, type Rule } from "./rules.ts";
+import { applyRules, RULE_MATCH_COLUMNS, type Rule } from "./rules.ts";
 import { createStallGuard } from "./stall-guard.ts";
 import { fetchBatchForOneUser, walkNullRows } from "./user-batch.ts";
 
@@ -26,7 +26,7 @@ export function isTransferCode(code?: string | null): boolean {
 async function fetchTypeRules(db: Db): Promise<Rule[]> {
   const { data, error } = await db
     .from("category_rules")
-    .select("user_id, match_field, match_text, match_mode, set_transaction_type")
+    .select(`${RULE_MATCH_COLUMNS}, set_transaction_type`)
     .not("set_transaction_type", "is", null)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: true });

@@ -1,4 +1,4 @@
-// Deno port of categorize.js (minus --reapply-rules, which stays a local command). For each new
+// Deno port of categorize.js (its --reapply-rules is the reapply-rules function here). For each new
 // row: your rules first, then the category you set by hand for the same merchant, then the AI;
 // afterwards AI rows take your later hand-set choice for their merchant. Without an AI (no key,
 // or it fails) your rules and past choices still apply.
@@ -6,7 +6,7 @@ import { applyGroupedUpdates, type Db } from "./batch-update.ts";
 import { CATEGORIES, categoriesFor } from "./categories.ts";
 import { applyLearned, fetchLearned, learnedUpdate, planRelearn } from "./learned-categories.ts";
 import { errorTag } from "./log-safe.ts";
-import { applyRules, type Rule } from "./rules.ts";
+import { applyRules, RULE_MATCH_COLUMNS, type Rule } from "./rules.ts";
 import { createStallGuard } from "./stall-guard.ts";
 import { fetchBatchForOneUser, walkNullRows } from "./user-batch.ts";
 import type { CategorizeRow } from "./categorize-prompt.ts";
@@ -23,7 +23,7 @@ export type Classify = (rows: CategorizeRow[], categories: string[]) => Promise<
 async function fetchRules(db: Db): Promise<Rule[]> {
   const { data, error } = await db
     .from("category_rules")
-    .select("user_id, match_field, match_text, match_mode, set_category, set_transaction_type")
+    .select(`${RULE_MATCH_COLUMNS}, set_category, set_transaction_type`)
     .not("set_category", "is", null)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: true }); // every rule has priority 100: oldest first, as listed
