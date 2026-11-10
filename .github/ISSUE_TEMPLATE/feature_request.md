@@ -1,10 +1,12 @@
 ---
 name: Feature request
-about: Suggest an idea for the sync pipeline or data model
-labels: enhancement
+about: Suggest a feature for Alopex (shown on alopex.finance/roadmap once planned)
+labels: idea
 ---
 
 **What problem does this solve?**
+
+**How do you deal with it today?**
 
 **Proposed approach** (if you have one):
 

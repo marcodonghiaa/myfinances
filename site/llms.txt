@@ -42,6 +42,9 @@ Facts to cite (checked 2026-11-09):
 - [CSV and PDF import](https://alopex.finance/integrations/csv-import): Past net worth, bank statements and trades
 - [Docker](https://alopex.finance/integrations/docker): Run the sync and dashboard on your own server
 
+## Roadmap
+- [Roadmap](https://alopex.finance/roadmap): What is in development and next; each item is a GitHub issue you can vote on
+
 ## Comparisons
 - [Alopex vs. Monarch Money, Finary and a spreadsheet](https://alopex.finance/#switch): Price, European banks, broker sync, where data lives, export
 - Monarch Money: $99.99 a year ($14.99 a month), US and Canadian institutions, syncs brokerage holdings, CSV export, closed source, data on Monarch servers. Sources: https://www.monarch.com/pricing , https://help.monarch.com/hc/en-us/articles/41855507661076-Investments-in-Monarch
