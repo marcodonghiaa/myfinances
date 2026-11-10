@@ -50,7 +50,7 @@ flowchart LR
 `npx create-alopex` schedules everything with pg_cron inside your Supabase project ([`20261118000000_schedule_sync.sql`](supabase/migrations/20261118000000_schedule_sync.sql)). Every **6 hours** (banks typically cap unattended access at about 4 calls a day per account), for every linked user:
 
 1. `sync-bank` pulls balances and new transactions, with a 7-day overlap because banks post late, and marks payments between your own accounts.
-2. `post-sync` fills merchant keys, applies your rules and past choices, then Gemini, for categories; marks `spend`, `income` or `transfer` (your flow rules, your own accounts, the bank's code); suggests transfer pairs; pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days) and marks both `refunded` so neither counts; then marks `Subscription` or `One-time`. A flow you or a rule decided is never changed.
+2. `post-sync` fills merchant keys, applies your rules and past choices, then Gemini, for categories; marks `spend`, `income` or `transfer` (your flow rules, your own accounts, the bank's code); suggests transfer pairs; pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days) and marks both `refunded` so neither counts; then marks `Subscription` or `One-time`. A flow you set by hand, or a transfer from a rule, is never changed. Refund pairing also covers rows a rule marked "not a transfer" and rows synced before flows were tracked (`legacy`).
 3. `sync-prices` stores daily EUR rates and prices your stocks, ETFs and crypto.
 4. `detect-recurring` updates the subscription radar.
 

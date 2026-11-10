@@ -43,10 +43,10 @@ async function fetchUnclassified() {
 
 const PAGE_SIZE = 1000; // PostgREST caps a response at 1000 rows
 
-// Flows refund pairing may change: the direction by default, and flows set before flow_source
-// existed (legacy, also what this pairing always read). A flow you or a rule decided is never
-// touched, so moving a wrong pair back to spend sticks.
-const REFUND_SOURCES = ['default', 'legacy'];
+// Flows refund pairing may change: the direction by default, a rule's "not a transfer" (it keeps
+// the direction), and flows set before flow_source existed (legacy). A flow you set by hand is
+// never touched, so moving a wrong pair back to spend sticks.
+const REFUND_SOURCES = ['default', 'rule', 'legacy'];
 
 // Rows still counted as spend/income, recent enough to hold either side of a refund pair.
 async function fetchRefundCandidates(db) {
@@ -72,12 +72,13 @@ async function fetchRefundCandidates(db) {
 // credit remembers which charge it reverses.
 async function markRefunds(db = supabase) {
   const pairs = matchRefunds(await fetchRefundCandidates(db));
-  const guardIn = REFUND_SOURCES; // flow_source: a later decision by you or a rule wins
+  // Both guards: a flow you set, or a rule that made the row a transfer, since the read wins.
+  const guard = { guardColumn: 'flow_source', guardIn: REFUND_SOURCES, alsoIn: ['flow_type', ['spend', 'income']] };
   await applyGroupedUpdates(
     db,
     pairs.flatMap(({ debit, credit }) => [
-      { ...debit, update: { flow_type: 'refunded' }, guardColumn: 'flow_source', guardIn },
-      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, guardColumn: 'flow_source', guardIn },
+      { ...debit, update: { flow_type: 'refunded' }, ...guard },
+      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, ...guard },
     ]),
   );
   return pairs.length;

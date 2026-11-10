@@ -126,44 +126,47 @@ Deno.test("classifyFlows re-resolves recent default rows when something stronger
   ]);
 });
 
-// protects=a refund pair stops counting as spend and income, but never overrides a flow you, a
-// rule or a past choice decided; fails_when=either side keeps its flow, the credit loses its link
-// to the charge, or candidates/updates ignore flow_source
-Deno.test("markRefunds pairs only rows whose flow nobody decided (default or legacy)", async () => {
-  const candidates = [
-    { account_uid: "a", entry_reference: "d1", amount: 9.99, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: "Twitter", booking_date: "2026-10-01" },
-    { account_uid: "a", entry_reference: "c1", amount: 9.99, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: "Twitter", booking_date: "2026-10-03" },
+// protects=a refund pair stops counting as spend and income unless you set either side by hand,
+// including merchants with a "not a transfer" rule; fails_when=a rule-sourced pair stays spend and
+// income, a hand-set side is overwritten, or the credit loses its link to the charge
+Deno.test("markRefunds pairs default, rule and legacy rows, never a flow you set", async () => {
+  const day = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
+  const pair = (ref: string, merchant: string, source: string, creditSource = source) => [
+    { account_uid: "a", entry_reference: `${ref}-d`, amount: 9.99, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: merchant, booking_date: day(10), flow_type: "spend", flow_source: source, deleted_at: null },
+    { account_uid: "a", entry_reference: `${ref}-c`, amount: 9.99, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: merchant, booking_date: day(8), flow_type: "income", flow_source: creditSource, deleted_at: null },
   ];
-  const filters: unknown[] = [];
-  const updates: Array<{ update: unknown; refs: unknown; guard: unknown }> = [];
+  const rows = [...pair("def", "Shop", "default"), ...pair("rul", "PayPal", "rule"), ...pair("leg", "Store", "legacy"), ...pair("usr", "Cafe", "default", "user")];
+  assertEquals(await markRefunds(memoryDb({ transactions: rows })), 3);
+  assertEquals(rows.map((r) => [r.entry_reference, r.flow_type, (r as { refund_of?: string }).refund_of ?? null]), [
+    ["def-d", "refunded", null], ["def-c", "refunded", "def-d"],
+    ["rul-d", "refunded", null], ["rul-c", "refunded", "rul-d"],
+    ["leg-d", "refunded", null], ["leg-c", "refunded", "leg-d"],
+    ["usr-d", "spend", null], ["usr-c", "income", null],
+  ]);
+});
+
+// protects=a rule that turns a row into a transfer between the read and the write wins;
+// fails_when=the refund update only guards flow_source, so a rule transfer becomes refunded
+Deno.test("markRefunds leaves a side that became a transfer after the read", async () => {
+  const day = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
+  const rows = [
+    { account_uid: "a", entry_reference: "d", amount: 5, currency: "EUR", credit_debit_indicator: "DBIT", creditor_name: "Shop", booking_date: day(10), flow_type: "spend", flow_source: "default", deleted_at: null },
+    { account_uid: "a", entry_reference: "c", amount: 5, currency: "EUR", credit_debit_indicator: "CRDT", creditor_name: "Shop", booking_date: day(8), flow_type: "income", flow_source: "default", deleted_at: null },
+  ];
+  const mem = memoryDb({ transactions: rows });
+  let raced = false;
   const db = {
-    from: () => {
-      let update: unknown = null;
-      let refs: unknown = null;
-      const q = {
-        select: () => q,
-        is: () => q,
-        gte: () => q,
-        order: () => q,
-        range: async () => ({ data: candidates, error: null }),
-        update: (u: unknown) => ((update = u), q),
-        eq: (col: string, val: unknown) => (update || filters.push([col, val]), q),
-        in: (col: string, vals: unknown) => {
-          if (col === "entry_reference") refs = vals;
-          else if (update) {
-            updates.push({ update, refs, guard: [col, vals] });
-            return Promise.resolve({ error: null });
-          } else filters.push([col, vals]);
-          return q;
-        },
-      };
+    from(t: string) {
+      const q = mem.from(t);
+      const then = q.then;
+      q.then = (resolve: (v: unknown) => void) =>
+        then((v: unknown) => {
+          if (!raced) (raced = true), Object.assign(rows[0], { flow_type: "transfer", flow_source: "rule" });
+          resolve(v);
+        });
       return q;
     },
   };
-  assertEquals(await markRefunds(db), 1);
-  assertEquals(filters, [["flow_type", ["spend", "income"]], ["flow_source", ["default", "legacy"]]]);
-  assertEquals(updates, [
-    { update: { flow_type: "refunded" }, refs: ["d1"], guard: ["flow_source", ["default", "legacy"]] },
-    { update: { flow_type: "refunded", refund_of: "d1" }, refs: ["c1"], guard: ["flow_source", ["default", "legacy"]] },
-  ]);
+  await markRefunds(db);
+  assertEquals(rows.map((r) => r.flow_type), ["transfer", "refunded"]);
 });
