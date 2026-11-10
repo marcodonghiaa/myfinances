@@ -98,5 +98,5 @@ test('a credit with refund_of pairs only with that charge', () => {
   const older = row({ entry_reference: 'old', booking_date: '2026-09-20' });
   const moved = refund({ refund_of: 'gone' });
   assert.deepStrictEqual(matchRefunds([older, moved]), []);
-  assert.strictEqual(matchRefunds([older, row(), refund({ refund_of: 'e1' })])[0].debit.entry_reference, 'e1');
+  assert.strictEqual(matchRefunds([older, row(), refund({ refund_of: 'old' })])[0].debit.entry_reference, 'old'); // not the later e1
 });
