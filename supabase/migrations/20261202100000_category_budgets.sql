@@ -7,7 +7,7 @@
 create table public.category_budgets (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   category text not null check (category = btrim(category) and char_length(category) between 1 and 100),
-  month date not null check (extract(day from month) = 1),
+  month date not null check (extract(day from month) = 1 and month between '2000-01-01' and '2100-12-01'),
   amount numeric(12, 2) not null check (amount >= 0 and amount < 10000000),
   rollover boolean not null default false,
   updated_at timestamptz not null default now(),

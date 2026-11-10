@@ -71,6 +71,16 @@ test('category_budgets RLS with two users', { skip }, async (t) => {
     assert.match(as('authenticated', B, 'truncate public.category_budgets'), /permission denied/);
   });
 
+  // A month range keeps one account from filling the database with far-off months.
+  await t.test('budgets only for months from 2000 to 2100', () => {
+    const add = (month) =>
+      as('authenticated', B, `insert into public.category_budgets (category, month, amount) values ('Gym', '${month}', 40) returning 1`);
+    assert.strictEqual(add('2000-01-01'), '1');
+    assert.strictEqual(add('2100-12-01'), '1');
+    assert.match(add('1999-12-01'), /check constraint/);
+    assert.match(add('2101-01-01'), /check constraint/);
+  });
+
   await t.test('signed-out visitors get nothing', () => {
     assert.match(as('anon', null, 'select count(*) from public.category_budgets'), /permission denied/);
     assert.strictEqual(as('authenticated', null, 'select count(*) from public.category_budgets'), '0');

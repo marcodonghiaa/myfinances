@@ -8,7 +8,7 @@ const down = strip('supabase/rollbacks/20261202100000_category_budgets.down.sql'
 
 test('one budget row per user, category and month, months start on the 1st', () => {
   assert.match(up, /primary key \(user_id, category, month\)/);
-  assert.match(up, /month date not null check \(extract\(day from month\) = 1\)/);
+  assert.match(up, /month date not null check \(extract\(day from month\) = 1 and month between '2000-01-01' and '2100-12-01'\)/);
 });
 
 // Splitwise categories go up to 100 characters; a budget must accept any category spend can have.
