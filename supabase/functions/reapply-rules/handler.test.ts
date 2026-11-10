@@ -1,5 +1,5 @@
-import { assertEquals } from "jsr:@std/assert@1";
-import { reapplyHandler } from "./handler.ts";
+import { assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { reapplyHandler, userIdFrom } from "./handler.ts";
 import { memoryDb } from "../_shared/memory-db.test-helper.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -56,4 +56,11 @@ Deno.test("an auth server outage is a 503, not a sign-out", async () => {
   const handler = reapplyHandler({ userIdFor: () => Promise.reject(new Error("auth down")), admin: () => seed() });
   const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
   assertEquals([res.status, await res.json()], [503, { error: "Sign-in check is unavailable, please try again" }]);
+});
+
+// Polish pass 2 re-audit: the auth-result check that tells "signed out" from "auth down".
+Deno.test("userIdFrom: user id, null for a bad token, throws when auth is down", () => {
+  assertEquals(userIdFrom({ data: { user: { id: "u1" } }, error: null }), "u1");
+  for (const status of [400, 401, 403]) assertEquals(userIdFrom({ data: { user: null }, error: { status } }), null);
+  for (const status of [0, 500, 503, undefined]) assertThrows(() => userIdFrom({ data: { user: null }, error: { status } }));
 });

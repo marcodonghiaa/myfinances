@@ -33,3 +33,14 @@ export const reapplyHandler = (deps: Deps) => async (req: Request, json: Reply):
     return json({ error }, 500);
   }
 };
+
+// Reads auth.getUser()'s result: the user's id; null when the token is bad, expired or missing
+// (auth answers 4xx); throws when auth is down or unreachable (5xx, network: status 0 or none).
+export function userIdFrom(result: {
+  data: { user: { id: string } | null };
+  error: { status?: number } | null;
+}): string | null {
+  const { data, error } = result;
+  if (error && !(error.status && error.status < 500)) throw error;
+  return error ? null : data.user?.id ?? null;
+}
