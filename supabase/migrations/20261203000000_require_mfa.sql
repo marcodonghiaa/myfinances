@@ -49,10 +49,14 @@ do $$
 declare
   existing text;
 begin
-  select substr(c, length('pgrst.db_pre_request=') + 1) into existing
+  -- Role-wide and this-database settings both count: a per-database one wins at runtime.
+  select string_agg(distinct substr(c, length('pgrst.db_pre_request=') + 1), ', ') into existing
     from pg_db_role_setting s join pg_roles r on r.oid = s.setrole, unnest(s.setconfig) c
-   where r.rolname = 'authenticator' and c like 'pgrst.db_pre_request=%';
-  if existing is not null and existing <> 'public.require_mfa' then
+   where r.rolname = 'authenticator'
+     and s.setdatabase in (0, (select oid from pg_database where datname = current_database()))
+     and c like 'pgrst.db_pre_request=%'
+     and c <> 'pgrst.db_pre_request=public.require_mfa';
+  if existing is not null then
     raise exception 'PostgREST already runs pre-request hook %; call public.require_mfa() from it instead', existing;
   end if;
 end;
