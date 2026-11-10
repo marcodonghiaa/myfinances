@@ -13,7 +13,8 @@ plain deploy from this repo reproduces the same gating described below.
   bank's plain browser redirect, no Authorization header).
 - **complete-bank-consent** — called by the signed-in dashboard with that code.
   Exchanges it and saves the accounts, only for the user who started the link.
-  `verify_jwt: true`.
+  Stores each account's type from the bank (`cash_account_type`: CACC checking, SVGS savings,
+  CARD credit card, LOAN loan, anything else other). `verify_jwt: true`.
 - **delete-account** — called by the signed-in dashboard with `{ "confirm": "DELETE", "password" }`;
   checks the password again before anything is deleted.
   Deletes the user (every row cascades), then closes their stored Enable Banking
@@ -36,7 +37,8 @@ plain deploy from this repo reproduces the same gating described below.
   the `apikey` header; the function checks it against `SUPABASE_SECRET_KEYS`
   (`verify_jwt: false`, secret keys are not JWTs). A project still on the legacy
   keys only must create its secret keys first (Settings → API Keys), or every
-  call gets 401. Never run it beside the
+  call gets 401. An account with no type yet gets it from the bank's
+  account details once (`checking` when the bank sends none). Never run it beside the
   launchd/Docker sync: banks allow ~4 unattended calls a day per account.
 
 - **post-sync** — what the sync pipeline runs after the bank sync, moved into

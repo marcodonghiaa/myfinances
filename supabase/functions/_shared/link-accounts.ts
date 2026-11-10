@@ -4,7 +4,7 @@
 
 import { EB_NO_ACCOUNTS, signEnableBankingJwt } from "./enable-banking.ts";
 import { errorTag } from "./log-safe.ts";
-import { matchAccount, matchPatch, type StoredAccount } from "./account-match.ts";
+import { accountType, matchAccount, matchPatch, type StoredAccount } from "./account-match.ts";
 import { bankLogo, type BankInfo } from "./bank-info.ts";
 import { linkedParams } from "./linked-summary.ts";
 import { latestFxRows } from "./fx-rates.ts";
@@ -17,6 +17,7 @@ interface EnableBankingAccount {
   name?: string | null;
   account_id?: { iban?: string | null } | null;
   identification_hash?: string | null;
+  cash_account_type?: string | null;
 }
 
 export type LinkResult = { params: Record<string, string>; newAccountUids: string[] } | { error: string };
@@ -80,7 +81,7 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
     // Match on identification_hash (IBAN + currency, unique per Revolut pocket), then IBAN + currency.
     const { data: storedRows, error: storedError } = await supabase
       .from("accounts")
-      .select("uid, iban, currency, identification_hash")
+      .select("uid, iban, currency, identification_hash, account_type")
       .eq("user_id", userId);
     if (storedError) return fail(storedError);
     let stored: StoredAccount[] = storedRows ?? [];
@@ -90,6 +91,7 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
       const iban = a.account_id?.iban ?? null;
       const identificationHash = a.identification_hash ?? null;
       const label = a.name ?? null;
+      const type = accountType(a.cash_account_type);
 
       let uid = matchAccount(stored, { iban, currency: a.currency, identification_hash: identificationHash });
 
@@ -101,12 +103,13 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
           label,
           iban,
           identification_hash: identificationHash,
+          account_type: type,
           user_id: userId,
           consent_valid_until: consentValidUntil,
           ...bank,
         });
         if (!error) {
-          stored = [...stored, { uid: a.uid, iban, currency: a.currency, identification_hash: identificationHash }];
+          stored = [...stored, { uid: a.uid, iban, currency: a.currency, identification_hash: identificationHash, account_type: type }];
           savedRows.push({ uid: a.uid, ebUid: a.uid, label, currency: a.currency });
           newUids.push(a.uid);
           continue;
@@ -115,7 +118,7 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
         if (error.code !== "23505" || !identificationHash) return fail(error);
         const { data: raced, error: racedError } = await supabase
           .from("accounts")
-          .select("uid, iban, currency, identification_hash")
+          .select("uid, iban, currency, identification_hash, account_type")
           .eq("user_id", userId)
           .eq("identification_hash", identificationHash)
           .maybeSingle();
@@ -125,12 +128,12 @@ export async function linkAccounts(supabase: any, userId: string, code: string):
         uid = racedRow.uid;
       }
 
-      const patch = matchPatch(
-        { iban, currency: a.currency, identification_hash: identificationHash, label },
-        a.uid,
-        consentValidUntil,
-        bank,
-      );
+      // The type only fills a gap: a type the user corrected stays.
+      const storedType = stored.find((s) => s.uid === uid)?.account_type ?? null;
+      const patch = {
+        ...matchPatch({ iban, currency: a.currency, identification_hash: identificationHash, label }, a.uid, consentValidUntil, bank),
+        ...(storedType === null && type !== null && { account_type: type }),
+      };
       const { error } = await supabase
         .from("accounts")
         .update(patch)

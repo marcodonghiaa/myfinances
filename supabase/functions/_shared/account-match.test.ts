@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { matchAccount, matchPatch } from "./account-match.ts";
+import { accountType, matchAccount, matchPatch } from "./account-match.ts";
 
 const eur = { uid: "u-eur", iban: "LT01", currency: "EUR", identification_hash: "h-eur" };
 const old = { uid: "u-old", iban: "IT60", currency: "EUR", identification_hash: null };
@@ -38,4 +38,14 @@ Deno.test("matchPatch never blanks a stored bank field EB omits", () => {
   const bank = { bank_name: "Fineco", bank_country: "IT", bank_logo: null };
   const p = matchPatch({ iban: null, currency: "EUR", identification_hash: null, label: null }, "u4", null, bank);
   assertEquals(p, { eb_account_uid: "u4", consent_valid_until: null, currency: "EUR", bank_name: "Fineco", bank_country: "IT" });
+});
+
+Deno.test("accountType maps ISO 20022 cash account types", () => {
+  assertEquals(accountType("CACC"), "checking");
+  assertEquals(accountType("SVGS"), "savings");
+  assertEquals(accountType("CARD"), "credit_card");
+  assertEquals(accountType("LOAN"), "loan");
+  assertEquals(accountType("TRAN"), "other");
+  assertEquals(accountType(undefined), null);
+  assertEquals(accountType(""), null);
 });

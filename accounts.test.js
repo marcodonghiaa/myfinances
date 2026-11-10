@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { getAccounts, getAllUserIds, ebAccountId, idsPatchFromDetails } = require('./accounts');
+const { getAccounts, getAllUserIds, ebAccountId, idsPatchFromDetails, accountType } = require('./accounts');
 
 test('ebAccountId uses eb_account_uid when set', () => {
   assert.strictEqual(ebAccountId({ uid: 'a', eb_account_uid: 'b' }), 'b');
@@ -45,6 +45,7 @@ test('getAccounts reads without eb_account_uid when the column is missing', asyn
   const responses = [
     { data: null, error: { code: '42703' } },
     { data: null, error: { code: '42703' } },
+    { data: null, error: { code: '42703' } },
     { data: [{ uid: 'a' }], error: null },
   ];
   const supabase = {
@@ -63,8 +64,9 @@ test('getAccounts reads without eb_account_uid when the column is missing', asyn
   } finally {
     console.warn = warn;
   }
-  assert.strictEqual(selects.length, 3);
-  assert.ok(!selects[2].includes('eb_account_uid'));
+  assert.strictEqual(selects.length, 4);
+  assert.ok(selects[0].includes('account_type'));
+  assert.ok(!selects[3].includes('eb_account_uid'));
 });
 
 function accountsClient(rows) {
@@ -88,6 +90,7 @@ test('getAccounts reads manual when the eb column exists but manual does not', a
   const selects = [];
   const responses = [
     { data: null, error: { code: '42703' } },
+    { data: null, error: { code: '42703' } },
     { data: [{ uid: 'a', eb_account_uid: null }], error: null },
   ];
   const supabase = {
@@ -100,7 +103,7 @@ test('getAccounts reads manual when the eb column exists but manual does not', a
   };
   assert.deepStrictEqual(await getAccounts(supabase, 'user'), [{ uid: 'a', eb_account_uid: null }]);
   assert.ok(selects[0].includes('manual'));
-  assert.ok(selects[1].includes('eb_account_uid') && !selects[1].includes('manual'));
+  assert.ok(selects[2].includes('eb_account_uid') && !selects[2].includes('manual'));
 });
 
 test('getAllUserIds leaves out users with only manual accounts', async () => {
@@ -109,4 +112,10 @@ test('getAllUserIds leaves out users with only manual accounts', async () => {
     { user_id: 'u2', manual: true },
   ]);
   assert.deepStrictEqual(await getAllUserIds(supabase), ['u1']);
+});
+
+test('accountType maps ISO 20022 cash account types', () => {
+  assert.deepStrictEqual(['CACC', 'SVGS', 'CARD', 'LOAN', 'TRAN'].map(accountType), ['checking', 'savings', 'credit_card', 'loan', 'other']);
+  assert.strictEqual(accountType(undefined), null);
+  assert.strictEqual(accountType(''), null);
 });

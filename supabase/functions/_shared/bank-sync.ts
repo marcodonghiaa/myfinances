@@ -3,6 +3,7 @@
 
 import { buildRows, normalizeIban } from "./transaction-rows.ts";
 import { errorTag } from "./log-safe.ts";
+import { accountType } from "./account-match.ts";
 
 // deno-lint-ignore no-explicit-any
 type Db = { from(table: string): any };
@@ -14,9 +15,10 @@ export interface SyncAccount {
   eb_account_uid?: string | null;
   identification_hash?: string | null;
   consent_valid_until?: string | null;
+  account_type?: string | null;
 }
 
-export const ACCOUNT_COLUMNS = "uid, user_id, eb_account_uid, identification_hash, consent_valid_until";
+export const ACCOUNT_COLUMNS = "uid, user_id, eb_account_uid, identification_hash, consent_valid_until, account_type";
 
 const EB = "https://api.enablebanking.com/accounts";
 const OVERLAP_DAYS = 7;
@@ -102,17 +104,25 @@ export async function syncAccountTransactions(
   }
 }
 
-// Older rows lack identification_hash (and iban): ask EB once and store them. Best effort.
+// Older rows lack identification_hash (and iban) or account_type: ask EB once and store them.
+// A bank that sends no type gets "checking" (what unknown counts as), so the call is not
+// repeated. Best effort.
 async function fillMissingIds({ fetch, supabase }: Deps, token: string, account: SyncAccount) {
-  if (account.identification_hash) return;
+  const needType = account.account_type === null;
+  if (account.identification_hash && !needType) return;
   try {
     const details = await getEb(fetch, token, `${ebAccountId(account)}/details`);
-    if (!details?.identification_hash) {
-      console.error("Account ids not filled: no hash in details");
-      return;
+    const patch: Record<string, unknown> = {};
+    if (!account.identification_hash) {
+      if (details?.identification_hash) {
+        const iban = details.account_id?.iban;
+        Object.assign(patch, { identification_hash: details.identification_hash, ...(iban && { iban }) });
+      } else {
+        console.error("Account ids not filled: no hash in details");
+      }
     }
-    const iban = details.account_id?.iban;
-    const patch = { identification_hash: details.identification_hash, ...(iban && { iban }) };
+    if (needType) patch.account_type = accountType(details?.cash_account_type) ?? "checking";
+    if (Object.keys(patch).length === 0) return;
     const { error } = await supabase.from("accounts").update(patch).eq("uid", account.uid);
     if (error) throw error;
   } catch (err) {
