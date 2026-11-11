@@ -11,7 +11,9 @@ alter table public.transactions
 
 -- Bounds match the dashboard: a note up to 2000 characters, up to 20 tags of 1 to 40 characters
 -- each (no spaces around them, single spaces inside, no tabs or line breaks), no NULL entries.
--- A CHECK can't hold a subquery, so the tag check is a function.
+-- A CHECK can't hold a subquery, so the tag check is a function. The other spaces are listed one by
+-- one (the ones JavaScript's \s matches, which the dashboard turns into a plain space): regex \s
+-- and \S depend on the database's locale, and a CHECK must give the same answer on every server.
 create or replace function public.transaction_tags_ok(p_tags text[])
 returns boolean
 language sql
@@ -22,7 +24,9 @@ as $$
      and array_position(p_tags, null) is null
      and not exists (
        select 1 from unnest(p_tags) as t(tag)
-       where char_length(t.tag) > 40 or t.tag !~ '^\S+( \S+)*$'
+       where char_length(t.tag) > 40
+          or t.tag !~ '^[^ ]+( [^ ]+)*$'
+          or t.tag ~ '[\t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]'
      );
 $$;
 
@@ -40,7 +44,7 @@ from (
     select d.tag from (
       select distinct on (lower(w.tag)) w.tag, w.ord
       from (
-        select btrim(left(btrim(regexp_replace(u.tag, '\s+', ' ', 'g')), 40)) as tag, u.ord
+        select btrim(left(btrim(regexp_replace(u.tag, '[ \t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+', ' ', 'g')), 40)) as tag, u.ord
         from unnest(tr.tags) with ordinality as u(tag, ord)
       ) w
       where w.tag <> ''

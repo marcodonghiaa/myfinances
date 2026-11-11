@@ -115,6 +115,16 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     }
   });
 
+  // polish-1 #2: what counts as a space can't depend on the database's locale (a dump restored
+  // elsewhere must still pass), and must match the dashboard, which turns these into plain spaces.
+  await t.test('tags with look-alike spaces are refused on any locale', () => {
+    for (const cp of ['00A0', '202F', '2007', '3000', '2028', '1680']) {
+      const bad = `array[E'work\\u${cp}', E'a\\u${cp}b']`;
+      assert.match(setA('tags', bad), /transactions_tags_ok/, cp);
+    }
+    assert.strictEqual(setA('tags', "array['day trip']"), '1');
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {
