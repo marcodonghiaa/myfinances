@@ -4,7 +4,14 @@ Pulling new code does not update your database. Migrations are not applied autom
 
 For every release: `git pull`, then `supabase db push --linked` for new migrations (keep `--linked`: since Supabase CLI v3 a plain `db push` targets a local database, not your project), then rebuild or restart the sync jobs (`docker compose up -d --build`, or nothing for cron or launchd, which run the new files on their next run).
 
+To roll a change back: run its file from `supabase/rollbacks/` in the Supabase SQL editor (or with `psql`), then `supabase migration repair --status reverted <version> --linked` (the version is the number at the start of the file name). Without the repair, a later `supabase db push --linked` still counts the migration as applied and does not bring it back.
+
 ## Release notes, newest first
+
+### Monthly budgets per category
+- **Migration:** `20261202100000_category_budgets`. You apply it with `supabase db push --linked`, then redeploy the dashboard. No Edge Function or sync change.
+- Adds `category_budgets`: a budget per category that holds from its month onward until you change it, with optional rollover (a month's leftover or overspend moves into the next). Only spend counts, never transfers or income. Budgets are in the export.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261202100000_category_budgets.down.sql` (budgets are lost; export your data before if you want to keep them). A dashboard of this release without the table cannot open Budgets, and its data export fails.
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
