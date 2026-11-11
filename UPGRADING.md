@@ -15,6 +15,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - Each transaction can have a note (free text, up to 2000 characters) and tags (up to 20, each up to 40 characters, created as you type). The Transactions page filters by tag and its search also matches notes. Both are in the data export.
 - The bank sync never writes them, so a sync re-run keeps them. Only your own rows can be changed (same rule as categories).
 - **Roll back:** `supabase/rollbacks/20261208120000_transaction_notes_tags.down.sql` (drops tag suggestions and the length limits; the note and tags columns stay, with what you wrote, and an older dashboard ignores them).
+
 ## v0.2.0 (11 Nov 2026)
 
 Budgets, two-step sign-in, rules that match whole words, debts, transfers that stop counting as spending, safer imports and refunds.
