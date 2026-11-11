@@ -1,6 +1,6 @@
 # Supabase Edge Functions
 
-Source of truth for the Edge Functions: bank linking, account deletion, holdings, statements.
+Source of truth for the Edge Functions: bank linking, account deletion, holdings, statements, rules.
 Deploy with `supabase functions deploy --project-ref <ref>` (what `setup.sh`
 runs) — `verify_jwt` per function is codified in `supabase/config.toml`, so a
 plain deploy from this repo reproduces the same gating described below.

@@ -63,7 +63,7 @@ A newly linked bank doesn't wait for the next run: in Docker, every 5 minutes th
 
 `notify-worth-it.js` runs every 30 minutes. Bank sync, prices and "worth it?" prompts cover every user; only the Coinbase sync is single-user (`USER_ID`, your own API key).
 
-Bank linking from the dashboard runs as three Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
+Bank linking and the dashboard's other server-side actions (account deletion, holdings, statements, rules) run as Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
 
 **Built to keep running:** every outbound call has a 60 s timeout, each scheduled script a 10 minute limit, sync cursors are written atomically (and kept on a volume in Docker), and one user's failing rows can't block anyone else's classification.
 
