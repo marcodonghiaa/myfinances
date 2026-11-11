@@ -10,7 +10,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ### Deleting a rule can re-sort the transactions it filed
 - No migration. Run `supabase functions deploy reapply-rules` BEFORE redeploying the dashboard (an older function ignores the new request and would preview your current rules instead).
-- After you delete a rule on the Rules page, it offers to re-sort the transactions that rule had filed and no other rule matches (for example "Barclays" filed as Dine Out by an old "bar" rule). They go back to uncategorized and the next sync sorts them again. Categories you set by hand and Transfer rows never change.
+- After you delete a rule on the Rules page, it offers to re-sort the transactions that rule had filed and no other rule matches (for example "Barclays" filed as Dine Out by an old "bar" rule). They go back to uncategorized and the next sync sorts them again. Categories you set by hand and Transfer rows never change. If the rule also set a transaction type, that type stays on those rows.
 - A rule whose text is only spaces no longer matches anything. Before, an "Anywhere" rule like that caught almost every transaction. The dashboard never allowed one, so this only matters if you added it with SQL.
 
 ### Manual rows and imports get input limits
