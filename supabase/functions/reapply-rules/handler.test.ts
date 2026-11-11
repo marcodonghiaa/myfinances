@@ -147,3 +147,17 @@ Deno.test("a body over 16 KB is a 413, nothing read", async () => {
   assertEquals(await call(watched, { body: big }), { status: 413, body: { error: "Request too large" } });
   assertEquals(tables, []);
 });
+
+// Polish 2 #4: a failing two-step check is a 503 like a failing sign-in check, not a crash.
+Deno.test("the two-step check failing is a 503, nothing read", async () => {
+  const db = seed();
+  const tables: string[] = [];
+  const handler = reapplyHandler({
+    userIdFor: () => Promise.resolve("u1"),
+    mfaRefusal: () => Promise.reject(new Error("auth down")),
+    admin: () => ({ ...db, from: (t: string) => (tables.push(t), db.from(t)) }),
+  });
+  const res = await handler(new Request("http://x/reapply-rules", { method: "POST", headers: { Authorization: "Bearer good" }, body: "{}" }), json);
+  assertEquals([res.status, await res.json()], [503, { error: "Sign-in check is unavailable, please try again" }]);
+  assertEquals(tables, []);
+});

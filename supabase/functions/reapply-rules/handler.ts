@@ -46,7 +46,13 @@ export const reapplyHandler = (deps: Deps) => async (req: Request, json: Reply):
     return json({ error: "Sign-in check is unavailable, please try again" }, 503);
   }
   if (!userId) return json({ error: "Not signed in" }, 401);
-  const refusal = await deps.mfaRefusal(authorization!);
+  let refusal: { body: object; status: number } | null;
+  try {
+    refusal = await deps.mfaRefusal(authorization!);
+  } catch (err) {
+    console.error(`reapply-rules two-step check failed: ${errorTag(err)}`);
+    return json({ error: "Sign-in check is unavailable, please try again" }, 503);
+  }
   if (refusal) return json(refusal.body, refusal.status);
 
   // The real body is a few hundred bytes: refuse a large one before reading or parsing it.
