@@ -72,6 +72,9 @@ if [ "${1:-}" = "--dashboard-url" ]; then
   ORIGIN=$(node frontend-url.js "${2:-}") || [ $? -eq 3 ] || exit 1
   quiet supabase secrets set --project-ref "$REF" "FRONTEND_URL=$ORIGIN" \
     || die "Could not save FRONTEND_URL in Supabase (not logged in? run: supabase login)."
+  # The functions call database functions from the newest migrations: apply those first.
+  { quiet supabase link --project-ref "$REF" && quiet supabase db push --linked --yes; } \
+    || die "Could not apply the latest database changes (not logged in? run: supabase login)."
   quiet supabase functions deploy --project-ref "$REF" --use-api || die "Could not redeploy the Edge Functions."
   write_env .env .env.example <<EOF
 FRONTEND_URL=$ORIGIN

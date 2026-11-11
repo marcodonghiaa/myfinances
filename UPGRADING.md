@@ -4,14 +4,29 @@ Pulling new code does not update your database. Migrations are not applied autom
 
 For every release: `git pull`, then `supabase db push --linked` for new migrations (keep `--linked`: since Supabase CLI v3 a plain `db push` targets a local database, not your project), then rebuild or restart the sync jobs (`docker compose up -d --build`, or nothing for cron or launchd, which run the new files on their next run).
 
+To roll a change back: run its file from `supabase/rollbacks/` in the Supabase SQL editor (or with `psql`), then `supabase migration repair --status reverted <version> --linked` (the version is the number at the start of the file name). Without the repair, a later `supabase db push --linked` still counts the migration as applied and does not bring it back.
+
 ## Release notes, newest first
 
 ### Manual rows and imports get input limits
-- **Migration:** `20261204000000_manual_transaction_checks`. Redeploy the **dashboard first** (or at the same time), then apply it with `supabase db push --linked`. An older dashboard sends descriptions longer than 500 characters, which the new database refuses: an import would stop at that row on every retry.
+- **Migration:** `20261207000000_manual_transaction_checks`. Redeploy the **dashboard first** (or at the same time), then apply it with `supabase db push --linked`. An older dashboard sends descriptions longer than 500 characters, which the new database refuses: an import would stop at that row on every retry.
 - Rows added by hand or by a statement import (`add_manual_transaction`) now have limits: amounts up to a trillion, a 3-letter currency, descriptions up to 500 characters, categories up to 100, a debit or credit direction, and up to 60 characters for the name of a new manual account (accounts named before keep working).
 - Rows sent in parallel by an import no longer create the same manual account twice.
 - Only the function changes; existing rows are untouched.
-- **Roll back:** `supabase/rollbacks/20261204000000_manual_transaction_checks.down.sql` (restores the previous function).
+- **Roll back:** `supabase/rollbacks/20261207000000_manual_transaction_checks.down.sql` (restores the previous function).
+### Two-step sign-in
+- **Migration:** `20261203000000_require_mfa`. Apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
+- It sets PostgREST's pre-request hook (`pgrst.db_pre_request`) to `public.require_mfa`. If you already use your own hook, the migration stops with an error: call `public.require_mfa()` from your hook, clear it with `alter role authenticator reset pgrst.db_pre_request;` and `alter role authenticator in database postgres reset pgrst.db_pre_request;` (it may be set either way), push again, then set yours back the way it was. The check only sees a hook set on the database role: if yours is in PostgREST's own config (`db-pre-request` in its config file or `PGRST_DB_PRE_REQUEST`, on a self-run stack), move it into the database and chain it as above before pushing, or one of the two hooks may stop running.
+- Settings has **Two-step sign-in**: scan a QR code with an authenticator app (1Password, Google Authenticator, Aegis, ...) and type its 6-digit code. From then on, sign-in asks for a code. The database enforces it: a session that skipped the code gets 403 on every API call (tables, views and functions), and the Edge Functions refuse it. Users without an authenticator are not affected.
+- **Guessing codes:** Supabase allows about 15 code checks a minute per IP address and the dashboard stops at that limit. For stricter limits (lock an account after N wrong codes), add Supabase Auth's MFA verification attempt hook.
+- **Changing the password in Settings** checks the current one without starting a new session (a new one would drop the code step). If you turned on Supabase Auth's "Secure password change" (off by default), a session older than 24 hours can't change the password: the dashboard says to sign out and sign in again.
+- **Lost your phone?** There are no backup codes: add a second authenticator in Settings while you still have the first. If every authenticator is gone, the instance owner removes them in the Supabase SQL editor: `delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'you@example.com');`, then sets it up again.
+- **Roll back:** `supabase/rollbacks/20261203000000_require_mfa.down.sql` (after reverting the Edge Functions). If you chained your own hook, remove its `require_mfa()` call first: the rollback stops while a hook still calls it, and it leaves your hook in place. Run it in the SQL editor or with `psql -v ON_ERROR_STOP=1 -1 -f <file>`, so a refusal stops it.
+
+### Monthly budgets per category
+- **Migration:** `20261202100000_category_budgets`. You apply it with `supabase db push --linked`, then redeploy the dashboard. No Edge Function or sync change.
+- Adds `category_budgets`: a budget per category that holds from its month onward until you change it, with optional rollover (a month's leftover or overspend moves into the next). Only spend counts, never transfers or income. Budgets are in the export.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261202100000_category_budgets.down.sql` (budgets are lost; export your data before if you want to keep them). A dashboard of this release without the table cannot open Budgets, and its data export fails.
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.

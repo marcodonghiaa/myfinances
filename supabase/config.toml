@@ -11,6 +11,12 @@ additional_redirect_urls = ["http://localhost:3000"]
 # The app has no sign-up screen; setup.sh creates the one login. Keep the Auth API closed too.
 enable_signup = false
 
+# Two-step sign-in with an authenticator app (Settings in the dashboard). On in hosted Supabase;
+# enabled here so a local stack matches. The database enforces it (migration 20261203000000).
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 # bank-consent-callback is a plain browser redirect from the bank: no Authorization header.
 [functions.list-banks]
 verify_jwt = true

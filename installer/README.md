@@ -31,4 +31,4 @@ Forks and testing: `ALOPEX_BACKEND_REPO`, `ALOPEX_DASHBOARD_REPO` (owner/name) a
 `ALOPEX_REF` (tag or branch; `ALOPEX_REF=main` to try unreleased code) choose what is downloaded.
 `ALOPEX_BACKEND_DIR` / `ALOPEX_DASHBOARD_DIR` copy a local checkout instead (try changes before pushing).
 
-Tests: `node --test installer/` (from the backend repo root).
+Tests: `node --test installer/*.test.js` (from the backend repo root; a bare `installer/` would also run the installer itself).

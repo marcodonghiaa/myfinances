@@ -1,7 +1,7 @@
--- Asserts for 20261204000000 (local only). Runs in one rolled-back transaction, from the repo root:
---   T=supabase/migrations/20261204000000_manual_transaction_checks.sql
+-- Asserts for 20261207000000 (local only). Runs in one rolled-back transaction, from the repo root:
+--   T=supabase/migrations/20261207000000_manual_transaction_checks.sql
 --   ( echo 'begin;'; cat $T supabase/rehearsals/manual_transaction_checks.assert.sql \
---       supabase/rollbacks/20261204000000_manual_transaction_checks.down.sql; cat $T; echo 'rollback;' ) \
+--       supabase/rollbacks/20261207000000_manual_transaction_checks.down.sql; cat $T; echo 'rollback;' ) \
 --     | docker exec -i supabase_db_finance_app psql -U postgres -v ON_ERROR_STOP=1
 -- Success prints no error. The rollback must work, and the migration must apply again on top.
 insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000d1', 'd1@example.test');

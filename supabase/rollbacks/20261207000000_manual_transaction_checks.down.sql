@@ -1,4 +1,4 @@
--- Rollback of 20261204000000_manual_transaction_checks: add_manual_transaction as 20261130 left it.
+-- Rollback of 20261207000000_manual_transaction_checks: add_manual_transaction as 20261130 left it.
 create or replace function public.add_manual_transaction(
   p_booking_date date,
   p_description text,
