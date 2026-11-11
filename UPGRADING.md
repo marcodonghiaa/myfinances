@@ -8,6 +8,13 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
+## Unreleased
+
+### Income shows who paid you
+- **Migration:** `20261208000000_transactions_payer_name`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard: the new dashboard asks `v_transactions_eur` for `payer_name`, and an older database answers with an error, so the Income and Cash flow pages would not load.
+- `v_transactions_eur` gets one new column at the end, `payer_name`: the name you gave the row, or else who paid you (the bank's debtor name). On an incoming payment the old "creditor" name is often your own name or empty, so Income and Cash flow now name the payer instead. Nothing else in the view changes and no rows are touched.
+- **Roll back:** redeploy the previous dashboard, then `supabase migration repair --status reverted 20261208000000 --linked`. The column can stay: an older dashboard never reads it (see `supabase/rollbacks/20261208000000_transactions_payer_name.down.sql`).
+
 ## v0.2.0 (11 Nov 2026)
 
 Budgets, two-step sign-in, rules that match whole words, debts, transfers that stop counting as spending, safer imports and refunds.
