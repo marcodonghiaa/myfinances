@@ -13,7 +13,7 @@ test('one budget row per user, category and month, months start on the 1st', () 
 
 // Splitwise categories go up to 100 characters; a budget must accept any category spend can have.
 test('category names are trimmed and up to 100 characters, like Splitwise ones', () => {
-  assert.match(up, /category text not null check \(category = btrim\(category\) and char_length\(category\) between 1 and 100\)/);
+  assert.match(up, /category text not null check \(category = btrim\(category, E' \\t\\n\\r'\) and char_length\(category\) between 1 and 100\)/);
 });
 
 test('amounts are never negative, rollover is off unless chosen', () => {

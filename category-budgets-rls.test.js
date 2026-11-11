@@ -81,6 +81,17 @@ test('category_budgets RLS with two users', { skip }, async (t) => {
     assert.match(add('2101-01-01'), /check constraint/);
   });
 
+  // P5 P2-18: a tab or line break around a name would make a second, look-alike category.
+  await t.test('category names have no spaces, tabs or line breaks around them', () => {
+    const add = (category) =>
+      as('authenticated', B, `insert into public.category_budgets (category, month, amount) values (${category}, '2026-11-01', 40) returning 1`);
+    assert.strictEqual(add("'Eating out'"), '1');
+    assert.match(add("' Gym'"), /check constraint/);
+    assert.match(add("E'Gym\\n'"), /check constraint/);
+    assert.match(add("E'\\tGym'"), /check constraint/);
+    assert.match(add("E'Gym\\r'"), /check constraint/);
+  });
+
   await t.test('signed-out visitors get nothing', () => {
     assert.match(as('anon', null, 'select count(*) from public.category_budgets'), /permission denied/);
     assert.strictEqual(as('authenticated', null, 'select count(*) from public.category_budgets'), '0');
