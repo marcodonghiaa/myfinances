@@ -28,3 +28,14 @@ test('the rollback restores the guard without refund_of', () => {
   assert.doesNotMatch(down, /refund_of/);
   assert.deepEqual(fnOf(down).match(/new\.\w+ is distinct from old\.\w+/g), fnOf(previous).match(/new\.\w+ is distinct from old\.\w+/g));
 });
+
+// protects=the lock is proven by running it, not only by matching its text; fails_when=there is no
+// rehearsal that applies up/down/up and checks what a signed-in user and the service role can do
+// (polish 5, item 8)
+test('a rehearsal runs the lock as a signed-in user and as the service role', () => {
+  const r = read('supabase/rehearsals/lock_refund_of.assert.sql');
+  assert.match(r, /set local role authenticated/);
+  assert.match(r, /set local role service_role/);
+  assert.match(r, /update public\.transactions set refund_of/);
+  assert.match(r, /raise exception/);
+});
