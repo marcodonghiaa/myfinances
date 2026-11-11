@@ -1,7 +1,7 @@
 // Deno port of refunds.js. Pairs each incoming refund with the earlier charge it reverses, so
 // neither counts as spend or income. Match key: same account, merchant, amount and currency;
-// the credit must land 0-90 days after the debit. Full refunds only -- partial ones are marked
-// by hand in the dashboard.
+// the credit must land 0-90 days after the debit. Full refunds only -- partial ones stay spend and income
+// (the dashboard has no way to mark a refund yet).
 export const WINDOW_DAYS = 90;
 const DAY_MS = 86_400_000;
 
@@ -14,6 +14,7 @@ export interface RefundRow {
   creditor_name?: string | null;
   remittance_info?: string | null;
   booking_date: string;
+  refund_of?: string | null; // set on a credit whose pair was undone: it may only pair with that charge
 }
 
 type Ref = { account_uid: string; entry_reference: string };
@@ -44,6 +45,7 @@ export function matchRefunds(rows: RefundRow[]): Array<{ debit: Ref; credit: Ref
     const debit = debits.findLast(
       (d) =>
         !used.has(d) &&
+        (!credit.refund_of || d.entry_reference === credit.refund_of) &&
         d.account_uid === credit.account_uid &&
         d.currency === credit.currency &&
         d.amount === credit.amount &&

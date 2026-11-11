@@ -1,7 +1,7 @@
 {
-  "name": "finance-app",
-  "version": "1.0.0",
-  "description": "",
+  "name": "alopex",
+  "version": "0.1.0",
+  "description": "Alopex backend: self-hosted net worth tracker for European banks. Supabase migrations, Edge Functions and the Enable Banking sync.",
   "main": "index.js",
   "scripts": {
     "test": "node --test *.test.js installer/*.test.js"

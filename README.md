@@ -30,38 +30,35 @@ Your data lives in your own Supabase project. No SaaS, no subscription.
 | 💱 **FX** | Daily EUR rates from Frankfurter/ECB, history backfilled on first run. |
 | 🔔 **"Worth it?" prompts** | Web Push after discretionary purchases. |
 
-**Trade-offs:** European (PSD2) banks only, and you run the sync yourself (Docker, cron or launchd).
+**Trade-offs:** European (PSD2) banks only, and you renew bank access every 180 days. The sync runs inside your own Supabase project (pg_cron + Edge Functions): no computer has to stay on.
 
 ## 🧭 How it works
 
 ```mermaid
 flowchart LR
-    Bank[(Banks<br/>Enable Banking)] --> TX[sync-transactions]
-    TX --> DB[(Supabase<br/>Postgres + RLS)]
-    NW[sync-networth] --> DB
-    FX[fx-sync] --> DB
-    DB --> CAT[categorize<br/>rules, then Gemini]
-    CAT --> TYPE[classify-type]
-    TYPE --> FLOW[classify-flow]
-    FLOW --> DB
-    PRICES[portfolio + crypto prices<br/>Yahoo, Coinbase, CoinGecko] --> DB
+    Bank[(Banks<br/>Enable Banking)] --> SYNC[sync-bank]
+    CRON[pg_cron<br/>every 6 hours] --> SYNC
+    SYNC --> DB[(Supabase<br/>Postgres + RLS)]
+    DB --> POST[post-sync<br/>rules, Gemini, flows, refunds]
+    POST --> DB
+    PRICES[sync-prices<br/>FX, Yahoo, Coinbase, CoinGecko] --> DB
+    DB --> REC[detect-recurring]
     DB --> UI[alopex-web<br/>dashboard]
-    DB --> PUSH[notify-worth-it<br/>Web Push]
+    DB --> PUSH[notify<br/>Web Push]
 ```
 
-A sync runs **every 6 hours** (banks typically cap unattended access at about 4 calls a day per account) and loops over every linked user:
+`npx create-alopex` schedules everything with pg_cron inside your Supabase project ([`20261118000000_schedule_sync.sql`](supabase/migrations/20261118000000_schedule_sync.sql)). Every **6 hours** (banks typically cap unattended access at about 4 calls a day per account), for every linked user:
 
-1. `sync-transactions.js` pulls new transactions, with a 7-day overlap because banks post late.
-2. `sync-networth.js` stores daily account balances.
-3. `fx-sync.js` stores daily EUR rates.
-4. `categorize.js` applies your rules first, then Gemini.
-5. `classify-type.js` marks `Subscription` or `One-time`.
-6. `classify-flow.js` marks `spend`, `income` or `transfer`, then pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days; the merchant of a refund is read from its "Refund from <merchant>" remittance) and marks both `refunded` so neither counts as spend or income.
-7. `sync-portfolio-prices.js`, `sync-crypto-coinbase.js`, `sync-crypto-prices.js` price your holdings.
+1. `sync-bank` pulls balances and new transactions, with a 7-day overlap because banks post late, and marks payments between your own accounts.
+2. `post-sync` fills merchant keys, applies your rules and past choices, then Gemini, for categories; marks `Subscription` or `One-time`; categorizes Splitwise expenses; marks `spend`, `income` or `transfer` (your flow rules, your own accounts, the bank's code); suggests transfer pairs; then pairs each card refund with its original charge (same account, merchant, amount and currency, within 90 days) and marks both `refunded` so neither counts. A flow you set by hand, or a transfer from a rule, is never changed. Refund pairing also covers rows a rule marked "not a transfer" and rows synced before flows were tracked (`legacy`).
+3. `sync-prices` stores daily EUR rates and prices your stocks, ETFs and crypto.
+4. `detect-recurring` updates the subscription radar.
 
-A newly linked bank doesn't wait for the next run: in Docker, every 5 minutes the scheduler syncs banks linked in the last hour that have never synced, then categorizes what arrived. With cron or launchd, run `bash run-daily-sync.sh` once after linking.
+A newly linked bank doesn't wait for the next run: its first sync starts right after linking.
 
-`notify-worth-it.js` runs every 30 minutes. Bank sync, prices and "worth it?" prompts cover every user; only the Coinbase sync is single-user (`USER_ID`, your own API key).
+`notify` sends "worth it?" prompts hourly and the bank-access reminder daily. Everything covers every user; only the Coinbase sync is single-user (your own API key).
+
+The Node scripts in this repo (`sync-transactions.js`, `classify-flow.js`, ...) are the older Docker, cron or launchd path. They do less than the Edge Functions: no flow rules, own-account or transfer pairing, merchant keys or subscription radar. New installs should use `npx create-alopex`.
 
 Bank linking from the dashboard runs as three Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
 
@@ -81,7 +78,7 @@ Your own copy takes about **30 minutes**, all in the browser: no computer has to
 | [Supabase](https://supabase.com/dashboard) | your database and login | free tier is enough |
 | [Enable Banking](https://enablebanking.com) | the PSD2 connection to your banks | free for your own accounts |
 | [Vercel](https://vercel.com/signup) (sign in with GitHub) | puts the dashboard online over HTTPS | free Hobby plan |
-| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended. Transaction descriptions go to Google; on the free tier Google may use them to improve its models, a paid-tier key opts out |
+| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended. Each new transaction (name, description, amount), each Splitwise expense description and any statement PDF you import go to Google; on the free tier Google may use them to improve its models, a paid-tier key opts out |
 
 In Enable Banking, sign up only; setup tells you when to create the app and gives the exact redirect URL.
 
@@ -171,6 +168,8 @@ Open http://localhost:3000 (only this computer; set `WEB_BIND=0.0.0.0` in `.env`
 `--reapply-rules` recategorizes rows the AI or an earlier rule set. Categories you set by hand are never touched (tracked in `transactions.category_source`; categories that predate the column count as hand-set).
 
 ## ⏰ Scheduling
+
+With `npx create-alopex` there is nothing to schedule: pg_cron in your Supabase project runs the sync. The options below are for the older setups.
 
 **On GitHub, no computer needed:** in your fork, add the secrets `APP_ID`, `PRIVATE_KEY` (the whole `.pem`), `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `USER_ID` and, if you use them, `GEMINI_API_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `COINBASE_API_KEY_NAME`, `COINBASE_API_PRIVATE_KEY` (Settings -> Secrets and variables -> Actions). Then add the variable `SYNC_ON_GITHUB` = `true` and enable Actions on the fork. [`.github/workflows/sync.yml`](.github/workflows/sync.yml) then syncs every 6 hours, sends "worth it?" prompts hourly and the bank-access reminder daily; run any of them by hand from the Actions tab. Your fork is public, so its list of runs is public too: the sync logs only counts, never names or amounts, and setup keeps logs for 1 day. GitHub can start scheduled runs 10-30 minutes late.
 
