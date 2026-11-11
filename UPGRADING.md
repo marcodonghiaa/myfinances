@@ -8,6 +8,10 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
+### Deleting a rule can re-sort the transactions it filed
+- No migration. Run `supabase functions deploy reapply-rules` BEFORE redeploying the dashboard (an older function ignores the new request and would preview your current rules instead).
+- After you delete a rule on the Rules page, it offers to re-sort the transactions that rule had filed and no other rule matches (for example "Barclays" filed as Dine Out by an old "bar" rule). They go back to uncategorized and the next sync sorts them again. Categories you set by hand and Transfer rows never change. If the rule also set a transaction type, that type stays on those rows.
+
 ### Manual rows and imports get input limits
 - **Migration:** `20261207000000_manual_transaction_checks`. Redeploy the **dashboard first** (or at the same time), then apply it with `supabase db push --linked`. An older dashboard sends descriptions longer than 500 characters, which the new database refuses: an import would stop at that row on every retry.
 - Rows added by hand or by a statement import (`add_manual_transaction`) now have limits: amounts up to a trillion, a 3-letter currency, descriptions up to 500 characters, categories up to 100, a debit or credit direction, and up to 60 characters for the name of a new manual account (accounts named before keep working).
@@ -18,6 +22,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - **Migration:** `20261206000000_rule_match_mode`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read the new column), then `supabase functions deploy` (new function `reapply-rules`) and redeploy the dashboard.
 - A rule now says how its text must appear (`category_rules.match_mode`): `word` (on its own, so "bar" no longer matches "Barclays"), `exact` (the whole field) or `contains` (anywhere). Rules made before keep `contains`, so nothing changes for them; new rules from the dashboard default to `word`.
 - The Rules page has "Apply to past transactions": it shows how many transactions would change first, and never touches categories you set by hand or anything into or out of Transfer. The CLI `node categorize.js --reapply-rules` still works.
+- A rule whose text is only spaces no longer matches anything. Before, an "Anywhere" rule like that caught almost every transaction. The dashboard never allowed one, so this only matters if you added it with SQL.
 - Rule text is now limited to 200 characters for new and edited rules. Longer (or empty) rules you already have keep working, but they can't be edited, and if you delete one there's no Undo: add it again shorter.
 - **Roll back:** `supabase/rollbacks/20261206000000_rule_match_mode.down.sql` (every rule goes back to matching anywhere). Revert the Edge Functions and the sync too: they read `match_mode`.
 
