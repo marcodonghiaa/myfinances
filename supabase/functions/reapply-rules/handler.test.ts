@@ -161,3 +161,8 @@ Deno.test("the two-step check failing is a 503, nothing read", async () => {
   assertEquals([res.status, await res.json()], [503, { error: "Sign-in check is unavailable, please try again" }]);
   assertEquals(tables, []);
 });
+
+Deno.test("a Content-Length over 16 KB is refused before the body is read", async () => {
+  const res = await call(seed(), { headers: { Authorization: "Bearer good", "Content-Length": String(17 * 1024) }, body: "{}" });
+  assertEquals(res, { status: 413, body: { error: "Request too large" } });
+});
