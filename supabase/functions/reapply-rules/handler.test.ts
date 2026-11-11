@@ -137,3 +137,13 @@ Deno.test("retiredFrom: a category is bounded in characters", () => {
   assertEquals(retiredFrom({ retired: good })?.set_category, "😀".repeat(2000));
   assertEquals(retiredFrom({ retired: { ...good, set_category: "x".repeat(2001) } }), null);
 });
+
+// Polish 2 #3: the body is a few hundred bytes; a huge one is refused before it's parsed.
+Deno.test("a body over 16 KB is a 413, nothing read", async () => {
+  const db = seed();
+  const tables: string[] = [];
+  const watched = { ...db, from: (t: string) => (tables.push(t), db.from(t)) };
+  const big = JSON.stringify({ apply: true, pad: "x".repeat(17 * 1024) });
+  assertEquals(await call(watched, { body: big }), { status: 413, body: { error: "Request too large" } });
+  assertEquals(tables, []);
+});
