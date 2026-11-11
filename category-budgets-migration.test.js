@@ -47,3 +47,10 @@ test('the upgrade notes say how to run a rollback and how to re-apply it later',
   assert.match(intro, /supabase\/rollbacks\//);
   assert.match(intro, /supabase migration repair --status reverted <version> --linked/);
 });
+
+// P5 P2-17: the two-user RLS test is skipped without a database, so CI has to give it one.
+test('CI runs the two-user RLS test against a real Postgres', () => {
+  const ci = fs.readFileSync('.github/workflows/test.yml', 'utf8');
+  assert.match(ci, /services:\s+postgres:\s+image: postgres:17/);
+  assert.match(ci, /RLS_TEST_DATABASE_URL: postgres:\/\/postgres:postgres@localhost:5432\/postgres/);
+});
