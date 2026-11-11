@@ -45,3 +45,9 @@ test('migration refuses an existing hook before it creates anything', () => {
   const refuse = up.indexOf('PostgREST already runs pre-request hook');
   assert.ok(refuse >= 0 && refuse < up.indexOf('create or replace function'), 'check comes after a create');
 });
+
+// polish-5 #2 re-audit: plain `psql -f` keeps going after the refusal and drops the function anyway.
+test('UPGRADING says to run the rollback so a refusal stops it', () => {
+  const doc = fs.readFileSync(path.join(__dirname, 'UPGRADING.md'), 'utf8');
+  assert.match(doc, /remove its `require_mfa\(\)` call first[^\n]*ON_ERROR_STOP=1 -1/);
+});
