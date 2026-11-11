@@ -1,15 +1,18 @@
 -- Notes and tags: the user's own words on a transaction. Only the dashboard writes them (the
 -- signed-in user, through RLS). The bank sync upserts only the columns its rows carry, and its rows
 -- never carry note or tags, so a sync re-run leaves them as they are.
+--
+-- Safe to run again after its rollback (which keeps both columns): every step is idempotent, and
+-- notes and tags written while the limits were off are tidied the way the dashboard tidies them.
 
 alter table public.transactions
-  add column note text,
-  add column tags text[] not null default '{}';
+  add column if not exists note text,
+  add column if not exists tags text[] not null default '{}';
 
 -- Bounds match the dashboard: a note up to 2000 characters, up to 20 tags of 1 to 40 characters
 -- each (no spaces around them, single spaces inside, no tabs or line breaks), no NULL entries.
 -- A CHECK can't hold a subquery, so the tag check is a function.
-create function public.transaction_tags_ok(p_tags text[])
+create or replace function public.transaction_tags_ok(p_tags text[])
 returns boolean
 language sql
 immutable
@@ -23,6 +26,37 @@ as $$
      );
 $$;
 
+-- Only rows written while rolled back can need this: blank notes become NULL, long ones are cut;
+-- tags get trimmed with single spaces, cut to 40, blanks and repeats (ignoring case, first spelling
+-- wins) dropped, at most 20 kept.
+update public.transactions
+set note = nullif(btrim(left(note, 2000)), '')
+where note is not null and note is distinct from nullif(btrim(left(note, 2000)), '');
+
+update public.transactions t
+set tags = c.clean
+from (
+  select tr.account_uid, tr.entry_reference, array(
+    select d.tag from (
+      select distinct on (lower(w.tag)) w.tag, w.ord
+      from (
+        select btrim(left(btrim(regexp_replace(u.tag, '\s+', ' ', 'g')), 40)) as tag, u.ord
+        from unnest(tr.tags) with ordinality as u(tag, ord)
+      ) w
+      where w.tag <> ''
+      order by lower(w.tag), w.ord
+    ) d
+    order by d.ord
+    limit 20
+  ) as clean
+  from public.transactions tr
+  where tr.tags <> '{}' and not public.transaction_tags_ok(tr.tags)
+) c
+where t.account_uid = c.account_uid and t.entry_reference = c.entry_reference;
+
+alter table public.transactions
+  drop constraint if exists transactions_note_length,
+  drop constraint if exists transactions_tags_ok;
 alter table public.transactions
   add constraint transactions_note_length check (note is null or char_length(note) between 1 and 2000),
   add constraint transactions_tags_ok check (public.transaction_tags_ok(tags));
@@ -67,7 +101,7 @@ create or replace view public.v_transactions_eur with (security_invoker = true) 
 
 -- Every tag the caller has used (all months), most used first: suggestions while typing a tag.
 -- Invoker rights, so RLS applies too; the user_id filter lets it use the user_id index.
-create function public.my_transaction_tags()
+create or replace function public.my_transaction_tags()
 returns table (tag text, uses bigint)
 language sql
 stable

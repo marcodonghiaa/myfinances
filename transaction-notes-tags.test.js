@@ -154,4 +154,21 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.strictEqual(setA('tags', "array[' loose ']"), '1');
     assert.strictEqual(psql(dbUrl(), ['-c', "select array_to_string(tags, ',') from public.transactions where entry_reference = 'ref-1'"]), 'work,trip');
   });
+
+  // polish-1 #1: UPGRADING's rollback ends with `migration repair --status reverted`, so the next
+  // `db push` runs this file again over the kept columns and whatever was written meanwhile.
+  await t.test('after the rollback the migration applies again and tidies rows written meanwhile', () => {
+    psql(dbUrl(), [
+      '-c',
+      `update public.transactions set tags = array[' loose  tag ', 'loose tag', ''] where entry_reference = 'ref-1';
+       update public.transactions set note = '   ' where entry_reference = 'ref-2';`,
+    ]);
+    applySql(MIGRATION);
+    assert.strictEqual(
+      psql(dbUrl(), ['-c', "select array_to_string(tags, ',') || '|' || coalesce(note, 'null') from public.transactions where entry_reference = 'ref-1'"]),
+      'loose tag|null',
+    );
+    assert.strictEqual(psql(dbUrl(), ['-c', "select coalesce(note, 'null') from public.transactions where entry_reference = 'ref-2'"]), 'null');
+    assert.strictEqual(as('authenticated', A, "select string_agg(tag, ',') from public.my_transaction_tags()"), 'loose tag');
+  });
 });
