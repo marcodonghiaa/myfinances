@@ -54,7 +54,7 @@ async function applyTransferDefault(rows) {
 async function fetchTypeRules() {
   const { data, error } = await supabase
     .from('category_rules')
-    .select('user_id, match_field, match_text, set_transaction_type')
+    .select('user_id, match_field, match_text, match_mode, set_transaction_type')
     .not('set_transaction_type', 'is', null)
     .order('priority', { ascending: true })
     .order('created_at', { ascending: true });

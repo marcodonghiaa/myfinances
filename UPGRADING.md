@@ -8,6 +8,13 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
+### Rules match whole words and apply to past transactions from the dashboard
+- **Migration:** `20261206000000_rule_match_mode`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read the new column), then `supabase functions deploy` (new function `reapply-rules`) and redeploy the dashboard.
+- A rule now says how its text must appear (`category_rules.match_mode`): `word` (on its own, so "bar" no longer matches "Barclays"), `exact` (the whole field) or `contains` (anywhere). Rules made before keep `contains`, so nothing changes for them; new rules from the dashboard default to `word`.
+- The Rules page has "Apply to past transactions": it shows how many transactions would change first, and never touches categories you set by hand or anything into or out of Transfer. The CLI `node categorize.js --reapply-rules` still works.
+- Rule text is now limited to 200 characters for new and edited rules. Longer (or empty) rules you already have keep working, but they can't be edited, and if you delete one there's no Undo: add it again shorter.
+- **Roll back:** `supabase/rollbacks/20261206000000_rule_match_mode.down.sql` (every rule goes back to matching anywhere). Revert the Edge Functions and the sync too: they read `match_mode`.
+
 ### Two-step sign-in
 - **Migration:** `20261203000000_require_mfa`. Apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
 - It sets PostgREST's pre-request hook (`pgrst.db_pre_request`) to `public.require_mfa`. If you already use your own hook, the migration stops with an error: call `public.require_mfa()` from your hook, clear it with `alter role authenticator reset pgrst.db_pre_request;` and `alter role authenticator in database postgres reset pgrst.db_pre_request;` (it may be set either way), push again, then set yours back the way it was. The check only sees a hook set on the database role: if yours is in PostgREST's own config (`db-pre-request` in its config file or `PGRST_DB_PRE_REQUEST`, on a self-run stack), move it into the database and chain it as above before pushing, or one of the two hooks may stop running.

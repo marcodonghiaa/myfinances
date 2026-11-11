@@ -1,0 +1,83 @@
+import { assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { reapplyHandler, userIdFrom } from "./handler.ts";
+import { memoryDb } from "../_shared/memory-db.test-helper.ts";
+
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const seed = (failWrite?: "update") =>
+  memoryDb({
+    transactions: [{ user_id: "u1", account_uid: "a1", entry_reference: "r1", creditor_name: "Bar Roma", remittance_info: "", category: "Others", category_source: "ai", deleted_at: null }],
+    category_rules: [{ user_id: "u1", match_field: "creditor_name", match_text: "bar", match_mode: "word", set_category: "Dine Out", priority: 100, created_at: "2026-01-01" }],
+  }, failWrite);
+const call = async (
+  db: ReturnType<typeof seed>,
+  init: RequestInit & { headers?: Record<string, string> },
+  mfa: { body: object; status: number } | null = null,
+) => {
+  const handler = reapplyHandler({
+    userIdFor: (a) => Promise.resolve(a === "Bearer good" ? "u1" : null),
+    mfaRefusal: () => Promise.resolve(mfa),
+    admin: () => db,
+  });
+  const res = await handler(new Request("http://x/reapply-rules", { method: "POST", headers: { Authorization: "Bearer good" }, ...init }), json);
+  return { status: res.status, body: await res.json() };
+};
+
+Deno.test("only POST", async () => {
+  assertEquals((await call(seed(), { method: "GET" })).status, 405);
+});
+
+Deno.test("no or bad token: 401, nothing read", async () => {
+  assertEquals((await call(seed(), { headers: {} })).status, 401);
+  assertEquals((await call(seed(), { headers: { Authorization: "Bearer bad" } })).status, 401);
+});
+
+Deno.test("a body that isn't { apply: true } only previews", async () => {
+  const db = seed();
+  const res = await call(db, { body: "not json" });
+  assertEquals(res, { status: 200, body: { changes: 1, sample: [{ name: "Bar Roma", from: "Others", to: "Dine Out" }] } });
+  assertEquals(db.tables.transactions[0].category, "Others");
+});
+
+Deno.test("apply writes, as a rule", async () => {
+  const db = seed();
+  assertEquals((await call(db, { body: JSON.stringify({ apply: true }) })).body.changes, 1);
+  assertEquals(db.tables.transactions[0].category_source, "rule");
+});
+
+// Polish pass 2 #3: a failed write said only "Couldn't apply", though other rows may be saved.
+Deno.test("a failed write is a 500 that says what was kept and that retrying is safe", async () => {
+  const res = await call(seed("update"), { body: JSON.stringify({ apply: true }) });
+  assertEquals(res.status, 500);
+  assertEquals(res.body, {
+    error: "Some transactions couldn't be updated. Try again: the ones already updated stay as they are.",
+  });
+});
+
+Deno.test("a failed read keeps the plain error", async () => {
+  const handler = reapplyHandler({ userIdFor: () => Promise.resolve("u1"), mfaRefusal: () => Promise.resolve(null), admin: () => ({ from: () => { throw new Error("down"); } }) });
+  const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
+  assertEquals([res.status, await res.json()], [500, { error: "Couldn't apply your rules, please try again" }]);
+});
+
+// Polish pass 2 #4: when the auth server was down the user was told "Not signed in".
+Deno.test("an auth server outage is a 503, not a sign-out", async () => {
+  const handler = reapplyHandler({ userIdFor: () => Promise.reject(new Error("auth down")), mfaRefusal: () => Promise.resolve(null), admin: () => seed() });
+  const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
+  assertEquals([res.status, await res.json()], [503, { error: "Sign-in check is unavailable, please try again" }]);
+});
+
+// Polish pass 2 re-audit: the auth-result check that tells "signed out" from "auth down".
+Deno.test("userIdFrom: user id, null for a bad token, throws when auth is down", () => {
+  assertEquals(userIdFrom({ data: { user: { id: "u1" } }, error: null }), "u1");
+  for (const status of [400, 401, 403]) assertEquals(userIdFrom({ data: { user: null }, error: { status } }), null);
+  for (const status of [0, 500, 503, undefined]) assertThrows(() => userIdFrom({ data: { user: null }, error: { status } }));
+});
+
+// Merge with two-step sign-in (#128): this function writes with the service key, which skips the
+// database's MFA hook, so it must ask itself, like the other service-role functions.
+Deno.test("refuses a session without the second step, before reading or writing", async () => {
+  const db = seed();
+  const res = await call(db, { body: JSON.stringify({ apply: true }) }, { body: { code: "mfa_required" }, status: 403 });
+  assertEquals(res, { status: 403, body: { code: "mfa_required" } });
+  assertEquals(db.tables.transactions[0].category, "Others");
+});
