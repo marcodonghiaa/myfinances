@@ -4,6 +4,8 @@ Pulling new code does not update your database. Migrations are not applied autom
 
 For every release: `git pull`, then `supabase db push --linked` for new migrations (keep `--linked`: since Supabase CLI v3 a plain `db push` targets a local database, not your project), then rebuild or restart the sync jobs (`docker compose up -d --build`, or nothing for cron or launchd, which run the new files on their next run).
 
+To roll a change back: run its file from `supabase/rollbacks/` in the Supabase SQL editor (or with `psql`), then `supabase migration repair --status reverted <version> --linked` (the version is the number at the start of the file name). Without the repair, a later `supabase db push --linked` still counts the migration as applied and does not bring it back.
+
 ## Release notes, newest first
 
 ### Two-step sign-in
@@ -14,6 +16,11 @@ For every release: `git pull`, then `supabase db push --linked` for new migratio
 - **Changing the password in Settings** checks the current one without starting a new session (a new one would drop the code step). If you turned on Supabase Auth's "Secure password change" (off by default), a session older than 24 hours can't change the password: the dashboard says to sign out and sign in again.
 - **Lost your phone?** There are no backup codes: add a second authenticator in Settings while you still have the first. If every authenticator is gone, the instance owner removes them in the Supabase SQL editor: `delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'you@example.com');`, then sets it up again.
 - **Roll back:** `supabase/rollbacks/20261203000000_require_mfa.down.sql` (after reverting the Edge Functions). If you chained your own hook, remove its `require_mfa()` call first: the rollback stops while a hook still calls it, and it leaves your hook in place. Run it in the SQL editor or with `psql -v ON_ERROR_STOP=1 -1 -f <file>`, so a refusal stops it.
+
+### Monthly budgets per category
+- **Migration:** `20261202100000_category_budgets`. You apply it with `supabase db push --linked`, then redeploy the dashboard. No Edge Function or sync change.
+- Adds `category_budgets`: a budget per category that holds from its month onward until you change it, with optional rollover (a month's leftover or overspend moves into the next). Only spend counts, never transfers or income. Budgets are in the export.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261202100000_category_budgets.down.sql` (budgets are lost; export your data before if you want to keep them). A dashboard of this release without the table cannot open Budgets, and its data export fails.
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
