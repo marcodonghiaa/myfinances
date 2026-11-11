@@ -125,6 +125,14 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.strictEqual(setA('tags', "array['day trip']"), '1');
   });
 
+  // polish-1 #13: an invisible character alone would make an invisible "#" tag.
+  await t.test('tags with zero-width characters are refused', () => {
+    for (const cp of ['200B', '200D', '2060', 'FEFF', '00AD']) {
+      assert.match(setA('tags', `array[E'\\u${cp}']`), /transactions_tags_ok/, cp);
+      assert.match(setA('tags', `array[E'wo\\u${cp}rk']`), /transactions_tags_ok/, cp);
+    }
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {
