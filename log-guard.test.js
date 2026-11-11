@@ -35,6 +35,7 @@ const ERROR_TAG_ONLY_PATHS = [
   'supabase/functions/_shared/eb-sessions.ts',
   'supabase/functions/add-holding/index.ts',
   'supabase/functions/parse-statement/index.ts',
+  'supabase/functions/reapply-rules/handler.ts',
 ];
 
 function leakyLines(file) {

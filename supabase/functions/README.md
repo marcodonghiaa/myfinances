@@ -1,6 +1,6 @@
 # Supabase Edge Functions
 
-Source of truth for the Edge Functions: bank linking, account deletion, holdings, statements.
+Source of truth for the Edge Functions: bank linking, account deletion, holdings, statements, rules.
 Deploy with `supabase functions deploy --project-ref <ref>` (what `setup.sh`
 runs) — `verify_jwt` per function is codified in `supabase/config.toml`, so a
 plain deploy from this repo reproduces the same gating described below.
@@ -23,6 +23,11 @@ plain deploy from this repo reproduces the same gating described below.
   (crypto) by name, ticker or ISIN, and adds the chosen holding with today's
   price so it shows at once. Writes the holding as the user (RLS), the price
   with the service role. `verify_jwt: true`.
+- **reapply-rules** — the Rules page's "Apply to past transactions": `{ "apply": false }`
+  previews how many transactions your rules would re-categorize (with a few examples),
+  `{ "apply": true }` does it. The JWT identifies the user; reads and writes use the service key
+  scoped to that user. Categories set by hand, and Transfer rows, never change.
+  `verify_jwt: true`.
 - **parse-statement** — reads the transactions out of a bank statement PDF with Gemini
   for the dashboard's import (`{ pdf: <base64> }` → `{ rows }`). The PDF is never stored and
   nothing is written: the dashboard adds the rows you confirm. Needs `GEMINI_API_KEY`;

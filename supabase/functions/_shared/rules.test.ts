@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { applyRules, planRuleReapply, type Rule } from "./rules.ts";
+import { applyRules, matchRule, planRuleReapply, type Rule } from "./rules.ts";
 
 const rule = (over: Partial<Rule> = {}): Rule => ({
   user_id: "u1", match_field: "creditor_name", match_text: "netflix", set_category: "Entertainment", set_transaction_type: null, ...over,
@@ -37,4 +37,62 @@ Deno.test("reapply never plans a change for manual or legacy rows, same category
   assertEquals(planRuleReapply([row({ category: "Entertainment", category_source: "rule" })], [rule()]), []);
   assertEquals(planRuleReapply([row({ creditor_name: "Lidl" })], [rule()]), []);
   assertEquals(planRuleReapply([row()], [rule({ set_category: null })]), []);
+});
+
+Deno.test("contains (default for older rules) matches anywhere; word and exact do not over-match", () => {
+  const barclays = row({ creditor_name: "BARCLAYS UK" });
+  assertEquals(matchRule(barclays, rule({ match_text: "bar" })), true);
+  assertEquals(matchRule(barclays, rule({ match_text: "bar", match_mode: "word" })), false);
+  assertEquals(matchRule(row({ creditor_name: "PAYPAL *BAR-ROMA" }), rule({ match_text: "bar", match_mode: "word" })), true);
+  assertEquals(matchRule(row({ creditor_name: "Bàrbara" }), rule({ match_text: "bàr", match_mode: "word" })), false);
+  assertEquals(matchRule(row({ creditor_name: "AXB" }), rule({ match_text: "a.b", match_mode: "word" })), false);
+  assertEquals(matchRule(row({ creditor_name: "NETFLIX " }), rule({ match_text: " Netflix ", match_mode: "exact" })), true);
+  assertEquals(matchRule(row({ creditor_name: "NETFLIX.COM" }), rule({ match_text: "netflix", match_mode: "exact" })), false);
+  assertEquals(matchRule(row(), rule({ match_text: "  " })), false);
+});
+
+Deno.test("word treats accented letters as letters, in either Unicode form", () => {
+  const word = (text: string) => rule({ match_text: text, match_mode: "word" });
+  assertEquals(matchRule(row({ creditor_name: "Café Roma" }), word("caf")), false);
+  assertEquals(matchRule(row({ creditor_name: "Élan Vital" }), word("lan")), false);
+  assertEquals(matchRule(row({ creditor_name: "Cafe\u0301 Roma" }), word("café")), true); // decomposed é
+  assertEquals(matchRule(row({ creditor_name: "Cafe\u0301 Roma" }), word("cafe")), false);
+});
+
+Deno.test("word checks a boundary only on letter or digit edges", () => {
+  assertEquals(matchRule(row({ creditor_name: "AMAZON.IT" }), rule({ match_text: "amazon.", match_mode: "word" })), true);
+  assertEquals(matchRule(row({ creditor_name: "PAYPAL*NETFLIX" }), rule({ match_text: "*netflix", match_mode: "word" })), true);
+});
+
+Deno.test("contains keeps the text as typed, spaces included", () => {
+  assertEquals(matchRule(row(), rule({ match_text: " netflix" })), false);
+});
+
+Deno.test("reapply leaves Transfer alone, into it or out of it", () => {
+  assertEquals(planRuleReapply([row({ category: "Transfer" })], [rule()]), []);
+  assertEquals(planRuleReapply([row()], [rule({ set_category: "Transfer" })]), []);
+});
+
+// Polish pass 2 #1: building a regex per row × rule made 20k rows × 200 rules take ~7 s.
+Deno.test("each rule builds its matcher once, not once per row", () => {
+  const Original = RegExp;
+  let built = 0;
+  globalThis.RegExp = new Proxy(Original, { construct: (Target, args) => (built++, Reflect.construct(Target, args)) });
+  try {
+    const rows = Array.from({ length: 100 }, (_, i) => row({ entry_reference: `r${i}`, creditor_name: "Lidl" }));
+    const rules = [rule({ match_text: "bar", match_mode: "word" }), rule({ match_text: "spotify", match_mode: "word" })];
+    planRuleReapply(rows, rules);
+    applyRules(rows, rules);
+  } finally {
+    globalThis.RegExp = Original;
+  }
+  assertEquals(built <= 4, true, `built ${built} regexes for 2 rules`);
+});
+
+// Polish pass 5 #4: the sync sets a rule's type along with its category (categorize.ts), so
+// "Apply to past" must too, or past and new rows end up with different types.
+Deno.test("planRuleReapply also sets the rule's type when it changes the category", () => {
+  assertEquals(planRuleReapply([row()], [rule({ set_transaction_type: "Subscription" })])[0].update, {
+    category: "Entertainment", category_source: "rule", transaction_type: "Subscription",
+  });
 });

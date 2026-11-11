@@ -60,7 +60,7 @@ A newly linked bank doesn't wait for the next run: its first sync starts right a
 
 The Node scripts in this repo (`sync-transactions.js`, `classify-flow.js`, ...) are the older Docker, cron or launchd path. They do less than the Edge Functions: no flow rules, own-account or transfer pairing, merchant keys or subscription radar. New installs should use `npx create-alopex`.
 
-Bank linking from the dashboard runs as three Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
+Bank linking and the dashboard's other server-side actions (account deletion, holdings, statements, rules) run as Supabase Edge Functions, see [`supabase/functions/README.md`](supabase/functions/README.md).
 
 **Built to keep running:** every outbound call has a 60 s timeout, each scheduled script a 10 minute limit, sync cursors are written atomically (and kept on a volume in Docker), and one user's failing rows can't block anyone else's classification.
 
