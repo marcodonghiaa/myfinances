@@ -16,7 +16,8 @@ alter table public.transactions
 -- and \S depend on the database's locale, and a CHECK must give the same answer on every server.
 -- Invisible format characters (zero-width space and joiners, soft hyphen, direction marks) are
 -- refused too: on their own they would make an invisible tag. The dashboard strips them. A comma
--- ends a tag in the dashboard and separates tags in the export, so it can't be inside one.
+-- ends a tag in the dashboard and separates tags in the export, so it can't be inside one. Tags are
+-- in composed form (NFC), so "café" typed with a separate accent is the same tag as "café".
 create or replace function public.transaction_tags_ok(p_tags text[])
 returns boolean
 language sql
@@ -31,6 +32,7 @@ as $$
           or t.tag !~ '^[^ ]+( [^ ]+)*$'
           or t.tag ~ '[\t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]'
           or t.tag like '%,%'
+          or t.tag is not nfc normalized
           or t.tag ~ '[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F]'
      );
 $$;
@@ -49,7 +51,7 @@ from (
     select d.tag from (
       select distinct on (lower(w.tag)) w.tag, w.ord
       from (
-        select btrim(left(btrim(regexp_replace(regexp_replace(p.part, '[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]', '', 'g'), '[ \t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+', ' ', 'g')), 40)) as tag,
+        select btrim(left(btrim(regexp_replace(regexp_replace(normalize(p.part, nfc), '[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]', '', 'g'), '[ \t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+', ' ', 'g')), 40)) as tag,
                array[u.ord, p.ord] as ord
         from unnest(tr.tags) with ordinality as u(tag, ord)
         cross join lateral unnest(string_to_array(u.tag, ',')) with ordinality as p(part, ord)

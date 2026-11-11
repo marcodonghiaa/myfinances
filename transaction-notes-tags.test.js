@@ -140,6 +140,12 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.match(setA('tags', "array['trip, work']"), /transactions_tags_ok/);
   });
 
+  // polish-1 #22: "café" typed with a combining accent would otherwise be a second "café" tag.
+  await t.test('tags must be in composed (NFC) form', () => {
+    assert.strictEqual(setA('tags', "array['café']"), '1');
+    assert.match(setA('tags', "array[E'cafe\\u0301']"), /transactions_tags_ok/);
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {
@@ -185,15 +191,15 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
   await t.test('after the rollback the migration applies again and tidies rows written meanwhile', () => {
     psql(dbUrl(), [
       '-c',
-      `update public.transactions set tags = array[' loose  tag ', 'loose tag', '', 'a,b', E'\\u200B'] where entry_reference = 'ref-1';
+      `update public.transactions set tags = array[' loose  tag ', 'loose tag', '', 'a,b', E'\\u200B', E'cafe\\u0301', 'café'] where entry_reference = 'ref-1';
        update public.transactions set note = '   ' where entry_reference = 'ref-2';`,
     ]);
     applySql(MIGRATION);
     assert.strictEqual(
       psql(dbUrl(), ['-c', "select array_to_string(tags, ',') || '|' || coalesce(note, 'null') from public.transactions where entry_reference = 'ref-1'"]),
-      'loose tag,a,b|null',
+      'loose tag,a,b,café|null',
     );
     assert.strictEqual(psql(dbUrl(), ['-c', "select coalesce(note, 'null') from public.transactions where entry_reference = 'ref-2'"]), 'null');
-    assert.strictEqual(as('authenticated', A, "select string_agg(tag, ',') from public.my_transaction_tags()"), 'a,b,loose tag');
+    assert.strictEqual(as('authenticated', A, "select string_agg(tag, ',') from public.my_transaction_tags()"), 'a,b,café,loose tag');
   });
 });
