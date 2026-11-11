@@ -8,6 +8,20 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
+## v0.2.0 (11 Nov 2026)
+
+Budgets, two-step sign-in, rules that match whole words, debts, transfers that stop counting as spending, safer imports and refunds.
+
+**Upgrade with the installer:** run `npx create-alopex@0.2.0` in the same folder you installed into. It keeps `backend/.env`, applies the new migrations, deploys the Edge Functions and redeploys the dashboard, in that order.
+
+**Upgrade by hand**, in this order:
+1. Backend: `git pull`, then `supabase db push --linked` (13 migrations, 20261124 to 20261207).
+2. `supabase functions deploy` (new function `reapply-rules`; `post-sync`, `sync-bank` and others changed).
+3. Dashboard: `git pull` and redeploy. One exception: deploy the dashboard before or together with step 1 if you import statements, see "Manual rows and imports get input limits".
+4. Docker or launchd sync only: rebuild or restart it.
+
+If you use your own PostgREST pre-request hook, read "Two-step sign-in" before step 1. Each change below says what it needs and how to roll it back.
+
 ### Deleting a rule can re-sort the transactions it filed
 - No migration. Run `supabase functions deploy reapply-rules` BEFORE redeploying the dashboard (an older function ignores the new request and would preview your current rules instead).
 - After you delete a rule on the Rules page, it offers to re-sort the transactions that rule had filed and no other rule matches (for example "Barclays" filed as Dine Out by an old "bar" rule). They go back to uncategorized and the next sync sorts them again. Categories you set by hand and Transfer rows never change. If the rule also set a transaction type, that type stays on those rows.
@@ -27,7 +41,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - **Roll back:** `supabase/rollbacks/20261206000000_rule_match_mode.down.sql` (every rule goes back to matching anywhere). Revert the Edge Functions and the sync too: they read `match_mode`.
 
 ### Refund links can't be changed by hand
-- **Migration:** `20261205000000_lock_refund_of`. Apply it with `supabase db push --linked`. No dashboard, Edge Function or sync change, so the order doesn't matter.
+- **Migration:** `20261205000000_lock_refund_of`. Apply it with `supabase db push --linked`, then `supabase functions deploy post-sync` (same release: refund pairing now skips rows you or a rule decided, and repairs half-applied pairs). No dashboard change, so the order doesn't matter.
 - `refund_of` (which charge a refund reverses) is now set only by the refund pairing after each sync; a signed-in user changing it through the API gets "Bank-provided fields on transactions cannot be changed". Existing links are untouched.
 - **Roll back:** `supabase/rollbacks/20261205000000_lock_refund_of.down.sql` (users can change `refund_of` again).
 
@@ -98,6 +112,8 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - A newly linked account starts its first sync right away (balance and transactions) instead of waiting up to 6 hours for the cron. It uses the same secret key as the cron, so nothing to configure.
 - An old dashboard shows "Couldn't link the bank" for new links until you redeploy it.
 - **Roll back:** `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`.
+
+## v0.1.0 and earlier
 
 ### Splitwise balances say who owes whom
 - **Migration:** `20261123000000_splitwise_balances_basis`. Apply it with `supabase db push --linked`, then redeploy the dashboard.
