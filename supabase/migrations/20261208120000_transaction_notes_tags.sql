@@ -41,8 +41,9 @@ as $$
 $$;
 
 -- Only rows written while rolled back can need this: blank notes become NULL, long ones are cut;
--- tags are split at commas, invisible characters dropped, then trimmed with single spaces, cut to 40, blanks and repeats (ignoring case, first spelling
--- wins) dropped, at most 20 kept.
+-- tags are split at commas, invisible characters dropped (before NFC, so a dropped one can't keep an
+-- accent apart from its letter), then trimmed with single spaces, cut to 40, blanks and repeats
+-- (ignoring case, first spelling wins) dropped, at most 20 kept.
 update public.transactions
 set note = nullif(btrim(left(note, 2000)), '')
 where note is not null and note is distinct from nullif(btrim(left(note, 2000)), '');
@@ -54,7 +55,7 @@ from (
     select d.tag from (
       select distinct on (lower(w.tag)) w.tag, w.ord
       from (
-        select btrim(left(btrim(regexp_replace(regexp_replace(normalize(p.part, nfc), '[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]', '', 'g'), '[ \t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+', ' ', 'g')), 40)) as tag,
+        select btrim(left(btrim(regexp_replace(normalize(regexp_replace(p.part, '[\u00AD\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]', '', 'g'), nfc), '[ \t\n\v\f\r\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+', ' ', 'g')), 40)) as tag,
                array[u.ord, p.ord] as ord
         from unnest(tr.tags) with ordinality as u(tag, ord)
         cross join lateral unnest(string_to_array(u.tag, ',')) with ordinality as p(part, ord)
