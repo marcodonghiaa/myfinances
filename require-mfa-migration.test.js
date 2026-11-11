@@ -22,3 +22,9 @@ test('rollback removes the hook before dropping the functions it calls', () => {
     .map((s) => down.indexOf(s));
   assert.ok(order.every((i, n) => i >= 0 && (n === 0 || i > order[n - 1])), 'wrong order or missing step');
 });
+
+// polish-5 #1: a hook set per database survives a role-wide reset, so the push would fail again.
+test('UPGRADING says how to clear an existing hook set per database too', () => {
+  const doc = fs.readFileSync(path.join(__dirname, 'UPGRADING.md'), 'utf8');
+  assert.match(doc, /alter role authenticator in database postgres reset pgrst\.db_pre_request;/);
+});
