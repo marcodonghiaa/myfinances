@@ -21,3 +21,13 @@ test('rollback removes income-only rules before restoring the old check and drop
   assert.ok(down.indexOf('add constraint') < down.indexOf('drop column if exists set_income_kind'));
   assert.match(down, /check \(set_category is not null or set_transaction_type is not null or set_flow_type is not null\);/);
 });
+
+// Polish #4: the dashboard selects set_income_kind on every rules read; rolling the database back
+// under it breaks the Rules page, Income and the calendar.
+test('UPGRADING says to revert the dashboard before rolling back', () => {
+  const notes = fs.readFileSync('UPGRADING.md', 'utf8');
+  const entry = notes.slice(notes.indexOf('### Recurring calendar and regular income'));
+  const rollback = entry.slice(entry.indexOf('**Roll back:**'), entry.indexOf('\n###'));
+  assert.match(rollback, /revert the dashboard first/i);
+  assert.match(rollback, /20261208000000_income_kind_rules\.down\.sql/);
+});
