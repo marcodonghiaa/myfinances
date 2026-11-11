@@ -169,6 +169,18 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.strictEqual(out, 'trip:3');
   });
 
+  // polish-1 #19: limits count characters, not bytes or UTF-16 units.
+  await t.test('length limits count an emoji or an accented letter as one character', () => {
+    assert.strictEqual(setA('tags', `array['${'😀'.repeat(40)}']`), '1');
+    assert.match(setA('tags', `array['${'😀'.repeat(41)}']`), /transactions_tags_ok/);
+    assert.strictEqual(setA('tags', `array['${'é'.repeat(40)}']`), '1');
+    assert.match(setA('tags', `array['${'é'.repeat(41)}']`), /transactions_tags_ok/);
+    assert.strictEqual(setA('note', lit('😀'.repeat(2000))), '1');
+    assert.match(setA('note', lit('😀'.repeat(2001))), /transactions_note_length/);
+    assert.strictEqual(setA('note', lit('é'.repeat(2000))), '1');
+    assert.match(setA('note', lit('é'.repeat(2001))), /transactions_note_length/);
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {
