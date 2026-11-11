@@ -88,3 +88,11 @@ Deno.test("each rule builds its matcher once, not once per row", () => {
   }
   assertEquals(built <= 4, true, `built ${built} regexes for 2 rules`);
 });
+
+// Polish pass 5 #4: the sync sets a rule's type along with its category (categorize.ts), so
+// "Apply to past" must too, or past and new rows end up with different types.
+Deno.test("planRuleReapply also sets the rule's type when it changes the category", () => {
+  assertEquals(planRuleReapply([row()], [rule({ set_transaction_type: "Subscription" })])[0].update, {
+    category: "Entertainment", category_source: "rule", transaction_type: "Subscription",
+  });
+});

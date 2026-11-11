@@ -91,10 +91,14 @@ export function planRuleReapply(rows: Row[], rules: Rule[]): RowUpdate[] {
     const rule = usable.find((r) => matchRule(row, r));
     if (!rule || rule.set_category === row.category) continue;
     if (row.category === TRANSFER || rule.set_category === TRANSFER) continue;
+    // Like the sync, a rule that also sets a type sets it here. Type-only rules stay out: a
+    // type has no "set by hand" marker, so re-applying one could undo your own edits.
+    const update: Record<string, unknown> = { category: rule.set_category, category_source: "rule" };
+    if (rule.set_transaction_type) update.transaction_type = rule.set_transaction_type;
     items.push({
       account_uid: row.account_uid,
       entry_reference: row.entry_reference,
-      update: { category: rule.set_category, category_source: "rule" },
+      update,
       guardColumn: "category_source",
       guardIn: REAPPLY_SOURCES,
     });
