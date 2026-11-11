@@ -13,6 +13,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { serveWithCors } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
 import { fetchRateToEur } from "../_shared/fx-rates.ts";
+import { mfaRefusal } from "../_shared/mfa.ts";
 import {
   HoldingError,
   type HoldingRequest,
@@ -167,6 +168,8 @@ Deno.serve(serveWithCors(async (req, json) => {
   if (userError || !userData.user) {
     return json({ error: "Not signed in" }, 401);
   }
+  const mfa = await mfaRefusal(userClient);
+  if (mfa) return json(mfa.body, mfa.status);
 
   let body: unknown;
   try {
