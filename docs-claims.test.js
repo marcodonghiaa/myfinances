@@ -14,3 +14,16 @@ test('the installer test command runs only the test files', () => {
   assert.doesNotMatch(line, /node --test installer\/`/);
   assert.match(line, /npm test|installer\/\*\.test\.js/);
 });
+
+// protects=the README describes post-sync in the order it runs; fails_when=it says Subscription /
+// One-time is marked last while post-sync/index.ts runs it right after categories (polish 5, item 6)
+test('the README lists the post-sync steps in the order they run', () => {
+  const step = read('README.md').split('\n').find((l) => l.startsWith('2. `post-sync`'));
+  const code = read('supabase/functions/post-sync/index.ts');
+  const order = (text, marks) => marks.map((m) => text.indexOf(m));
+  const ran = order(code, ['await categorize(', 'await classifyTypes(', 'await classifyFlows(', 'await markRefunds(']);
+  assert.deepStrictEqual([...ran].sort((a, b) => a - b), ran, 'post-sync call order changed; update this test');
+  const said = order(step, ['Gemini, for categories', '`Subscription` or `One-time`', 'marks `spend`', 'card refund']);
+  assert.ok(said.every((i) => i >= 0), 'README step 2 names every post-sync step');
+  assert.deepStrictEqual([...said].sort((a, b) => a - b), said);
+});
