@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { isBankName, isCountryCode, MAX_BANK_NAME_LENGTH } from "./validate.ts";
 
 Deno.test("isCountryCode accepts two capital letters only", () => {

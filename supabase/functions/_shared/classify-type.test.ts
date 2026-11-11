@@ -1,4 +1,4 @@
-import { assertEquals, assertMatch } from "jsr:@std/assert@1";
+import { assertEquals, assertMatch } from "jsr:@std/assert@1.0.19";
 import { buildTypePrompt, classifyTypes, isTransferCode } from "./classify-type.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 import type { Ask } from "./gemini.ts";

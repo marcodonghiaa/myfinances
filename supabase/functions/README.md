@@ -5,6 +5,11 @@ Deploy with `supabase functions deploy --project-ref <ref>` (what `setup.sh`
 runs) — `verify_jwt` per function is codified in `supabase/config.toml`, so a
 plain deploy from this repo reproduces the same gating described below.
 
+Imports are pinned to exact versions, and `deno.lock` (next to `deno.json`) pins what they pull in.
+CI checks with `--frozen`. To bump a version, change it in the imports, then run
+`deno check --config supabase/functions/deno.json --node-modules-dir=none supabase/functions/*/index.ts`
+and commit the updated lock.
+
 - **start-bank-consent** — signs an Enable Banking consent request for the
   logged-in user, returns the URL to redirect the browser to. `verify_jwt: true`.
 - **bank-consent-callback** — the redirect target Enable Banking sends the

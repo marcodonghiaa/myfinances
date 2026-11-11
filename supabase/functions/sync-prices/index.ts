@@ -6,7 +6,7 @@
 // No bank calls. Rates go first because both price steps convert with them; one step failing
 // doesn't stop the others. Callers send a project secret key on the apikey header.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import { retryRejectedToken } from "../_shared/postgrest-retry.ts";
 import { errorTag } from "../_shared/log-safe.ts";

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { applyLearned, fetchLearned, learnedUpdate, planRelearn } from "./learned-categories.ts";
 
 // Regression: a merchant you had set to Housing by hand came back as Shopping on its next

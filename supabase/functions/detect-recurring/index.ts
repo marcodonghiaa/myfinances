@@ -4,7 +4,7 @@
 // recurring_streams through upsert_detected_streams. No bank calls; safe to run any time.
 // Callers send a project secret key on the apikey header, like post-sync.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import { retryRejectedToken } from "../_shared/postgrest-retry.ts";
 import { errorTag } from "../_shared/log-safe.ts";

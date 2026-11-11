@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "jsr:@std/assert@1.0.19";
 import { buildJwt, fetchAllAccounts, importCoinbaseKey, planHoldings, syncCoinbase } from "./coinbase.ts";
 
 const account = (currency: string, value: unknown, over: Record<string, unknown> = {}) => ({ currency, name: `${currency} Wallet`, available_balance: { value }, ...over });

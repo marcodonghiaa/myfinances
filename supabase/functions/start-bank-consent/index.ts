@@ -10,7 +10,7 @@
 // POST, and without an explicit 200 + Allow-* response there the request
 // never leaves the browser at all ("Failed to send a request").
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { serveWithCors } from "../_shared/origins.ts";
 import { isBankName, isCountryCode, MAX_OPEN_CONSENTS } from "../_shared/validate.ts";

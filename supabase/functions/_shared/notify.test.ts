@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "jsr:@std/assert@1.0.19";
 import { buildConsentPayload, consentNotices, fetchEligibleTransactions, notifyUser, runConsent, userIdsWithSubscriptions } from "./notify.ts";
 import { sendToAllSubscriptions, type Subscription } from "./push.ts";
 

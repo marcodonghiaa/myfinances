@@ -7,7 +7,7 @@
 // ~4 unattended calls a day per account. verify_jwt is off: secret keys are not JWTs.
 // Never run it beside the launchd sync for the same reason.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import { retryRejectedToken } from "../_shared/postgrest-retry.ts";

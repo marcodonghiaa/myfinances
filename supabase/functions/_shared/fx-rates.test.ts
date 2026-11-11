@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.19";
 import { fetchRateToEur, fxRows } from "./fx-rates.ts";
 
 function withFetch(response: () => Response, run: () => Promise<void>) {

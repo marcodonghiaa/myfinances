@@ -7,7 +7,7 @@
 // Every row that belongs to the user goes with them (foreign keys cascade from auth.users,
 // migration 20261125000000). The Enable Banking key and the instance settings are untouched.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { serveWithCors } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
 import { closeSessions } from "../_shared/eb-sessions.ts";

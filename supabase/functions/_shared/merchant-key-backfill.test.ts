@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { fillMerchantKeys } from "./merchant-key-backfill.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 

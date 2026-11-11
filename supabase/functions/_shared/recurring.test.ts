@@ -1,4 +1,4 @@
-import { assertEquals, assertObjectMatch } from "jsr:@std/assert@1";
+import { assertEquals, assertObjectMatch } from "jsr:@std/assert@1.0.19";
 import { type Charge, detectStreams, RHYTHM_ONLY_DENY } from "./recurring.ts";
 import cases from "./recurring.cases.json" with { type: "json" };
 

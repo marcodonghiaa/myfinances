@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { accountType, matchAccount, matchPatch } from "./account-match.ts";
 
 const eur = { uid: "u-eur", iban: "LT01", currency: "EUR", identification_hash: "h-eur" };

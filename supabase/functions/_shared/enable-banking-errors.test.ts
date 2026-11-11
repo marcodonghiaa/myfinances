@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 
 // enable-banking.ts reads these at module load, so set them before importing it.
 Deno.env.set("ENABLE_BANKING_APP_ID", "test-app");
