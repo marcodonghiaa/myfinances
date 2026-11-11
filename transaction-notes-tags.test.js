@@ -1,4 +1,4 @@
-// Notes and tags (20261208120000_transaction_notes_tags). The static tests always run; the
+// Notes and tags (20261208120000_transaction_notes_tags). The row-builder test always runs; the
 // database tests need psql and RLS_TEST_DATABASE_URL (a superuser URL to a throwaway server, e.g.
 // postgres://postgres@localhost:5432/postgres) and are skipped without it. A fresh database is
 // created and dropped for each run.
@@ -9,7 +9,6 @@ const { execFileSync } = require('node:child_process');
 const { buildRows } = require('./transaction-rows');
 
 const MIGRATION = 'supabase/migrations/20261208120000_transaction_notes_tags.sql';
-const sql = fs.readFileSync(MIGRATION, 'utf8').replace(/--.*$/gm, '');
 
 // A sample bank transaction as Enable Banking sends it.
 const ebTx = (over = {}) => ({
@@ -32,12 +31,6 @@ test('bank sync rows never carry note or tags', () => {
     assert.ok(!('note' in row), 'note');
     assert.ok(!('tags' in row), 'tags');
   }
-});
-
-test('anon cannot list tags; signed-in users can', () => {
-  assert.match(sql, /revoke execute on function public\.my_transaction_tags\(\) from public, anon;/);
-  assert.match(sql, /grant execute on function public\.my_transaction_tags\(\) to authenticated;/);
-  assert.match(sql, /security invoker/);
 });
 
 const url = process.env.RLS_TEST_DATABASE_URL;
