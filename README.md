@@ -78,7 +78,7 @@ Your own copy takes about **30 minutes**, all in the browser: no computer has to
 | [Supabase](https://supabase.com/dashboard) | your database and login | free tier is enough |
 | [Enable Banking](https://enablebanking.com) | the PSD2 connection to your banks | free for your own accounts |
 | [Vercel](https://vercel.com/signup) (sign in with GitHub) | puts the dashboard online over HTTPS | free Hobby plan |
-| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended. Each new transaction (name, description, amount) and any statement PDF you import go to Google; on the free tier Google may use them to improve its models, a paid-tier key opts out |
+| [Gemini API key](https://aistudio.google.com/apikey) | AI categories and subscription detection | free tier; optional, recommended. Each new transaction (name, description, amount), each Splitwise expense description and any statement PDF you import go to Google; on the free tier Google may use them to improve its models, a paid-tier key opts out |
 
 In Enable Banking, sign up only; setup tells you when to create the app and gives the exact redirect URL.
 

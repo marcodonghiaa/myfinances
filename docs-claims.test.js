@@ -27,3 +27,13 @@ test('the README lists the post-sync steps in the order they run', () => {
   assert.ok(said.every((i) => i >= 0), 'README step 2 names every post-sync step');
   assert.deepStrictEqual([...said].sort((a, b) => a - b), said);
 });
+
+// protects=self-hosters know everything a Gemini key sends; fails_when=the privacy notes leave out
+// Splitwise expense descriptions, which post-sync also sends (categorizeSplitwise) (polish 5, item 7)
+test('both Gemini privacy notes mention Splitwise', () => {
+  const readmeRow = read('README.md').split('\n').find((l) => l.startsWith('| [Gemini API key]'));
+  assert.match(readmeRow, /Splitwise/);
+  const installer = read('installer/index.js');
+  const note = installer.slice(installer.indexOf("console.log('Privacy:"), installer.indexOf('opts you out'));
+  assert.match(note, /Splitwise/);
+});

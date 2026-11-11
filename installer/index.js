@@ -244,8 +244,8 @@ The APP_ID is the long id shown next to your app.`);
   else {
     console.log('Free at https://aistudio.google.com/apikey . Enter skips: then only your own rules categorize.');
     console.log('Privacy: with a key, every new transaction (payer or payee name, description, amount) is sent to');
-    console.log('Google Gemini, and so is any statement PDF you import. On the free tier Google may use it to improve');
-    console.log('its models; a paid-tier key (billing on) opts you out.');
+    console.log('Google Gemini, and so are Splitwise expense descriptions and any statement PDF you import. On the');
+    console.log('free tier Google may use it to improve its models; a paid-tier key (billing on) opts you out.');
     for (;;) {
       gemini = await ask('Paste your Gemini API key (Enter to skip)');
       if (!gemini) {
