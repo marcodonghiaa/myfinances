@@ -4,14 +4,21 @@ Pulling new code does not update your database. Migrations are not applied autom
 
 For every release: `git pull`, then `supabase db push --linked` for new migrations (keep `--linked`: since Supabase CLI v3 a plain `db push` targets a local database, not your project), then rebuild or restart the sync jobs (`docker compose up -d --build`, or nothing for cron or launchd, which run the new files on their next run).
 
+To roll a change back: run its file from `supabase/rollbacks/` in the Supabase SQL editor (or with `psql`), then `supabase migration repair --status reverted <version> --linked` (the version is the number at the start of the file name). Without the repair, a later `supabase db push --linked` still counts the migration as applied and does not bring it back.
+
 ## Release notes, newest first
 
 ### Rules match whole words and apply to past transactions from the dashboard
-- **Migration:** `20261202000000_rule_match_mode`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read the new column), then `supabase functions deploy` (new function `reapply-rules`) and redeploy the dashboard.
+- **Migration:** `20261206000000_rule_match_mode`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read the new column), then `supabase functions deploy` (new function `reapply-rules`) and redeploy the dashboard.
 - A rule now says how its text must appear (`category_rules.match_mode`): `word` (on its own, so "bar" no longer matches "Barclays"), `exact` (the whole field) or `contains` (anywhere). Rules made before keep `contains`, so nothing changes for them; new rules from the dashboard default to `word`.
 - The Rules page has "Apply to past transactions": it shows how many transactions would change first, and never touches categories you set by hand or anything into or out of Transfer. The CLI `node categorize.js --reapply-rules` still works.
 - Rule text is now limited to 200 characters for new and edited rules. Longer (or empty) rules you already have keep working, but they can't be edited, and if you delete one there's no Undo: add it again shorter.
-- **Roll back:** `supabase/rollbacks/20261202000000_rule_match_mode.down.sql` (every rule goes back to matching anywhere). Revert the Edge Functions and the sync too: they read `match_mode`.
+- **Roll back:** `supabase/rollbacks/20261206000000_rule_match_mode.down.sql` (every rule goes back to matching anywhere). Revert the Edge Functions and the sync too: they read `match_mode`.
+
+### Monthly budgets per category
+- **Migration:** `20261202100000_category_budgets`. You apply it with `supabase db push --linked`, then redeploy the dashboard. No Edge Function or sync change.
+- Adds `category_budgets`: a budget per category that holds from its month onward until you change it, with optional rollover (a month's leftover or overspend moves into the next). Only spend counts, never transfers or income. Budgets are in the export.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261202100000_category_budgets.down.sql` (budgets are lost; export your data before if you want to keep them). A dashboard of this release without the table cannot open Budgets, and its data export fails.
 
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.

@@ -4,7 +4,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { getAccounts, getAllUserIds, ebAccountId, EB_REJECTED_STATUSES } = require('./accounts');
 const { getToken } = require('./eb-token');
-const { buildRows } = require('./transaction-rows');
+const { buildRows, normalizeIban } = require('./transaction-rows');
 const { fetchWithTimeout } = require('./http');
 const { errorTag } = require('./log-safe');
 const { loadCursors, saveCursors, freshUnsyncedAccounts } = require('./sync-state');
@@ -39,6 +39,18 @@ async function getAllTransactions(fetch, token, ebId, dateFrom) {
   return all;
 }
 
+// The user's own IBANs, to mark transactions between their accounts. Only the Edge post-sync turns
+// that flag into a transfer; Node classify-flow doesn't read it (this path is being retired).
+// Undefined when unreadable: rows then leave own_counterparty out, keeping what was stored.
+async function fetchOwnIbans(supabase, userId) {
+  const { data, error } = await supabase.from('accounts').select('iban').eq('user_id', userId).not('iban', 'is', null);
+  if (error) {
+    console.error(`Own accounts not read: ${errorTag(error)}`);
+    return undefined;
+  }
+  return new Set((data ?? []).map((a) => normalizeIban(a.iban)).filter(Boolean));
+}
+
 // EB is asked with the id it answers to now; rows and the cursor stay under the PK (uid).
 // Never throws for EB failures: rejected carries the status when EB refuses the id.
 async function syncAccountTransactions({ fetch, supabase }, token, account, userId, lastSync, today) {
@@ -51,7 +63,8 @@ async function syncAccountTransactions({ fetch, supabase }, token, account, user
 
   try {
     const transactions = await getAllTransactions(fetch, token, ebAccountId(account), dateFrom);
-    const rows = buildRows(transactions, account.uid, userId);
+    const ownIbans = transactions.length > 0 ? await fetchOwnIbans(supabase, userId) : undefined;
+    const rows = buildRows(transactions, account.uid, userId, ownIbans);
 
     if (rows.length === 0) {
       console.log('No new transactions.');

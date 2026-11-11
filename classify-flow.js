@@ -43,18 +43,25 @@ async function fetchUnclassified() {
 
 const PAGE_SIZE = 1000; // PostgREST caps a response at 1000 rows
 
+// Flows refund pairing may change: the direction by default, a rule's "not a transfer" (it keeps
+// the direction), and flows set before flow_source existed (legacy). A flow you set by hand is
+// never touched, so moving a wrong pair back to spend sticks.
+const REFUND_SOURCES = ['default', 'rule', 'legacy'];
+
 // Rows still counted as spend/income, recent enough to hold either side of a refund pair.
-async function fetchRefundCandidates() {
+async function fetchRefundCandidates(db) {
   const since = new Date(Date.now() - 2 * WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
   const rows = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('transactions')
-      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date')
+      .select('entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date, refund_of')
       .in('flow_type', ['spend', 'income'])
+      .in('flow_source', REFUND_SOURCES)
       .is('deleted_at', null)
       .gte('booking_date', since)
       .order('entry_reference')
+      .order('account_uid') // the key is (account_uid, entry_reference): pages must not overlap
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     rows.push(...data);
@@ -64,14 +71,15 @@ async function fetchRefundCandidates() {
 
 // Both sides of a pair become 'refunded' (excluded from spend and income); the
 // credit remembers which charge it reverses.
-async function markRefunds() {
-  const pairs = matchRefunds(await fetchRefundCandidates());
-  const guardIn = ['spend', 'income'];
+async function markRefunds(db = supabase) {
+  const pairs = matchRefunds(await fetchRefundCandidates(db));
+  // Both guards: a flow you set, or a rule that made the row a transfer, since the read wins.
+  const guard = { guardColumn: 'flow_source', guardIn: REFUND_SOURCES, alsoIn: ['flow_type', ['spend', 'income']] };
   await applyGroupedUpdates(
-    supabase,
+    db,
     pairs.flatMap(({ debit, credit }) => [
-      { ...debit, update: { flow_type: 'refunded' }, guardColumn: 'flow_type', guardIn },
-      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, guardColumn: 'flow_type', guardIn },
+      { ...debit, update: { flow_type: 'refunded' }, ...guard },
+      { ...credit, update: { flow_type: 'refunded', refund_of: debit.entry_reference }, ...guard },
     ]),
   );
   return pairs.length;
@@ -124,4 +132,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { classifyAll, resolveFlowType, flowSourceFor, BATCH_SIZE };
+module.exports = { classifyAll, resolveFlowType, flowSourceFor, markRefunds, BATCH_SIZE };

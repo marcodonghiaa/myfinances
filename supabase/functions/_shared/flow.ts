@@ -8,6 +8,7 @@
 // sync filling the flow first) still applies. Rows you decided ('user', 'legacy') are never read.
 // Then refunds are paired.
 import { applyGroupedUpdates, type Db } from "./batch-update.ts";
+import { errorTag } from "./log-safe.ts";
 import { matchRefunds, type RefundRow, WINDOW_DAYS } from "./refunds.ts";
 import { matchRule, RULE_MATCH_COLUMNS, type Rule } from "./rules.ts";
 
@@ -144,39 +145,118 @@ export async function classifyFlows(db: Db, timeLeft: () => boolean = () => true
   return { ...result, reresolved: await reresolveDefaults(db, rules, timeLeft) };
 }
 
-// Rows still counted as spend/income, recent enough to hold either side of a refund pair.
-// ponytail: no time budget inside, fine for one person's 180 days (a few pages); pass timeLeft
-// and skip refunds for the run if it ever gets near the 150 s wall clock.
-async function fetchRefundCandidates(db: Db): Promise<RefundRow[]> {
-  const since = new Date(Date.now() - 2 * WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const rows: RefundRow[] = [];
+// Flows refund pairing may change: the direction by default, a rule's "not a transfer" (it keeps
+// the direction), and flows set before flow_source existed (legacy). A flow you set by hand is
+// never touched, so moving a wrong pair back to spend sticks.
+const REFUND_SOURCES = ["default", "rule", "legacy"];
+
+const REFUND_SINCE = () => new Date(Date.now() - 2 * WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+const keyOf = (r: { account_uid: string; entry_reference: string }) => `${r.account_uid}|${r.entry_reference}`;
+
+// Reads every page of a query in primary-key order (pages never overlap), deduped by key: a write
+// from elsewhere during the read can shift a row into the next page.
+async function readAll<T extends { account_uid: string; entry_reference: string }>(page: (from: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const rows = new Map<string, T>();
   for (let from = 0;; from += PAGE_SIZE) {
-    const { data, error } = await db
-      .from("transactions")
-      .select("entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date")
-      .in("flow_type", ["spend", "income"])
-      .is("deleted_at", null)
-      .gte("booking_date", since)
-      .order("entry_reference")
-      .order("account_uid") // the key is (account_uid, entry_reference): pages must not overlap
-      .range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await page(from);
     if (error) throw error;
-    rows.push(...data);
-    if (data.length < PAGE_SIZE) return rows;
+    for (const r of data ?? []) rows.set(keyOf(r), r);
+    if ((data ?? []).length < PAGE_SIZE) return [...rows.values()];
   }
 }
 
+// Rows still counted as spend/income, recent enough to hold either side of a refund pair.
+// ponytail: no time budget inside, fine for one person's 180 days (a few pages); pass timeLeft
+// and skip refunds for the run if it ever gets near the 150 s wall clock.
+function fetchRefundCandidates(db: Db): Promise<RefundRow[]> {
+  return readAll<RefundRow>((from) =>
+    db
+      .from("transactions")
+      .select("entry_reference, account_uid, amount, currency, credit_debit_indicator, creditor_name, remittance_info, booking_date, refund_of")
+      .in("flow_type", ["spend", "income"])
+      .in("flow_source", REFUND_SOURCES)
+      .is("deleted_at", null)
+      .gte("booking_date", REFUND_SINCE())
+      .order("account_uid")
+      .order("entry_reference")
+      .range(from, from + PAGE_SIZE - 1)
+  );
+}
+
+type PairSide = { account_uid: string; entry_reference: string; credit_debit_indicator: string; refund_of: string | null; flow_type: string; flow_source: string | null; deleted_at: string | null };
+const SIDE_COLUMNS = "account_uid, entry_reference, credit_debit_indicator, refund_of, flow_type, flow_source, deleted_at";
+
+// A pair can end up half applied: one of its two writes failed, or you moved or deleted one side.
+// The other side would stay 'refunded' for good (nothing reads 'refunded' rows), off by its amount.
+// Credits first: finish the pair when the charge is still plain spend, else count the credit as
+// income again, keeping refund_of so it can only re-pair with that same charge (never with last
+// month's identical one). Then a charge no live 'refunded' credit points to counts as spend again,
+// and pairs anew below. Only rows in REFUND_SOURCES change; the window is safe for charges since
+// their refund lands after them, and a credit looks its charge up by key, with no date limit.
+async function repairHalfPairs(db: Db): Promise<number> {
+  const refunded = await readAll<PairSide>((from) =>
+    db
+      .from("transactions")
+      .select(SIDE_COLUMNS)
+      .eq("flow_type", "refunded")
+      .is("deleted_at", null)
+      .gte("booking_date", REFUND_SINCE())
+      .order("account_uid")
+      .order("entry_reference")
+      .range(from, from + PAGE_SIZE - 1)
+  );
+  const credits = refunded.filter((r) => r.credit_debit_indicator === "CRDT");
+  const charges = new Map<string, PairSide>();
+  const byAccount = new Map<string, string[]>();
+  for (const c of credits) if (c.refund_of) byAccount.set(c.account_uid, [...(byAccount.get(c.account_uid) ?? []), c.refund_of]);
+  // A lookup that fails skips that account's repair this run (counted, logged) instead of stopping
+  // refunds for every user; its rows aren't touched blind.
+  const skipped = new Set<string>();
+  for (const [account_uid, refs] of byAccount) {
+    for (let i = 0; i < refs.length && !skipped.has(account_uid); i += 50) {
+      const { data, error } = await db.from("transactions").select(SIDE_COLUMNS).eq("account_uid", account_uid).in("entry_reference", refs.slice(i, i + 50));
+      if (error) {
+        console.error(`Refund repair skipped one account: ${errorTag(error)}`);
+        skipped.add(account_uid);
+      } else for (const r of data as PairSide[]) charges.set(keyOf(r), r);
+    }
+  }
+
+  const fixable = (r: PairSide) => REFUND_SOURCES.includes(r.flow_source ?? "");
+  const items = [];
+  const liveCredits = new Set<string>(); // "account|charge ref" of credits still paired
+  for (const c of credits) {
+    if (skipped.has(c.account_uid)) continue;
+    const charge = c.refund_of ? charges.get(keyOf({ account_uid: c.account_uid, entry_reference: c.refund_of })) : undefined;
+    const live = charge && !charge.deleted_at;
+    if (live && charge.flow_type === "refunded") liveCredits.add(keyOf(charge));
+    else if (live && charge.flow_type === "spend" && fixable(charge)) {
+      liveCredits.add(keyOf(charge));
+      items.push({ ...charge, update: { flow_type: "refunded" }, guardColumn: "flow_source", guardIn: REFUND_SOURCES, alsoIn: ["flow_type", ["spend"]] as [string, string[]] });
+    } else if (fixable(c)) {
+      items.push({ ...c, update: { flow_type: "income" }, guardColumn: "flow_source", guardIn: REFUND_SOURCES, alsoIn: ["flow_type", ["refunded"]] as [string, string[]] });
+    }
+  }
+  for (const d of refunded) {
+    if (d.credit_debit_indicator !== "DBIT" || skipped.has(d.account_uid) || liveCredits.has(keyOf(d)) || !fixable(d)) continue;
+    items.push({ ...d, update: { flow_type: "spend" }, guardColumn: "flow_source", guardIn: REFUND_SOURCES, alsoIn: ["flow_type", ["refunded"]] as [string, string[]] });
+  }
+  return skipped.size + await applyGroupedUpdates(db, items);
+}
+
 // Both sides of a pair become 'refunded' (excluded from spend and income); the credit remembers
-// which charge it reverses.
-export async function markRefunds(db: Db): Promise<number> {
+// which charge it reverses. failed counts update statements that errored (they are only logged).
+export async function markRefunds(db: Db): Promise<{ pairs: number; failed: number }> {
+  let failed = await repairHalfPairs(db);
   const pairs = matchRefunds(await fetchRefundCandidates(db));
-  const guardIn = ["spend", "income"];
-  await applyGroupedUpdates(
+  // Both guards: a flow you set, or a rule that made the row a transfer, since the read wins.
+  const guard = { guardColumn: "flow_source", guardIn: REFUND_SOURCES, alsoIn: ["flow_type", ["spend", "income"]] as [string, string[]] };
+  failed += await applyGroupedUpdates(
     db,
     pairs.flatMap(({ debit, credit }) => [
-      { ...debit, update: { flow_type: "refunded" }, guardColumn: "flow_type", guardIn },
-      { ...credit, update: { flow_type: "refunded", refund_of: debit.entry_reference }, guardColumn: "flow_type", guardIn },
+      { ...debit, update: { flow_type: "refunded" }, ...guard },
+      { ...credit, update: { flow_type: "refunded", refund_of: debit.entry_reference }, ...guard },
     ]),
   );
-  return pairs.length;
+  return { pairs: pairs.length, failed };
 }
