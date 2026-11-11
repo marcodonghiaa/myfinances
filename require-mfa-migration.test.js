@@ -28,3 +28,13 @@ test('UPGRADING says how to clear an existing hook set per database too', () => 
   const doc = fs.readFileSync(path.join(__dirname, 'UPGRADING.md'), 'utf8');
   assert.match(doc, /alter role authenticator in database postgres reset pgrst\.db_pre_request;/);
 });
+
+// polish-5 #2: a hook of the user's own that calls require_mfa() would error on every request once
+// the rollback drops it, and an unrelated hook of theirs must not be reset by the rollback.
+test('rollback stops while another hook still calls require_mfa, and resets only its own hook', () => {
+  const down = fs.readFileSync(path.join(__dirname, 'supabase/rollbacks/20261203000000_require_mfa.down.sql'), 'utf8');
+  assert.match(down, /prosrc ilike '%require_mfa%'/);
+  assert.match(down, /raise exception/);
+  assert.doesNotMatch(down, /^alter role authenticator reset pgrst\.db_pre_request;/m, 'unconditional reset');
+  assert.match(down, /in database %I reset pgrst\.db_pre_request/);
+});
