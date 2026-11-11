@@ -116,6 +116,7 @@ create or replace view public.v_transactions_eur with (security_invoker = true) 
    where t.deleted_at is null;
 
 -- Every tag the caller has used (all months), most used first: suggestions while typing a tag.
+-- Tags differing only in A-Z case count as one, shown in the spelling used most.
 -- Invoker rights, so RLS applies too; the user_id filter lets it use the user_id index.
 create or replace function public.my_transaction_tags()
 returns table (tag text, uses bigint)
@@ -124,12 +125,12 @@ stable
 security invoker
 set search_path = ''
 as $$
-  select t.tag, count(*) as uses
+  select mode() within group (order by t.tag) as tag, count(*) as uses
   from public.transactions tx
   cross join lateral unnest(tx.tags) as t(tag)
   where tx.user_id = (select auth.uid()) and tx.deleted_at is null
-  group by t.tag
-  order by count(*) desc, t.tag
+  group by lower(t.tag collate "C")
+  order by count(*) desc, 1
   limit 500;
 $$;
 

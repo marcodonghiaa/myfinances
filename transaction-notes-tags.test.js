@@ -153,6 +153,22 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.strictEqual(setA('tags', "array['work', 'workshop']"), '1');
   });
 
+  // polish-1 #5: "Trip" on one row and "trip" on another are one suggestion, in the spelling used most.
+  await t.test('suggestions merge tags that differ only in case', () => {
+    const out = psql(dbUrl(), [
+      '-c',
+      `begin;
+       update public.transactions set tags = '{Trip}' where entry_reference = 'ref-1';
+       update public.transactions set tags = '{trip}' where entry_reference = 'ref-2';
+       insert into public.transactions (entry_reference, account_uid, user_id, amount, currency, tags)
+         values ('ref-3', '${ACC_A}', '${A}', 1, 'EUR', '{trip}');
+       set local role authenticated; set local request.jwt.claims = '{"sub":"${A}"}';
+       select string_agg(tag || ':' || uses, ',') from public.my_transaction_tags();
+       rollback;`,
+    ]);
+    assert.strictEqual(out, 'trip:3');
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {
