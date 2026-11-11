@@ -8,6 +8,12 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
+### Notes and tags on transactions
+- **Migration:** `20261208120000_transaction_notes_tags`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard: the new dashboard reads the new columns, and its Transactions page can't load without them. No Edge Function or sync change.
+- Each transaction can have a note (free text, up to 2000 characters) and tags (up to 20, each up to 40 characters, created as you type). The Transactions page filters by tag and its search also matches notes. Both are in the data export.
+- The bank sync never writes them, so a sync re-run keeps them. Only your own rows can be changed (same rule as categories).
+- **Roll back:** `supabase/rollbacks/20261208120000_transaction_notes_tags.down.sql` (drops tag suggestions and the length limits; the note and tags columns stay, with what you wrote, and an older dashboard ignores them).
+
 ### Deleting a rule can re-sort the transactions it filed
 - No migration. Run `supabase functions deploy reapply-rules` BEFORE redeploying the dashboard (an older function ignores the new request and would preview your current rules instead).
 - After you delete a rule on the Rules page, it offers to re-sort the transactions that rule had filed and no other rule matches (for example "Barclays" filed as Dine Out by an old "bar" rule). They go back to uncategorized and the next sync sorts them again. Categories you set by hand and Transfer rows never change. If the rule also set a transaction type, that type stays on those rows.

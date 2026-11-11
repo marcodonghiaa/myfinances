@@ -1,0 +1,171 @@
+// Notes and tags (20261208120000_transaction_notes_tags). The static tests always run; the
+// database tests need psql and RLS_TEST_DATABASE_URL (a superuser URL to a throwaway server, e.g.
+// postgres://postgres@localhost:5432/postgres) and are skipped without it. A fresh database is
+// created and dropped for each run.
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
+const { buildRows } = require('./transaction-rows');
+
+const MIGRATION = 'supabase/migrations/20261208120000_transaction_notes_tags.sql';
+const sql = fs.readFileSync(MIGRATION, 'utf8').replace(/--.*$/gm, '');
+
+// A sample bank transaction as Enable Banking sends it.
+const ebTx = (over = {}) => ({
+  entry_reference: 'ref-1',
+  transaction_amount: { amount: '12.50', currency: 'EUR' },
+  credit_debit_indicator: 'DBIT',
+  creditor: { name: 'Coffee Bar' },
+  remittance_information: ['card'],
+  booking_date: '2026-11-02',
+  value_date: '2026-11-02',
+  status: 'BOOK',
+  ...over,
+});
+
+// protects=a sync re-run never overwrites the user's note or tags: PostgREST's upsert only sets
+// the columns its rows carry; fails_when=the bank row builder starts sending note or tags
+test('bank sync rows never carry note or tags', () => {
+  for (const ownIbans of [undefined, new Set()]) {
+    const [row] = buildRows([ebTx()], 'acc', 'user', ownIbans);
+    assert.ok(!('note' in row), 'note');
+    assert.ok(!('tags' in row), 'tags');
+  }
+});
+
+test('anon cannot list tags; signed-in users can', () => {
+  assert.match(sql, /revoke execute on function public\.my_transaction_tags\(\) from public, anon;/);
+  assert.match(sql, /grant execute on function public\.my_transaction_tags\(\) to authenticated;/);
+  assert.match(sql, /security invoker/);
+});
+
+const url = process.env.RLS_TEST_DATABASE_URL;
+const skip = url ? false : 'set RLS_TEST_DATABASE_URL to run';
+const A = 'aaaaaaaa-0000-0000-0000-000000000001';
+const B = 'bbbbbbbb-0000-0000-0000-000000000002';
+const ACC_A = 'aaaaaaaa-1111-0000-0000-000000000001';
+const db = `notes_tags_${process.pid}`;
+const dbUrl = () => url.replace(/^(postgres(?:ql)?:\/\/[^/]*\/)[^?]*/, `$1${db}`);
+
+function psql(target, args) {
+  return execFileSync('psql', [target, '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+// Runs sql as `role` (with user `sub` signed in, if given) inside a rolled-back transaction.
+function as(role, sub, q) {
+  const claims = sub ? `set local request.jwt.claims = '{"sub":"${sub}"}';` : '';
+  try {
+    return psql(dbUrl(), ['-c', `begin; set local role ${role}; ${claims} ${q}; rollback;`]);
+  } catch (e) {
+    return `ERROR ${String(e.stderr)}`;
+  }
+}
+const lit = (v) => (v === null || v === undefined ? 'null' : typeof v === 'object' ? `'${JSON.stringify(v).replace(/'/g, "''")}'` : `'${String(v).replace(/'/g, "''")}'`);
+
+// The transactions table and fx_rates as the earlier migrations leave them (the columns this
+// migration and its view read), with the same RLS policies.
+const BASE = `
+create table public.fx_rates (currency text, date date, rate_to_eur numeric, primary key (currency, date));
+create table public.transactions (
+  entry_reference text not null, account_uid uuid not null, user_id uuid not null references auth.users(id),
+  amount numeric not null, currency text not null, credit_debit_indicator text, creditor_name text,
+  debtor_name text, remittance_info text, booking_date date, value_date date, bank_transaction_code text,
+  category text, raw jsonb, created_at timestamptz default now(), transaction_type text, worth_it text,
+  personal_amount numeric, owed_by text, owed_settled boolean not null default false, settled_at timestamptz,
+  flow_type text, refund_of text, deleted_at timestamptz, custom_name text, own_counterparty boolean,
+  primary key (account_uid, entry_reference));
+alter table public.transactions enable row level security;
+create policy "Users can view own transactions" on public.transactions
+  for select using ((select auth.uid()) = user_id);
+create policy "Users can update own transactions" on public.transactions
+  for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+`;
+
+test('notes and tags on a real Postgres', { skip }, async (t) => {
+  psql(url, ['-c', `create database ${db}`]);
+  t.after(() => psql(url, ['-c', `drop database if exists ${db} with (force)`]));
+  psql(dbUrl(), ['-f', 'supabase/tests/supabase-shim.sql', '-c', BASE]);
+  psql(dbUrl(), ['-1', '-f', MIGRATION]);
+  psql(dbUrl(), [
+    '-c',
+    `insert into auth.users values ('${A}'), ('${B}');
+     insert into public.transactions (entry_reference, account_uid, user_id, amount, currency, credit_debit_indicator, booking_date)
+     values ('ref-1', '${ACC_A}', '${A}', 12.5, 'EUR', 'DBIT', '2026-11-02'),
+            ('ref-2', '${ACC_A}', '${A}', 3, 'EUR', 'DBIT', '2026-11-03'),
+            ('ref-b', 'bbbbbbbb-1111-0000-0000-000000000002', '${B}', 9, 'EUR', 'DBIT', '2026-11-03');`,
+  ]);
+  const setA = (col, value, ref = 'ref-1') =>
+    as('authenticated', A, `update public.transactions set ${col} = ${value} where entry_reference = '${ref}' returning 1`);
+
+  await t.test('existing rows start with no note and no tags', () => {
+    assert.strictEqual(psql(dbUrl(), ['-c', "select count(*) from public.transactions where note is null and tags = '{}'"]), '3');
+  });
+
+  await t.test('a user writes a note and tags on their own row, and reads them in the view', () => {
+    assert.strictEqual(
+      as('authenticated', A, `update public.transactions set note = 'Team lunch', tags = '{work,"trip 2026"}' where entry_reference = 'ref-1';
+        select note || '|' || array_to_string(tags, ',') from public.v_transactions_eur where entry_reference = 'ref-1'`),
+      'Team lunch|work,trip 2026',
+    );
+  });
+
+  await t.test("a user can't change another user's note or tags", () => {
+    assert.strictEqual(as('authenticated', B, `update public.transactions set note = 'x', tags = '{x}' where user_id = '${A}' returning 1`), '');
+  });
+
+  await t.test('the database refuses notes and tags the dashboard would never send', () => {
+    assert.strictEqual(setA('note', lit('x'.repeat(2000))), '1');
+    assert.match(setA('note', lit('x'.repeat(2001))), /transactions_note_length/);
+    assert.match(setA('note', "''"), /transactions_note_length/);
+    assert.strictEqual(setA('tags', `'{${Array.from({ length: 20 }, (_, i) => `t${i}`)}}'`), '1');
+    assert.match(setA('tags', `'{${Array.from({ length: 21 }, (_, i) => `t${i}`)}}'`), /transactions_tags_ok/);
+    assert.strictEqual(setA('tags', `array['${'x'.repeat(40)}']`), '1');
+    assert.match(setA('tags', `array['${'x'.repeat(41)}']`), /transactions_tags_ok/);
+    for (const bad of ["array['']", "array[' trip']", "array['trip ']", "array['a  b']", "array[E'a\\tb']", "array[E'trip\\n']", 'array[null::text]', 'null']) {
+      assert.match(setA('tags', bad), /transactions_tags_ok|null value/, bad);
+    }
+  });
+
+  // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
+  // the bank sync (insert the builder's columns, on conflict update those columns only).
+  await t.test('a sync re-run keeps the note and tags', () => {
+    const [row] = buildRows([ebTx({ transaction_amount: { amount: '13.25', currency: 'EUR' } })], ACC_A, A, new Set());
+    const cols = Object.keys(row);
+    const upsert = `insert into public.transactions (${cols.join(', ')}) values (${cols.map((c) => lit(row[c])).join(', ')})
+      on conflict (account_uid, entry_reference) do update set ${cols.map((c) => `${c} = excluded.${c}`).join(', ')}`;
+    const out = psql(dbUrl(), [
+      '-c',
+      `begin;
+       update public.transactions set note = 'Team lunch', tags = '{work}' where entry_reference = 'ref-1';
+       ${upsert};
+       select amount || '|' || note || '|' || array_to_string(tags, ',') from public.transactions where entry_reference = 'ref-1';
+       rollback;`,
+    ]);
+    assert.strictEqual(out, '13.25|Team lunch|work');
+  });
+
+  await t.test('tag suggestions: only the caller\'s tags, most used first, deleted rows left out', () => {
+    psql(dbUrl(), [
+      '-c',
+      `update public.transactions set tags = '{work,trip}' where entry_reference = 'ref-1';
+       update public.transactions set tags = '{work}' where entry_reference = 'ref-2';
+       update public.transactions set tags = '{secret}' where entry_reference = 'ref-b';`,
+    ]);
+    const list = (sub) => as('authenticated', sub, "select string_agg(tag || ':' || uses, ',') from public.my_transaction_tags()");
+    assert.strictEqual(list(A), 'work:2,trip:1');
+    assert.strictEqual(list(B), 'secret:1');
+    psql(dbUrl(), ['-c', "update public.transactions set deleted_at = now() where entry_reference = 'ref-2'"]);
+    assert.strictEqual(list(A), 'trip:1,work:1');
+    assert.match(as('anon', null, 'select * from public.my_transaction_tags()'), /permission denied/);
+  });
+
+  await t.test('the rollback drops the suggestions and the limits, and keeps what users wrote', () => {
+    psql(dbUrl(), ['-1', '-f', 'supabase/rollbacks/20261208120000_transaction_notes_tags.down.sql']);
+    assert.match(as('authenticated', A, 'select * from public.my_transaction_tags()'), /does not exist/);
+    assert.strictEqual(setA('tags', "array[' loose ']"), '1');
+    assert.strictEqual(psql(dbUrl(), ['-c', "select array_to_string(tags, ',') from public.transactions where entry_reference = 'ref-1'"]), 'work,trip');
+  });
+});
