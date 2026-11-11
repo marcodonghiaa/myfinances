@@ -199,6 +199,7 @@ The dashboard reads `security_invoker` views such as `v_net_worth_daily`, `v_tra
 - `.env`, `*.pem` and `last-sync.json*` are gitignored. The Enable Banking key authenticates your app, so treat it like a password.
 - The dashboard only uses the publishable key. The service-role key stays in the sync scripts and Edge Functions.
 - A Postgres trigger blocks users from editing bank-sourced columns on `transactions`. Only category, type, flow, split and worth-it fields are writable.
+- Two-step sign-in (authenticator app, set up in Settings) is enforced by the database: once a user has an authenticator, a session without the code gets nothing from the API. See UPGRADING.md for recovery.
 - The bank-linking `state` is a single-use token, not a user id, and error text is never reflected into the redirect.
 - Bank text is sent to the LLM as untrusted data, in per-user batches.
 - The Coinbase integration uses a read-only key.

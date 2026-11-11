@@ -12,6 +12,7 @@ import { burnCode } from "../_shared/eb-sessions.ts";
 import { claimConsent, isConsentInput } from "../_shared/consent-claim.ts";
 import { startFirstSync } from "../_shared/first-sync.ts";
 import { parseSecretKeys } from "../_shared/secret-key.ts";
+import { mfaRefusal } from "../_shared/mfa.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 const SECRET_KEYS = parseSecretKeys(Deno.env.get("SUPABASE_SECRET_KEYS"));
@@ -31,6 +32,8 @@ Deno.serve(serveWithCors(async (req, json) => {
   );
   const { data: userData, error: userError } = await asUser.auth.getUser();
   if (userError || !userData.user) return json({ error: "Not signed in" }, 401);
+  const mfa = await mfaRefusal(asUser);
+  if (mfa) return json(mfa.body, mfa.status);
 
   const body = await req.json().catch(() => null);
   if (!isConsentInput(body)) return json({ error: "Missing code or state" }, 400);

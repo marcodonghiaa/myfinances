@@ -15,6 +15,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { serveWithCors } from "../_shared/origins.ts";
 import { isCountryCode } from "../_shared/validate.ts";
+import { mfaRefusal } from "../_shared/mfa.ts";
 
 interface Aspsp {
   name: string;
@@ -37,6 +38,8 @@ Deno.serve(serveWithCors(async (req, json) => {
   if (userError || !userData.user) {
     return json({ error: "Not signed in" }, 401);
   }
+  const mfa = await mfaRefusal(supabase);
+  if (mfa) return json(mfa.body, mfa.status);
 
   let body: { country?: string };
   try {
