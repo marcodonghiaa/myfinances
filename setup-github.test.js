@@ -68,3 +68,12 @@ test('setup.sh lists every Enable Banking form field with a value', () => {
   }
   assert.ok(setup.includes('bank-consent-callback'));
 });
+
+// polish-5 #5: functions call database functions from the newest migration; deploying them on an
+// older schema answers 503 to every call until someone runs db push.
+test('setup.sh --dashboard-url applies the migrations before redeploying the functions', () => {
+  const setup = fs.readFileSync('setup.sh', 'utf8');
+  const block = setup.slice(setup.indexOf('if [ "${1:-}" = "--dashboard-url" ]'));
+  const push = block.indexOf('db push --linked --yes');
+  assert.ok(push >= 0 && push < block.indexOf('functions deploy'));
+});
