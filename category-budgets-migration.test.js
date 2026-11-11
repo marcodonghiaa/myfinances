@@ -39,3 +39,11 @@ test('the upgrade note says to revert the dashboard before rolling back', () => 
   const entry = notes.slice(notes.indexOf('### Monthly budgets per category')).split('\n### ')[0];
   assert.match(entry, /\*\*Roll back:\*\* revert the dashboard first, then `supabase\/rollbacks\/20261202100000_category_budgets\.down\.sql`/);
 });
+
+// P5 P2-16: `supabase db push` skips a migration it has on record, so after a manual rollback the
+// record has to be marked reverted or the table never comes back.
+test('the upgrade notes say how to run a rollback and how to re-apply it later', () => {
+  const intro = fs.readFileSync('UPGRADING.md', 'utf8').split('## Release notes')[0];
+  assert.match(intro, /supabase\/rollbacks\//);
+  assert.match(intro, /supabase migration repair --status reverted <version> --linked/);
+});
