@@ -46,7 +46,7 @@ begin
   if length(v_source) > 60 then
     raise exception 'source is too long';
   end if;
-  if p_direction not in ('DBIT', 'CRDT') then
+  if p_direction is null or p_direction not in ('DBIT', 'CRDT') then
     raise exception 'direction must be DBIT or CRDT';
   end if;
 

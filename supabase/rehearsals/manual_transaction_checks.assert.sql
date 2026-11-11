@@ -33,4 +33,11 @@ begin
     end;
   end loop;
 
+  -- polish-5 #3: a missing direction is refused, not saved as income
+  begin
+    perform public.add_manual_transaction('2026-03-01', 'x', 1, null, 'EUR', null, 'Bank');
+    raise exception 'must refuse a missing direction' using errcode = 'P0002';
+  exception when raise_exception then null;
+  end;
+
 end $$;
