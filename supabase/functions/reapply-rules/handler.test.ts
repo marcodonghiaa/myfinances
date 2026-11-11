@@ -126,3 +126,10 @@ Deno.test("retiredFrom: takes a pre-cap rule longer than 200 characters", () => 
   assertEquals(retiredFrom({ retired: good })?.match_text, "x".repeat(201));
   assertEquals(retiredFrom({ retired: { ...good, match_text: "x".repeat(2000) } })?.match_text?.length, 2000);
 });
+
+// Polish 1 #9: the category is counted in characters like the text, not UTF-16 units.
+Deno.test("retiredFrom: a category is bounded in characters", () => {
+  const good = { match_field: "any", match_text: "bar", match_mode: "word", set_category: "😀".repeat(2000) };
+  assertEquals(retiredFrom({ retired: good })?.set_category, "😀".repeat(2000));
+  assertEquals(retiredFrom({ retired: { ...good, set_category: "x".repeat(2001) } }), null);
+});

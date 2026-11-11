@@ -20,7 +20,7 @@ export function retiredFrom(body: unknown): Rule | null | undefined {
     FIELDS.includes(r.match_field) &&
     typeof r.match_text === "string" && [...r.match_text].length <= MAX_TEXT &&
     (r.match_mode == null || MODES.includes(r.match_mode)) &&
-    typeof r.set_category === "string" && r.set_category.length > 0 && r.set_category.length <= MAX_TEXT;
+    typeof r.set_category === "string" && r.set_category.length > 0 && [...r.set_category].length <= MAX_TEXT;
   if (!ok) return null;
   return { user_id: "", match_field: r.match_field, match_text: r.match_text, match_mode: r.match_mode ?? "contains", set_category: r.set_category };
 }
