@@ -115,6 +115,14 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     }
   });
 
+  // polish-2 #1: the check runs for every tags write; nobody signed out may call it on its own
+  // (no size cap before the work, so a huge array is a cheap way to load the server).
+  await t.test('only signed-in users and the sync can run the tag check', () => {
+    assert.match(as('anon', null, "select public.transaction_tags_ok('{x}')"), /permission denied/);
+    assert.strictEqual(as('authenticated', A, "select public.transaction_tags_ok('{x}')"), 't');
+    assert.strictEqual(as('service_role', null, "update public.transactions set tags = '{x}' where entry_reference = 'ref-1' returning 1"), '1');
+  });
+
   // polish-1 #2: what counts as a space can't depend on the database's locale (a dump restored
   // elsewhere must still pass), and must match the dashboard, which turns these into plain spaces.
   await t.test('tags with look-alike spaces are refused on any locale', () => {

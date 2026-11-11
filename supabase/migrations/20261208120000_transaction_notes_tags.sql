@@ -40,6 +40,11 @@ as $$
      );
 $$;
 
+-- The CHECK runs it for every tags write; nobody signed out needs it on its own (it reads no rows,
+-- but a huge array would make it a cheap way to load the server).
+revoke execute on function public.transaction_tags_ok(text[]) from public, anon;
+grant execute on function public.transaction_tags_ok(text[]) to authenticated, service_role;
+
 -- Only rows written while rolled back can need this: blank notes become NULL, long ones are cut;
 -- tags are split at commas, invisible characters dropped (before NFC, so a dropped one can't keep an
 -- accent apart from its letter), then trimmed with single spaces, cut to 40, blanks and repeats
