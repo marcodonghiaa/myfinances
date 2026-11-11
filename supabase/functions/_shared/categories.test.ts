@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1.0.19";
 import { CATEGORIES, categoriesFor, guideFor } from "./categories.ts";
 
 Deno.test("every category has a guide line, so the AI prompt never prints undefined", () => {

@@ -9,7 +9,7 @@
 // Requires a signed-in user, or this is an open proxy to Gemini on your key.
 // Secret: GEMINI_API_KEY (and optionally GEMINI_MODEL).
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { serveWithCors } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
 import { geminiRequest, parseGeminiRows, parseStatementRequest } from "../_shared/statement-pdf.ts";

@@ -1,4 +1,4 @@
-import { assertEquals, assertMatch, assertNotEquals } from "jsr:@std/assert@1";
+import { assertEquals, assertMatch, assertNotEquals } from "jsr:@std/assert@1.0.19";
 import { buildRows, type EbTransaction, normalizeIban, ownCounterparty } from "./transaction-rows.ts";
 
 const tx = (over: EbTransaction = {}): EbTransaction => ({

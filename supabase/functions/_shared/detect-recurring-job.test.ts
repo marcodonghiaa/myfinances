@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { runDetection } from "./detect-recurring-job.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 

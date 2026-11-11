@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { retryRejectedToken } from "./postgrest-retry.ts";
 
 // Answers with the queued responses in order; counts calls.

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { applyRules, matchRule, planRuleReapply, type Rule } from "./rules.ts";
 
 const rule = (over: Partial<Rule> = {}): Rule => ({

@@ -12,7 +12,7 @@ export function legacyOrigin(): string | null {
 }
 
 async function loadRegisteredOrigins(): Promise<string[]> {
-  const { createClient } = await import("jsr:@supabase/supabase-js@2");
+  const { createClient } = await import("jsr:@supabase/supabase-js@2.119.0");
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data, error } = await supabase.from("dashboard_origins").select("origin").order("created_at");
   if (error) throw new Error(error.message);

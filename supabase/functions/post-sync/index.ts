@@ -11,7 +11,7 @@
 // the only cost is that both may send the same new rows to Gemini once.
 // Callers send a project secret key on the apikey header, like sync-bank.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import { retryRejectedToken } from "../_shared/postgrest-retry.ts";
 import { errorTag } from "../_shared/log-safe.ts";

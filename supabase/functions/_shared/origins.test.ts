@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { corsHeaders, pickAllowedOrigin, pickRedirectOrigin, redirectOrigin, serveWithCors } from "./origins.ts";
 
 const A = "https://a.example.com";

@@ -7,7 +7,7 @@
 // hand-set (trg_mark_manual_category). Categories you set by hand are never changed (see
 // _shared/reapply-rules.ts).
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { serveWithCors } from "../_shared/origins.ts";
 import { mfaRefusal } from "../_shared/mfa.ts";
 import { reapplyHandler, userIdFrom } from "./handler.ts";

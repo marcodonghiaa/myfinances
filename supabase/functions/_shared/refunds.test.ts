@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { matchRefunds, type RefundRow } from "./refunds.ts";
 
 const row = (over: Partial<RefundRow> & Record<string, unknown> = {}): RefundRow => ({

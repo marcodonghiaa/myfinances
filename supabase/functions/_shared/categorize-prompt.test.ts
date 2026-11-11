@@ -1,4 +1,4 @@
-import { assert, assertMatch, assertNotMatch } from "jsr:@std/assert@1";
+import { assert, assertMatch, assertNotMatch } from "jsr:@std/assert@1.0.19";
 import { buildCategorizePrompt } from "./categorize-prompt.ts";
 
 const credit = {

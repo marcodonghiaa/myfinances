@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { burnCode, closeSessions } from "./eb-sessions.ts";
 
 const sign = () => Promise.resolve("jwt");
