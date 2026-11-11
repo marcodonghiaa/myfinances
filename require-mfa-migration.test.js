@@ -38,3 +38,10 @@ test('rollback stops while another hook still calls require_mfa, and resets only
   assert.doesNotMatch(down, /^alter role authenticator reset pgrst\.db_pre_request;/m, 'unconditional reset');
   assert.match(down, /in database %I reset pgrst\.db_pre_request/);
 });
+
+// polish-5 #6: run outside a transaction, a refused migration must not leave its functions behind.
+test('migration refuses an existing hook before it creates anything', () => {
+  const up = fs.readFileSync(path.join(__dirname, 'supabase/migrations/20261203000000_require_mfa.sql'), 'utf8');
+  const refuse = up.indexOf('PostgREST already runs pre-request hook');
+  assert.ok(refuse >= 0 && refuse < up.indexOf('create or replace function'), 'check comes after a create');
+});

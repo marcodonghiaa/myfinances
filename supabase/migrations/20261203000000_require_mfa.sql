@@ -7,6 +7,24 @@
 -- policy alone would leave them open. The hook covers the Data API only (not Realtime or
 -- Storage, which this app does not use).
 
+-- Refuse an existing hook before creating anything, so a run outside a transaction leaves nothing
+-- behind. The install step below checks again in the same statement that sets the hook.
+do $$
+declare
+  existing text;
+begin
+  select string_agg(distinct substr(c, length('pgrst.db_pre_request=') + 1), ', ') into existing
+    from pg_db_role_setting s join pg_roles r on r.oid = s.setrole, unnest(s.setconfig) c
+   where r.rolname = 'authenticator'
+     and s.setdatabase in (0, (select oid from pg_database where datname = current_database()))
+     and c like 'pgrst.db_pre_request=%'
+     and c <> 'pgrst.db_pre_request=public.require_mfa';
+  if existing is not null then
+    raise exception 'PostgREST already runs pre-request hook %; call public.require_mfa() from it instead', existing;
+  end if;
+end;
+$$;
+
 -- True when the caller's session may use their data: they reached aal2, or they have no
 -- verified factor. Security definer only to read auth.mfa_factors; it reads the caller's own rows.
 -- No user (anon, service role) means no factor, so true.
