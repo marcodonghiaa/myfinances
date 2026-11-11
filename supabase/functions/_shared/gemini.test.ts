@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.19";
 import { classifyWithGemini } from "./gemini.ts";
 
 const req = { prompt: "p", resultKey: "category", resultEnum: ["A", "B"], apiKey: "k", model: "m" };

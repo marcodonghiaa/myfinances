@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "jsr:@std/assert@1.0.19";
 import { type Deps, syncAccountBalance, syncAccountTransactions } from "./bank-sync.ts";
 
 const EB = "https://api.enablebanking.com/accounts";

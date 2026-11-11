@@ -5,7 +5,7 @@
 // session, so RLS only finds it when the caller is the user who started this link: someone who
 // completes another user's consent URL gets "Invalid or expired" and links nothing.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { serveWithCors } from "../_shared/origins.ts";
 import { linkAccounts } from "../_shared/link-accounts.ts";
 import { burnCode } from "../_shared/eb-sessions.ts";

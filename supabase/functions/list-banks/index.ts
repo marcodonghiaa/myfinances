@@ -11,7 +11,7 @@
 // supabase/config.toml as a gateway-level backstop; this in-function check is
 // the one that's actually reproducible from a plain `supabase functions deploy`.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import { EB_KEY_INVALID, ebErrorMessage, signEnableBankingJwt } from "../_shared/enable-banking.ts";
 import { serveWithCors } from "../_shared/origins.ts";
 import { isCountryCode } from "../_shared/validate.ts";

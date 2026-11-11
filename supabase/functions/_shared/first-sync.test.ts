@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { startFirstSync } from "./first-sync.ts";
 
 type Call = { url: string; init: RequestInit };

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { CLAIM_FAILED, claimConsent, EXPIRED_CONSENT, INVALID_CONSENT, isConsentInput } from "./consent-claim.ts";
 
 const STATE = "0b0e6a4e-1f7e-4f43-9d0c-2b1c9a7d5e11";

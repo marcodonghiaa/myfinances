@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { createStallGuard } from "./stall-guard.ts";
 
 const rows = (user_id: string, ...refs: string[]) => refs.map((r) => ({ user_id, account_uid: "acc", entry_reference: r }));

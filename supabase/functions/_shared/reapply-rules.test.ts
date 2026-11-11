@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { assertEquals, assertRejects } from "jsr:@std/assert@1.0.19";
 import { reapplyRules } from "./reapply-rules.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 

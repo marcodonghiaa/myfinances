@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1.0.19";
 import { buildSplitwisePrompt, categorizeSplitwise, planSplitwiseUpdates, SPLITWISE_CATEGORIES } from "./splitwise.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 

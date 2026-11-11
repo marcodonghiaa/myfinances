@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { mfaRefusal } from "./mfa.ts";
 
 const client = (data: unknown, error: { code?: string; message?: string } | null = null) => ({

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { hasSecretKey, parseSecretKeys } from "./secret-key.ts";
 
 const KEYS = parseSecretKeys(JSON.stringify({ default: "sb_secret_abc", cron: "sb_secret_xyz" }));

@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { assertEquals, assertThrows } from "jsr:@std/assert@1.0.19";
 import { reapplyHandler, retiredFrom, userIdFrom } from "./handler.ts";
 import { memoryDb } from "../_shared/memory-db.test-helper.ts";
 

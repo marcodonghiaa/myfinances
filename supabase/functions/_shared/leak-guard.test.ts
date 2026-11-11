@@ -1,4 +1,4 @@
-import { assert } from "jsr:@std/assert@1";
+import { assert } from "jsr:@std/assert@1.0.19";
 import { type Deps, syncAccountBalance, syncAccountTransactions } from "./bank-sync.ts";
 
 // Runs the Deno sync (what sync-bank calls) against fake Enable Banking and Supabase answers

@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "jsr:@std/assert@1.0.19";
 import { categorize, type Classify } from "./categorize.ts";
 import { memoryDb } from "./memory-db.test-helper.ts";
 import { classifyFlows } from "./flow.ts";

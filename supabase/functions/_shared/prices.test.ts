@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { cryptoRows, type GetJson, type Holding, nextAssetType, priceHoldings, syncFx } from "./prices.ts";
 
 const holding = (over: Partial<Holding> = {}): Holding => ({ user_id: "u1", isin: "IE00", yahoo_symbol: "VWCE.DE", shares: 2, asset_type: null, ...over });

@@ -1,7 +1,7 @@
 // Server-to-server auth with the project's secret API keys (sb_secret_...). They are not JWTs:
 // the gateway's verify_jwt only understands the legacy keys, so functions called this way set
 // verify_jwt = false and check the apikey header here. Kept free of Deno.env for the tests.
-import { timingSafeEqual } from "jsr:@std/crypto@1/timing-safe-equal";
+import { timingSafeEqual } from "jsr:@std/crypto@1.1.0/timing-safe-equal";
 
 /** SUPABASE_SECRET_KEYS is a JSON object of named keys ({"default": "sb_secret_..."}). */
 export function parseSecretKeys(json: string | undefined): Record<string, string> {

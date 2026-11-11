@@ -5,7 +5,7 @@
 // Push keys come from the VAPID_* secrets; without them nothing is sent. Callers send a project
 // secret key on the apikey header, like sync-bank.
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.119.0";
 import webpush from "npm:web-push@3.6.7";
 import { hasSecretKey, parseSecretKeys } from "../_shared/secret-key.ts";
 import { retryRejectedToken } from "../_shared/postgrest-retry.ts";

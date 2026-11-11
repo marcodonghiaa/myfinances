@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1.0.19";
 import { linkedParams } from "./linked-summary.ts";
 
 Deno.test("names the bank and each currency once, sorted", () => {
