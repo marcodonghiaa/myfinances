@@ -127,7 +127,7 @@ export function planRuleRetire(rows: Row[], retired: Rule, rules: Rule[]): RowUp
       update: { category: null, category_source: null },
       guardColumn: "category_source",
       guardIn: ["rule"],
-      alsoIn: ["category", [category]],
+      alsoEq: ["category", category],
     });
   }
   return items;

@@ -136,3 +136,31 @@ Deno.test("retired rule: keeps a row a remaining rule matches, whatever that rul
   assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 0);
   assertEquals(cat(db, "bank"), "Dine Out");
 });
+
+// Polish 2 #1: postgrest-js doesn't escape a quote inside an in() value, so a category like
+// `x","Groceries` would widen an in-list guard. The retire write compares the category exactly.
+Deno.test("retired rule: the write guards the category with eq, not an in-list", async () => {
+  const db = memoryDb({ transactions: [tx("hit", "BARCLAYS", { category: "Dine Out", category_source: "rule" })], category_rules: [] });
+  const guards: string[] = [];
+  const spy = {
+    ...db,
+    from(t: string) {
+      const q = db.from(t);
+      const wrap = (inner: Record<string, unknown>): Record<string, unknown> =>
+        new Proxy(inner, {
+          get(target, prop) {
+            const v = target[prop as string];
+            if (typeof v !== "function" || prop === "then") return typeof v === "function" ? v.bind(target) : v;
+            return (...args: unknown[]) => {
+              if ((prop === "eq" || prop === "in") && args[0] === "category") guards.push(String(prop));
+              const r = (v as (...a: unknown[]) => unknown).apply(target, args);
+              return r === target ? wrap(target) : r;
+            };
+          },
+        });
+      return wrap(q);
+    },
+  };
+  assertEquals((await reapplyRules(spy, "u1", true, retiredBar)).changes, 1);
+  assertEquals(guards, ["eq", "eq"]); // the read and the write
+});
