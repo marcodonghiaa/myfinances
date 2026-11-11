@@ -11,10 +11,10 @@ test('every migration has its own version number', () => {
 });
 
 // polish-5 #2: a self-hoster only learns what to run, and in which order, from UPGRADING.md.
-test('migrations from 20261127 on (when release notes started) are named in UPGRADING.md with a deploy order', () => {
+test('migrations from 20261104 on (when release notes started) are named in UPGRADING.md', () => {
   const notes = fs.readFileSync('UPGRADING.md', 'utf8');
   const recent = fs.readdirSync('supabase/migrations')
-    .filter((f) => f.endsWith('.sql') && f.split('_')[0] >= '20261127000000')
+    .filter((f) => f.endsWith('.sql') && f.split('_')[0] >= '20261104000000')
     .map((f) => f.replace(/\.sql$/, ''));
   assert.deepEqual(recent.filter((name) => !notes.includes(`\`${name}\``)), [], 'missing from UPGRADING.md');
   assert.match(notes, /dashboard first/i);

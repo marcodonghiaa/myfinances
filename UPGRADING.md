@@ -55,7 +55,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ### Rules can only set how a row counts
 - **Migration:** `20261129000000_flow_only_rules`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard: "It's a transfer" in the To review list saves a rule that sets only the flow.
-- The `at_least_one_action` check on `category_rules` now also accepts a rule that sets only `set_flow_type`.
+- The `at_least_one_action` check on `category_rules` now also accepts a rule that sets only `set_flow_type`, and is added on databases that didn't have it.
 - **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261129000000_flow_only_rules.down.sql` (it deletes rules that set only the flow).
 
 ### Transfers between your own accounts stop counting as spend and income
@@ -93,6 +93,23 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - A newly linked account starts its first sync right away (balance and transactions) instead of waiting up to 6 hours for the cron. It uses the same secret key as the cron, so nothing to configure.
 - An old dashboard shows "Couldn't link the bank" for new links until you redeploy it.
 - **Roll back:** `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`.
+
+### Splitwise balances say who owes whom
+- **Migration:** `20261123000000_splitwise_balances_basis`. Apply it with `supabase db push --linked`, then redeploy the dashboard.
+- Each stored Splitwise balance says what it means: `group` (a member's net toward the whole group, how balances were stored before) or `pairwise` (what you owe that member), which the dashboard now writes. Rows saved before, or by an older dashboard, stay `group` and are never read as per-person debts.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261123000000_splitwise_balances_basis.down.sql`.
+
+### Subscriptions radar: merchant keys and recurring streams
+- **Migrations:** `20261119000000_merchant_key`, `20261119000001_aliases_by_merchant_key`, `20261119000002_alias_exact_first`, `20261120000000_recurring_streams`, `20261120000001_schedule_detect_recurring`, `20261121000000_recurring_streams_v2`, `20261122000000_recurring_streams_variant_dismissal`. Apply them with `supabase db push --linked` BEFORE redeploying the Edge Functions (`supabase functions deploy`: the bank sync writes `merchant_key`, and `detect-recurring` is new), then redeploy the dashboard. `20261120000001` needs the pg_cron setup of `20261118000000_schedule_sync` below.
+- Each transaction and alias gets a normalized merchant name (`merchant_key`, written by the sync only), so "LIDL 4521" and "LIDL 4521 MILANO IT" group together and share one rename. An alias for an exact name still wins over one for the key.
+- Recurring charges are detected every 6 hours into `recurring_streams` (the Subscriptions page). Your old subscription choices carry over; a name you dismissed no longer hides charges of another name you kept.
+- **Roll back:** newest first, after reverting the dashboard, the detector and the sync: `20261122000000`, `20261121000000`, `20261120000001`, `20261120000000`, `20261119000002`, `20261119000001`, then `20261119000000` (each `supabase/rollbacks/<name>.down.sql`). Streams and merchant keys are lost; the transactions stay.
+
+### The sync runs inside Supabase (pg_cron)
+- **Migrations:** `20261117000000_sync_all_banks` and `20261118000000_schedule_sync`. First set the two Vault secrets `project_url` and `sync_bank_secret_key` (see the top of `20261117000000_sync_all_banks.sql`; `npx create-alopex` sets them), deploy the Edge Functions (`supabase functions deploy`), then `supabase db push --linked`.
+- **Stop your other scheduler at the same time** (launchd, the Docker `scheduler.js`, or the GitHub Actions `sync.yml`): two schedulers double the bank calls, and banks allow about 4 unattended calls a day per account.
+- pg_cron then syncs every bank account every 6 hours, followed by post-sync, prices and notifications (times in UTC). A job only queues its request: look for failures in `net._http_response` (query at the top of `20261118000000_schedule_sync.sql`).
+- **Roll back:** `supabase/rollbacks/20261118000000_schedule_sync.down.sql` (stops the schedule; restart your old scheduler, or nothing syncs), then `supabase/rollbacks/20261117000000_sync_all_banks.down.sql`.
 
 ### Splitwise undo keeps how a row counts
 - **Migration:** `20261116000000_splitwise_undo_keeps_flow`. You apply it with `supabase db push --linked`.
