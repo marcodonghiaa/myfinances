@@ -106,6 +106,10 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.strictEqual(setA('note', lit('x'.repeat(2000))), '1');
     assert.match(setA('note', lit('x'.repeat(2001))), /transactions_note_length/);
     assert.match(setA('note', "''"), /transactions_note_length/);
+    // polish-2 #2: only spaces is no note; the dashboard saves it as none.
+    assert.match(setA('note', "'   '"), /transactions_note_length/);
+    assert.match(setA('note', "E' \\n\\t'"), /transactions_note_length/);
+    assert.strictEqual(setA('note', "'v'"), '1');
     assert.strictEqual(setA('tags', `'{${Array.from({ length: 20 }, (_, i) => `t${i}`)}}'`), '1');
     assert.match(setA('tags', `'{${Array.from({ length: 21 }, (_, i) => `t${i}`)}}'`), /transactions_tags_ok/);
     assert.strictEqual(setA('tags', `array['${'x'.repeat(40)}']`), '1');
@@ -235,6 +239,7 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     psql(dbUrl(), [
       '-c',
       `update public.transactions set tags = array[' loose  tag ', 'loose tag', '', 'a,b', E'\\u200B', E'cafe\\u0301', 'café', E'ze\\u200D\\u0301'] where entry_reference = 'ref-1';
+       update public.transactions set note = E'vivid\\n' where entry_reference = 'ref-b';
        update public.transactions set note = '   ' where entry_reference = 'ref-2';`,
     ]);
     applySql(MIGRATION);
@@ -243,6 +248,7 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
       'loose tag,a,b,café,zé|null',
     );
     assert.strictEqual(psql(dbUrl(), ['-c', "select coalesce(note, 'null') from public.transactions where entry_reference = 'ref-2'"]), 'null');
+    assert.strictEqual(psql(dbUrl(), ['-c', "select note from public.transactions where entry_reference = 'ref-b'"]), 'vivid');
     assert.strictEqual(as('authenticated', A, "select string_agg(tag, ',') from public.my_transaction_tags()"), 'a,b,café,loose tag,zé');
   });
 });

@@ -50,8 +50,8 @@ grant execute on function public.transaction_tags_ok(text[]) to authenticated, s
 -- accent apart from its letter), then trimmed with single spaces, cut to 40, blanks and repeats
 -- (ignoring case, first spelling wins) dropped, at most 20 kept.
 update public.transactions
-set note = nullif(btrim(left(note, 2000)), '')
-where note is not null and note is distinct from nullif(btrim(left(note, 2000)), '');
+set note = nullif(btrim(left(note, 2000), E' \t\n\r\x0B\f'), '')
+where note is not null and note is distinct from nullif(btrim(left(note, 2000), E' \t\n\r\x0B\f'), '');
 
 update public.transactions t
 set tags = c.clean
@@ -80,7 +80,10 @@ alter table public.transactions
   drop constraint if exists transactions_note_length,
   drop constraint if exists transactions_tags_ok;
 alter table public.transactions
-  add constraint transactions_note_length check (note is null or char_length(note) between 1 and 2000),
+  -- A note of only spaces or line breaks is no note: the dashboard saves it as none (NULL).
+  add constraint transactions_note_length check (
+    note is null or (char_length(note) <= 2000 and btrim(note, E' \t\n\r\x0B\f') <> '')
+  ),
   add constraint transactions_tags_ok check (public.transaction_tags_ok(tags));
 
 -- Same view as 20261029000000_fx_eur_fallback, plus note and tags at the end (appending keeps
