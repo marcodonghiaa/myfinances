@@ -101,8 +101,12 @@ Deno.test("retiredFrom: absent is undefined, a malformed rule is null, user_id n
 });
 
 Deno.test("a malformed retired rule is a 400, nothing read", async () => {
-  const res = await call(seed(), { body: JSON.stringify({ apply: true, retired: { match_field: "x" } }) });
+  const db = seed();
+  const tables: string[] = [];
+  const watched = { ...db, from: (t: string) => (tables.push(t), db.from(t)) };
+  const res = await call(watched, { body: JSON.stringify({ apply: true, retired: { match_field: "x" } }) });
   assertEquals(res, { status: 400, body: { error: "That rule can't be checked" } });
+  assertEquals(tables, []); // polish 1 #11: the name promised this, the test didn't check it
 });
 
 Deno.test("retired rule: scoped to the caller even if the body names another user", async () => {

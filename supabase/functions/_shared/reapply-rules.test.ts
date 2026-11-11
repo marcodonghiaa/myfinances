@@ -125,3 +125,14 @@ Deno.test("retired rule: a learned row it also matches is reset with the others"
   assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 1);
   assertEquals(cat(db, "learned-first"), null);
 });
+
+// Polish 1 #11: a row another rule now files under a different category is not reset; that's
+// "Apply to past transactions"' job.
+Deno.test("retired rule: keeps a row a remaining rule matches, whatever that rule's category", async () => {
+  const db = memoryDb({
+    transactions: [tx("bank", "BARCLAYS", { category: "Dine Out", category_source: "rule" })],
+    category_rules: [rule({ match_text: "barclays", set_category: "Bank fees" })],
+  });
+  assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 0);
+  assertEquals(cat(db, "bank"), "Dine Out");
+});
