@@ -7,7 +7,8 @@ import type { Rule } from "../_shared/rules.ts";
 
 const FIELDS = ["creditor_name", "remittance_info", "any"];
 const MODES = ["contains", "word", "exact"];
-const MAX_TEXT = 200; // the rule text cap (category_rules check), in characters
+// Rules from before the 200-character cap can be longer; this only bounds the body (characters).
+const MAX_TEXT = 2000;
 
 // { retired: rule } after a delete: the rule's own fields, checked like the table checks them.
 // undefined when absent, null when malformed. user_id is never taken from the body.

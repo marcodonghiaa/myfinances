@@ -92,7 +92,7 @@ Deno.test("retiredFrom: absent is undefined, a malformed rule is null, user_id n
     "bar",
     { ...good, match_field: "category" },
     { ...good, match_text: 5 },
-    { ...good, match_text: "x".repeat(201) },
+    { ...good, match_text: "x".repeat(2001) },
     { ...good, match_mode: "regex" },
     { ...good, set_category: "" },
     { ...good, set_category: null },
@@ -117,4 +117,12 @@ Deno.test("retired rule: scoped to the caller even if the body names another use
   const res = await call(db, { body: JSON.stringify({ apply: true, retired }) });
   assertEquals(res.body.changes, 1);
   assertEquals(db.tables.transactions.map((r) => r.category), [null, "Dine Out"]);
+});
+
+// Polish 1 #6: rules from before the 200-character cap are still in the table; deleting one must
+// still be able to re-sort what it filed. The body stays bounded.
+Deno.test("retiredFrom: takes a pre-cap rule longer than 200 characters", () => {
+  const good = { match_field: "any", match_text: "x".repeat(201), match_mode: "contains", set_category: "Dine Out" };
+  assertEquals(retiredFrom({ retired: good })?.match_text, "x".repeat(201));
+  assertEquals(retiredFrom({ retired: { ...good, match_text: "x".repeat(2000) } })?.match_text?.length, 2000);
 });
