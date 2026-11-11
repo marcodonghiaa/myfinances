@@ -35,12 +35,16 @@ export async function reapplyRules(db: Db, userId: string, apply: boolean, retir
   // deno-lint-ignore no-explicit-any
   const rows: any[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await db
+    let query = db
       .from("transactions")
       .select("user_id, account_uid, entry_reference, creditor_name, remittance_info, category, category_source")
       .eq("user_id", userId)
-      .is("deleted_at", null)
-      .in("category_source", REAPPLY_SOURCES)
+      .is("deleted_at", null);
+    // A deleted rule can only have filed rule rows in its own category: read just those.
+    query = retired
+      ? query.eq("category_source", "rule").eq("category", retired.set_category)
+      : query.in("category_source", REAPPLY_SOURCES);
+    const { data, error } = await query
       .order("account_uid")
       .order("entry_reference")
       .range(from, from + PAGE_SIZE - 1);

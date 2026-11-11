@@ -103,3 +103,14 @@ Deno.test("retired rule: works when no rule is left, and never touches Transfer"
   assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 1);
   assertEquals(cat(db, "t"), "Transfer");
 });
+
+// Polish 1 #2: a retired rule can only have filed rule rows in its own category; reading every
+// AI row too made each delete scan the whole history.
+Deno.test("retired rule: reads only rule rows in that rule's category", async () => {
+  const many = Array.from({ length: 1001 }, (_, i) => tx(`ai${String(i).padStart(4, "0")}`, "BARCLAYS"));
+  const db = memoryDb({ transactions: [...many, tx("hit", "BARCLAYS", { category: "Dine Out", category_source: "rule" })], category_rules: [] });
+  let pages = 0;
+  const counting = { ...db, from: (t: string) => (t === "transactions" && pages++, db.from(t)) };
+  assertEquals((await reapplyRules(counting, "u1", false, retiredBar)).changes, 1);
+  assertEquals(pages, 1);
+});
