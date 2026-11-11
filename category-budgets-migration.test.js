@@ -31,3 +31,11 @@ test('each user sees and changes only their own budgets', () => {
 test('the rollback drops the table', () => {
   assert.match(down, /drop table if exists public\.category_budgets/);
 });
+
+// P5 P1-4: this release's dashboard exports category_budgets, and the export fails on a missing
+// table, so the rollback note must tell people to revert the dashboard before dropping it.
+test('the upgrade note says to revert the dashboard before rolling back', () => {
+  const notes = fs.readFileSync('UPGRADING.md', 'utf8');
+  const entry = notes.slice(notes.indexOf('### Monthly budgets per category')).split('\n### ')[0];
+  assert.match(entry, /\*\*Roll back:\*\* revert the dashboard first, then `supabase\/rollbacks\/20261202100000_category_budgets\.down\.sql`/);
+});
