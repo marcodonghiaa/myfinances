@@ -133,6 +133,13 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     }
   });
 
+  // polish-1 #11: the dashboard splits on commas and the export joins tags with ", ", so a tag
+  // holding a comma would read as two.
+  await t.test('tags with a comma are refused', () => {
+    assert.match(setA('tags', "array['a,b']"), /transactions_tags_ok/);
+    assert.match(setA('tags', "array['trip, work']"), /transactions_tags_ok/);
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {
@@ -178,15 +185,15 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
   await t.test('after the rollback the migration applies again and tidies rows written meanwhile', () => {
     psql(dbUrl(), [
       '-c',
-      `update public.transactions set tags = array[' loose  tag ', 'loose tag', ''] where entry_reference = 'ref-1';
+      `update public.transactions set tags = array[' loose  tag ', 'loose tag', '', 'a,b', E'\\u200B'] where entry_reference = 'ref-1';
        update public.transactions set note = '   ' where entry_reference = 'ref-2';`,
     ]);
     applySql(MIGRATION);
     assert.strictEqual(
       psql(dbUrl(), ['-c', "select array_to_string(tags, ',') || '|' || coalesce(note, 'null') from public.transactions where entry_reference = 'ref-1'"]),
-      'loose tag|null',
+      'loose tag,a,b|null',
     );
     assert.strictEqual(psql(dbUrl(), ['-c', "select coalesce(note, 'null') from public.transactions where entry_reference = 'ref-2'"]), 'null');
-    assert.strictEqual(as('authenticated', A, "select string_agg(tag, ',') from public.my_transaction_tags()"), 'loose tag');
+    assert.strictEqual(as('authenticated', A, "select string_agg(tag, ',') from public.my_transaction_tags()"), 'a,b,loose tag');
   });
 });
