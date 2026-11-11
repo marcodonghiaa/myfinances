@@ -7,6 +7,9 @@ import { PartialApplyError, reapplyRules } from "../_shared/reapply-rules.ts";
 export interface Deps {
   // Who signed this request; null for a bad or expired token, throws if auth can't be reached.
   userIdFor(authorization: string): Promise<string | null>;
+  // The database's two-step sign-in check, asked with the caller's JWT: the service key below
+  // skips it. null when satisfied, else the reply to send (see _shared/mfa.ts).
+  mfaRefusal(authorization: string): Promise<{ body: object; status: number } | null>;
   admin(): Db; // service-role client: the user's own JWT would trip the hand-edit trigger
 }
 
@@ -21,6 +24,8 @@ export const reapplyHandler = (deps: Deps) => async (req: Request, json: Reply):
     return json({ error: "Sign-in check is unavailable, please try again" }, 503);
   }
   if (!userId) return json({ error: "Not signed in" }, 401);
+  const refusal = await deps.mfaRefusal(authorization!);
+  if (refusal) return json(refusal.body, refusal.status);
 
   const body = await req.json().catch(() => null); // anything but { apply: true } is a preview
   try {

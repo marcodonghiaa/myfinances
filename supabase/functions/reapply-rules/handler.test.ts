@@ -8,8 +8,16 @@ const seed = (failWrite?: "update") =>
     transactions: [{ user_id: "u1", account_uid: "a1", entry_reference: "r1", creditor_name: "Bar Roma", remittance_info: "", category: "Others", category_source: "ai", deleted_at: null }],
     category_rules: [{ user_id: "u1", match_field: "creditor_name", match_text: "bar", match_mode: "word", set_category: "Dine Out", priority: 100, created_at: "2026-01-01" }],
   }, failWrite);
-const call = async (db: ReturnType<typeof seed>, init: RequestInit & { headers?: Record<string, string> }) => {
-  const handler = reapplyHandler({ userIdFor: (a) => Promise.resolve(a === "Bearer good" ? "u1" : null), admin: () => db });
+const call = async (
+  db: ReturnType<typeof seed>,
+  init: RequestInit & { headers?: Record<string, string> },
+  mfa: { body: object; status: number } | null = null,
+) => {
+  const handler = reapplyHandler({
+    userIdFor: (a) => Promise.resolve(a === "Bearer good" ? "u1" : null),
+    mfaRefusal: () => Promise.resolve(mfa),
+    admin: () => db,
+  });
   const res = await handler(new Request("http://x/reapply-rules", { method: "POST", headers: { Authorization: "Bearer good" }, ...init }), json);
   return { status: res.status, body: await res.json() };
 };
@@ -46,14 +54,14 @@ Deno.test("a failed write is a 500 that says what was kept and that retrying is 
 });
 
 Deno.test("a failed read keeps the plain error", async () => {
-  const handler = reapplyHandler({ userIdFor: () => Promise.resolve("u1"), admin: () => ({ from: () => { throw new Error("down"); } }) });
+  const handler = reapplyHandler({ userIdFor: () => Promise.resolve("u1"), mfaRefusal: () => Promise.resolve(null), admin: () => ({ from: () => { throw new Error("down"); } }) });
   const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
   assertEquals([res.status, await res.json()], [500, { error: "Couldn't apply your rules, please try again" }]);
 });
 
 // Polish pass 2 #4: when the auth server was down the user was told "Not signed in".
 Deno.test("an auth server outage is a 503, not a sign-out", async () => {
-  const handler = reapplyHandler({ userIdFor: () => Promise.reject(new Error("auth down")), admin: () => seed() });
+  const handler = reapplyHandler({ userIdFor: () => Promise.reject(new Error("auth down")), mfaRefusal: () => Promise.resolve(null), admin: () => seed() });
   const res = await handler(new Request("http://x", { method: "POST", headers: { Authorization: "Bearer good" } }), json);
   assertEquals([res.status, await res.json()], [503, { error: "Sign-in check is unavailable, please try again" }]);
 });
@@ -63,4 +71,13 @@ Deno.test("userIdFrom: user id, null for a bad token, throws when auth is down",
   assertEquals(userIdFrom({ data: { user: { id: "u1" } }, error: null }), "u1");
   for (const status of [400, 401, 403]) assertEquals(userIdFrom({ data: { user: null }, error: { status } }), null);
   for (const status of [0, 500, 503, undefined]) assertThrows(() => userIdFrom({ data: { user: null }, error: { status } }));
+});
+
+// Merge with two-step sign-in (#128): this function writes with the service key, which skips the
+// database's MFA hook, so it must ask itself, like the other service-role functions.
+Deno.test("refuses a session without the second step, before reading or writing", async () => {
+  const db = seed();
+  const res = await call(db, { body: JSON.stringify({ apply: true }) }, { body: { code: "mfa_required" }, status: 403 });
+  assertEquals(res, { status: 403, body: { code: "mfa_required" } });
+  assertEquals(db.tables.transactions[0].category, "Others");
 });
