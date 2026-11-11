@@ -146,6 +146,13 @@ test('notes and tags on a real Postgres', { skip }, async (t) => {
     assert.match(setA('tags', "array[E'cafe\\u0301']"), /transactions_tags_ok/);
   });
 
+  // polish-1 #20: one row holds a tag once, ignoring case, like the dashboard keeps it.
+  await t.test('a row cannot hold the same tag twice', () => {
+    assert.match(setA('tags', "array['work', 'work']"), /transactions_tags_ok/);
+    assert.match(setA('tags', "array['Work', 'work']"), /transactions_tags_ok/);
+    assert.strictEqual(setA('tags', "array['work', 'workshop']"), '1');
+  });
+
   // The proof behind "a sync re-run must not overwrite them": the same upsert PostgREST runs for
   // the bank sync (insert the builder's columns, on conflict update those columns only).
   await t.test('a sync re-run keeps the note and tags', () => {

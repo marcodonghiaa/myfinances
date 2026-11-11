@@ -17,7 +17,9 @@ alter table public.transactions
 -- Invisible format characters (zero-width space and joiners, soft hyphen, direction marks) are
 -- refused too: on their own they would make an invisible tag. The dashboard strips them. A comma
 -- ends a tag in the dashboard and separates tags in the export, so it can't be inside one. Tags are
--- in composed form (NFC), so "café" typed with a separate accent is the same tag as "café".
+-- in composed form (NFC), so "café" typed with a separate accent is the same tag as "café". A row
+-- holds each tag once, ignoring case; "C" keeps that case rule the same on every server (it folds
+-- A-Z only, so it never refuses what the dashboard, which folds every letter, sends).
 create or replace function public.transaction_tags_ok(p_tags text[])
 returns boolean
 language sql
@@ -26,6 +28,7 @@ set search_path = ''
 as $$
   select cardinality(p_tags) <= 20
      and array_position(p_tags, null) is null
+     and (select count(distinct lower(t.tag collate "C")) from unnest(p_tags) as t(tag)) = cardinality(p_tags)
      and not exists (
        select 1 from unnest(p_tags) as t(tag)
        where char_length(t.tag) > 40
