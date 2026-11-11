@@ -3,6 +3,26 @@ import type { Db } from "../_shared/batch-update.ts";
 import type { Reply } from "../_shared/origins.ts";
 import { errorTag } from "../_shared/log-safe.ts";
 import { PartialApplyError, reapplyRules } from "../_shared/reapply-rules.ts";
+import type { Rule } from "../_shared/rules.ts";
+
+const FIELDS = ["creditor_name", "remittance_info", "any"];
+const MODES = ["contains", "word", "exact"];
+const MAX_TEXT = 200; // the rule text cap (category_rules check), in characters
+
+// { retired: rule } after a delete: the rule's own fields, checked like the table checks them.
+// undefined when absent, null when malformed. user_id is never taken from the body.
+export function retiredFrom(body: unknown): Rule | null | undefined {
+  // deno-lint-ignore no-explicit-any
+  const r = (body as any)?.retired;
+  if (r === undefined || r === null) return undefined;
+  const ok = typeof r === "object" &&
+    FIELDS.includes(r.match_field) &&
+    typeof r.match_text === "string" && [...r.match_text].length <= MAX_TEXT &&
+    (r.match_mode == null || MODES.includes(r.match_mode)) &&
+    typeof r.set_category === "string" && r.set_category.length > 0 && r.set_category.length <= MAX_TEXT;
+  if (!ok) return null;
+  return { user_id: "", match_field: r.match_field, match_text: r.match_text, match_mode: r.match_mode ?? "contains", set_category: r.set_category };
+}
 
 export interface Deps {
   // Who signed this request; null for a bad or expired token, throws if auth can't be reached.
@@ -28,8 +48,10 @@ export const reapplyHandler = (deps: Deps) => async (req: Request, json: Reply):
   if (refusal) return json(refusal.body, refusal.status);
 
   const body = await req.json().catch(() => null); // anything but { apply: true } is a preview
+  const retired = retiredFrom(body);
+  if (retired === null) return json({ error: "That rule can't be checked" }, 400);
   try {
-    return json(await reapplyRules(deps.admin(), userId, body?.apply === true));
+    return json(await reapplyRules(deps.admin(), userId, body?.apply === true, retired));
   } catch (err) {
     console.error(`reapply-rules failed: ${errorTag(err)}`);
     const error = err instanceof PartialApplyError

@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { reapplyHandler, userIdFrom } from "./handler.ts";
+import { reapplyHandler, retiredFrom, userIdFrom } from "./handler.ts";
 import { memoryDb } from "../_shared/memory-db.test-helper.ts";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -80,4 +80,41 @@ Deno.test("refuses a session without the second step, before reading or writing"
   const res = await call(db, { body: JSON.stringify({ apply: true }) }, { body: { code: "mfa_required" }, status: 403 });
   assertEquals(res, { status: 403, body: { code: "mfa_required" } });
   assertEquals(db.tables.transactions[0].category, "Others");
+});
+
+Deno.test("retiredFrom: absent is undefined, a malformed rule is null, user_id never comes from the body", () => {
+  assertEquals(retiredFrom({ apply: true }), undefined);
+  assertEquals(retiredFrom(null), undefined);
+  const good = { match_field: "any", match_text: "bar", match_mode: "word", set_category: "Dine Out", user_id: "u2" };
+  assertEquals(retiredFrom({ retired: good }), { user_id: "", match_field: "any", match_text: "bar", match_mode: "word", set_category: "Dine Out" });
+  assertEquals(retiredFrom({ retired: { ...good, match_mode: undefined } })?.match_mode, "contains");
+  for (const bad of [
+    "bar",
+    { ...good, match_field: "category" },
+    { ...good, match_text: 5 },
+    { ...good, match_text: "x".repeat(201) },
+    { ...good, match_mode: "regex" },
+    { ...good, set_category: "" },
+    { ...good, set_category: null },
+  ]) assertEquals(retiredFrom({ retired: bad }), null);
+  assertEquals(retiredFrom({ retired: { ...good, match_text: "😀".repeat(200) } })?.match_text?.length, 400); // characters, not UTF-16 units
+});
+
+Deno.test("a malformed retired rule is a 400, nothing read", async () => {
+  const res = await call(seed(), { body: JSON.stringify({ apply: true, retired: { match_field: "x" } }) });
+  assertEquals(res, { status: 400, body: { error: "That rule can't be checked" } });
+});
+
+Deno.test("retired rule: scoped to the caller even if the body names another user", async () => {
+  const db = memoryDb({
+    transactions: [
+      { user_id: "u1", account_uid: "a1", entry_reference: "r1", creditor_name: "BARCLAYS", remittance_info: "", category: "Dine Out", category_source: "rule", deleted_at: null },
+      { user_id: "u2", account_uid: "a2", entry_reference: "r2", creditor_name: "BARCLAYS", remittance_info: "", category: "Dine Out", category_source: "rule", deleted_at: null },
+    ],
+    category_rules: [],
+  });
+  const retired = { user_id: "u2", match_field: "creditor_name", match_text: "bar", match_mode: "contains", set_category: "Dine Out" };
+  const res = await call(db, { body: JSON.stringify({ apply: true, retired }) });
+  assertEquals(res.body.changes, 1);
+  assertEquals(db.tables.transactions.map((r) => r.category), [null, "Dine Out"]);
 });

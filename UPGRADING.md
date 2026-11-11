@@ -8,6 +8,11 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
+### Deleting a rule can re-sort the transactions it filed
+- No migration. Run `supabase functions deploy reapply-rules` BEFORE redeploying the dashboard (an older function ignores the new request and would preview your current rules instead).
+- After you delete a rule on the Rules page, it offers to re-sort the transactions that rule had filed and no other rule matches (for example "Barclays" filed as Dine Out by an old "bar" rule). They go back to uncategorized and the next sync sorts them again. Categories you set by hand and Transfer rows never change.
+- A rule whose text is only spaces no longer matches anything. Before, an "Anywhere" rule like that caught almost every transaction. The dashboard never allowed one, so this only matters if you added it with SQL.
+
 ### Manual rows and imports get input limits
 - **Migration:** `20261207000000_manual_transaction_checks`. Redeploy the **dashboard first** (or at the same time), then apply it with `supabase db push --linked`. An older dashboard sends descriptions longer than 500 characters, which the new database refuses: an import would stop at that row on every retry.
 - Rows added by hand or by a statement import (`add_manual_transaction`) now have limits: amounts up to a trillion, a 3-letter currency, descriptions up to 500 characters, categories up to 100, a debit or credit direction, and up to 60 characters for the name of a new manual account (accounts named before keep working).

@@ -61,3 +61,45 @@ Deno.test("a failed write throws instead of reporting success", async () => {
   const db = memoryDb({ transactions: [tx("ai", "Bar Roma")], category_rules: [rule()] }, "update");
   await assertRejects(() => reapplyRules(db, "u1", true));
 });
+
+// A deleted "contains bar" rule had filed Barclays as Dine Out; the rule that's left is word-only.
+const retiredBar = { user_id: "", match_field: "creditor_name", match_text: "bar", match_mode: "contains", set_category: "Dine Out" };
+const seedRetired = () =>
+  memoryDb({
+    transactions: [
+      tx("barclays", "BARCLAYS", { category: "Dine Out", category_source: "rule" }),
+      tx("still-ruled", "Bar Roma", { category: "Dine Out", category_source: "rule" }),
+      tx("learned", "Pizzeria Da Mario", { category: "Dine Out", category_source: "rule" }),
+      tx("ai", "BARBIERE", { category: "Dine Out", category_source: "ai" }),
+      tx("manual", "BAR X", { category: "Dine Out", category_source: "manual" }),
+      tx("moved", "BARNES", { category: "Shopping", category_source: "rule" }),
+      tx("other-user", "BARCLAYS", { user_id: "u2", category: "Dine Out", category_source: "rule" }),
+    ],
+    category_rules: [rule(), rule({ user_id: "u2", match_mode: "contains" })],
+  });
+
+Deno.test("retired rule: preview finds only rule rows it filed that no remaining rule explains", async () => {
+  const db = seedRetired();
+  const result = await reapplyRules(db, "u1", false, retiredBar);
+  assertEquals(result, { changes: 1, sample: [{ name: "BARCLAYS", from: "Dine Out", to: null }] });
+  assertEquals(cat(db, "barclays"), "Dine Out");
+});
+
+Deno.test("retired rule: apply clears them for the next sync, nothing else changes", async () => {
+  const db = seedRetired();
+  assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 1);
+  const row = (ref: string) => db.tables.transactions.find((r) => r.entry_reference === ref)!;
+  assertEquals([row("barclays").category, row("barclays").category_source], [null, null]);
+  assertEquals(["still-ruled", "learned", "ai", "manual", "moved", "other-user"].map((r) => cat(db, r)), ["Dine Out", "Dine Out", "Dine Out", "Dine Out", "Shopping", "Dine Out"]);
+  assertEquals((await reapplyRules(db, "u1", false, retiredBar)).changes, 0);
+});
+
+Deno.test("retired rule: works when no rule is left, and never touches Transfer", async () => {
+  const db = memoryDb({
+    transactions: [tx("t", "BARCLAYS", { category: "Transfer", category_source: "rule" }), tx("d", "BARCLAYS", { category: "Dine Out", category_source: "rule" })],
+    category_rules: [],
+  });
+  assertEquals((await reapplyRules(db, "u1", false, { ...retiredBar, set_category: "Transfer" })).changes, 0);
+  assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 1);
+  assertEquals(cat(db, "t"), "Transfer");
+});

@@ -105,3 +105,28 @@ export function planRuleReapply(rows: Row[], rules: Rule[]): RowUpdate[] {
   }
   return items;
 }
+
+// A rule you just deleted: rows it filed that no remaining rule explains go back to
+// uncategorized, so the next sync sorts them again (your other rules, past choices, then the AI).
+// Only rows still showing that rule's category with source 'rule'. Learned categories also use
+// 'rule', but rules run first, so a row the deleted rule matches got its category from it.
+// Transfer is left alone, as in planRuleReapply.
+export function planRuleRetire(rows: Row[], retired: Rule, rules: Rule[]): RowUpdate[] {
+  const category = retired.set_category;
+  if (!category || category === TRANSFER) return [];
+  const usable = rules.filter((r) => r.set_category);
+  const items: RowUpdate[] = [];
+  for (const row of rows) {
+    if (row.category_source !== "rule" || row.category !== category) continue;
+    if (!matchRule(row, retired) || usable.some((r) => matchRule(row, r))) continue;
+    items.push({
+      account_uid: row.account_uid,
+      entry_reference: row.entry_reference,
+      update: { category: null, category_source: null },
+      guardColumn: "category_source",
+      guardIn: ["rule"],
+      alsoIn: ["category", [category]],
+    });
+  }
+  return items;
+}
