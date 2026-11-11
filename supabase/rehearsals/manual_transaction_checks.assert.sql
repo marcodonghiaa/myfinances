@@ -33,6 +33,21 @@ begin
     end;
   end loop;
 
+  -- polish-5 #8: a manual account named before the 60-character limit still takes new rows
+  insert into public.accounts (uid, user_id, currency, label, bank_name, manual)
+  values (gen_random_uuid(), '00000000-0000-0000-0000-0000000000d1', 'EUR', repeat('L', 80), repeat('L', 80), true);
+  perform public.add_manual_transaction('2026-03-01', 'Old source', 1, 'DBIT', 'EUR', null, repeat('L', 80));
+  if (select count(*) from public.accounts
+      where user_id = '00000000-0000-0000-0000-0000000000d1' and label = repeat('L', 80)) <> 1 then
+    raise exception 'an existing long-named account must be reused';
+  end if;
+  -- polish-5 #8: the category has a limit too (100, as Splitwise categories)
+  begin
+    perform public.add_manual_transaction('2026-03-01', 'x', 1, 'DBIT', 'EUR', repeat('c', 101), 'Bank');
+    raise exception 'must refuse a category over 100 characters' using errcode = 'P0002';
+  exception when raise_exception then null;
+  end;
+
   -- polish-5 #3: a missing direction is refused, not saved as income
   begin
     perform public.add_manual_transaction('2026-03-01', 'x', 1, null, 'EUR', null, 'Bank');

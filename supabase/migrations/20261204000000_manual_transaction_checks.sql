@@ -1,5 +1,6 @@
 -- add_manual_transaction gets the same input limits as add_manual_debt: no NaN or amounts above
--- a trillion, a 3-letter currency, descriptions up to 500 characters and sources up to 60.
+-- a trillion, a 3-letter currency, descriptions up to 500 characters, categories up to 100 and
+-- new sources up to 60.
 -- Anyone signed in can call it directly, so the dashboard's own checks aren't enough.
 -- It also takes a short lock per user + source + currency, so rows sent in parallel by an
 -- import can no longer create the same manual account twice.
@@ -43,8 +44,8 @@ begin
   if length(btrim(p_description)) > 500 then
     raise exception 'description is too long';
   end if;
-  if length(v_source) > 60 then
-    raise exception 'source is too long';
+  if length(p_category) > 100 then
+    raise exception 'category is too long';
   end if;
   if p_direction is null or p_direction not in ('DBIT', 'CRDT') then
     raise exception 'direction must be DBIT or CRDT';
@@ -57,6 +58,10 @@ begin
   where a.user_id = v_uid and a.manual and a.label = v_source and a.currency = v_currency
     and coalesce(a.account_type, 'checking') not in ('credit_card', 'loan');
   if v_account is null then
+    -- Only a new account's name is limited: one named before this limit still takes new rows.
+    if length(v_source) > 60 then
+      raise exception 'source is too long';
+    end if;
     insert into accounts (uid, user_id, currency, label, bank_name, manual)
     values (gen_random_uuid(), v_uid, v_currency, v_source, v_source, true)
     returning uid into v_account;
