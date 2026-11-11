@@ -37,3 +37,11 @@ test('both Gemini privacy notes mention Splitwise', () => {
   const note = installer.slice(installer.indexOf("console.log('Privacy:"), installer.indexOf('opts you out'));
   assert.match(note, /Splitwise/);
 });
+
+// protects=every installer release has upgrade notes for existing self-hosters; fails_when=the
+// installer version is bumped (or not) without a matching "## v<version>" section in UPGRADING.md
+test('UPGRADING.md has a section for the installer version', () => {
+  const { version } = JSON.parse(read('installer/package.json'));
+  assert.notStrictEqual(version, '0.1.0', 'this release bumps the installer past v0.1.0');
+  assert.match(read('UPGRADING.md'), new RegExp(`^## v${version.replace(/\./g, '\\.')}\\b`, 'm'));
+});
