@@ -21,6 +21,11 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - Rule text is now limited to 200 characters for new and edited rules. Longer (or empty) rules you already have keep working, but they can't be edited, and if you delete one there's no Undo: add it again shorter.
 - **Roll back:** `supabase/rollbacks/20261206000000_rule_match_mode.down.sql` (every rule goes back to matching anywhere). Revert the Edge Functions and the sync too: they read `match_mode`.
 
+### Refund links can't be changed by hand
+- **Migration:** `20261205000000_lock_refund_of`. Apply it with `supabase db push --linked`. No dashboard, Edge Function or sync change, so the order doesn't matter.
+- `refund_of` (which charge a refund reverses) is now set only by the refund pairing after each sync; a signed-in user changing it through the API gets "Bank-provided fields on transactions cannot be changed". Existing links are untouched.
+- **Roll back:** `supabase/rollbacks/20261205000000_lock_refund_of.down.sql` (users can change `refund_of` again).
+
 ### Two-step sign-in
 - **Migration:** `20261203000000_require_mfa`. Apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions (they call `mfa_satisfied`), then redeploy the dashboard.
 - It sets PostgREST's pre-request hook (`pgrst.db_pre_request`) to `public.require_mfa`. If you already use your own hook, the migration stops with an error: call `public.require_mfa()` from your hook, clear it with `alter role authenticator reset pgrst.db_pre_request;` and `alter role authenticator in database postgres reset pgrst.db_pre_request;` (it may be set either way), push again, then set yours back the way it was. The check only sees a hook set on the database role: if yours is in PostgREST's own config (`db-pre-request` in its config file or `PGRST_DB_PRE_REQUEST`, on a self-run stack), move it into the database and chain it as above before pushing, or one of the two hooks may stop running.
@@ -35,6 +40,11 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - Adds `category_budgets`: a budget per category that holds from its month onward until you change it, with optional rollover (a month's leftover or overspend moves into the next). Only spend counts, never transfers or income. Budgets are in the export.
 - **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261202100000_category_budgets.down.sql` (budgets are lost; export your data before if you want to keep them). A dashboard of this release without the table cannot open Budgets, and its data export fails.
 
+### Broker imports skip trades already imported
+- **Migration:** `20261201000000_holding_trades_external_id`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard: its broker import writes the new columns.
+- Each trade can remember the broker it came from and the broker's own id for it (`holding_trades.source`, `holding_trades.external_id`, both optional). Re-importing the same broker file skips trades already there by id, and two identical buys on the same day stay two trades. Trades typed in or imported before keep both empty.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261201000000_holding_trades_external_id.down.sql` (the stored broker ids are lost; the trades stay).
+
 ### Credit cards and loans count as debt
 - **Migration:** `20261130000000_account_types`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they read and write the new column), then redeploy the dashboard.
 - Every account gets a type (`accounts.account_type`): checking, savings, credit card, loan, investment or other. New links take it from the bank; accounts linked before get it on their next sync (one extra bank call per account, once). Empty means unknown and counts as checking (a bank that sends no type gets checking). You can correct it in the dashboard.
@@ -42,6 +52,11 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - You can add a debt by hand (a manual loan account with a balance you update, removable once paid). Its balance keeps counting until you change it, without the 30-day limit of bank balances, at each day's exchange rate.
 - CDs no longer count in net worth; data stays in the export until a later release drops the table.
 - **Roll back:** `supabase/rollbacks/20261130000000_account_types.down.sql` (debt balances typed in by hand are deleted; account types are lost). The Edge Functions of this release read `account_type`: revert them too (the Node sync works either way).
+
+### Rules can only set how a row counts
+- **Migration:** `20261129000000_flow_only_rules`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard: "It's a transfer" in the To review list saves a rule that sets only the flow.
+- The `at_least_one_action` check on `category_rules` now also accepts a rule that sets only `set_flow_type`, and is added on databases that didn't have it.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261129000000_flow_only_rules.down.sql` (it deletes rules that set only the flow).
 
 ### Transfers between your own accounts stop counting as spend and income
 - **Migration:** `20261128000000_transfer_detection`. You apply it with `supabase db push --linked` BEFORE redeploying the Edge Functions and the Docker/launchd sync (they write the new columns), then redeploy the dashboard.
@@ -78,6 +93,23 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - A newly linked account starts its first sync right away (balance and transactions) instead of waiting up to 6 hours for the cron. It uses the same secret key as the cron, so nothing to configure.
 - An old dashboard shows "Couldn't link the bank" for new links until you redeploy it.
 - **Roll back:** `supabase/rollbacks/20261124000000_sync_all_banks_skip_manual.down.sql`.
+
+### Splitwise balances say who owes whom
+- **Migration:** `20261123000000_splitwise_balances_basis`. Apply it with `supabase db push --linked`, then redeploy the dashboard.
+- Each stored Splitwise balance says what it means: `group` (a member's net toward the whole group, how balances were stored before) or `pairwise` (what you owe that member), which the dashboard now writes. Rows saved before, or by an older dashboard, stay `group` and are never read as per-person debts.
+- **Roll back:** revert the dashboard first, then `supabase/rollbacks/20261123000000_splitwise_balances_basis.down.sql`.
+
+### Subscriptions radar: merchant keys and recurring streams
+- **Migrations:** `20261119000000_merchant_key`, `20261119000001_aliases_by_merchant_key`, `20261119000002_alias_exact_first`, `20261120000000_recurring_streams`, `20261120000001_schedule_detect_recurring`, `20261121000000_recurring_streams_v2`, `20261122000000_recurring_streams_variant_dismissal`. Apply them with `supabase db push --linked` BEFORE redeploying the Edge Functions (`supabase functions deploy`: the bank sync writes `merchant_key`, and `detect-recurring` is new), then redeploy the dashboard. `20261120000001` needs the pg_cron setup of `20261118000000_schedule_sync` below.
+- Each transaction and alias gets a normalized merchant name (`merchant_key`, written by the sync only), so "LIDL 4521" and "LIDL 4521 MILANO IT" group together and share one rename. An alias for an exact name still wins over one for the key.
+- Recurring charges are detected every 6 hours into `recurring_streams` (the Subscriptions page). Your old subscription choices carry over; a name you dismissed no longer hides charges of another name you kept.
+- **Roll back:** newest first, after reverting the dashboard, the detector and the sync: `20261122000000`, `20261121000000`, `20261120000001`, `20261120000000`, `20261119000002`, `20261119000001`, then `20261119000000` (each `supabase/rollbacks/<name>.down.sql`). Streams and merchant keys are lost; the transactions stay.
+
+### The sync runs inside Supabase (pg_cron)
+- **Migrations:** `20261117000000_sync_all_banks` and `20261118000000_schedule_sync`. First set the two Vault secrets `project_url` and `sync_bank_secret_key` (see the top of `20261117000000_sync_all_banks.sql`; `npx create-alopex` sets them), deploy the Edge Functions (`supabase functions deploy`), then `supabase db push --linked`.
+- **Stop your other scheduler at the same time** (launchd, the Docker `scheduler.js`, or the GitHub Actions `sync.yml`): two schedulers double the bank calls, and banks allow about 4 unattended calls a day per account.
+- pg_cron then syncs every bank account every 6 hours, followed by post-sync, prices and notifications (times in UTC). A job only queues its request: look for failures in `net._http_response` (query at the top of `20261118000000_schedule_sync.sql`).
+- **Roll back:** `supabase/rollbacks/20261118000000_schedule_sync.down.sql` (stops the schedule; restart your old scheduler, or nothing syncs), then `supabase/rollbacks/20261117000000_sync_all_banks.down.sql`.
 
 ### Splitwise undo keeps how a row counts
 - **Migration:** `20261116000000_splitwise_undo_keeps_flow`. You apply it with `supabase db push --linked`.
