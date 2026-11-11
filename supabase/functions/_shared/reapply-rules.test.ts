@@ -114,3 +114,14 @@ Deno.test("retired rule: reads only rule rows in that rule's category", async ()
   assertEquals((await reapplyRules(counting, "u1", false, retiredBar)).changes, 1);
   assertEquals(pages, 1);
 });
+
+// Polish 1 #4: a row learned (source 'rule') before the rule existed, same category, that the
+// deleted rule also matches, is reset too: the next sync's learning step gives it back.
+Deno.test("retired rule: a learned row it also matches is reset with the others", async () => {
+  const db = memoryDb({
+    transactions: [tx("learned-first", "Bar Roma", { category: "Dine Out", category_source: "rule" })],
+    category_rules: [],
+  });
+  assertEquals((await reapplyRules(db, "u1", true, retiredBar)).changes, 1);
+  assertEquals(cat(db, "learned-first"), null);
+});

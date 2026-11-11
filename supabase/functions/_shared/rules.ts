@@ -108,8 +108,10 @@ export function planRuleReapply(rows: Row[], rules: Rule[]): RowUpdate[] {
 
 // A rule you just deleted: rows it filed that no remaining rule explains go back to
 // uncategorized, so the next sync sorts them again (your other rules, past choices, then the AI).
-// Only rows still showing that rule's category with source 'rule'. Learned categories also use
-// 'rule', but rules run first, so a row the deleted rule matches got its category from it.
+// Only rows still showing that rule's category with source 'rule'. Learned categories (your
+// past choice for the same merchant) also use 'rule'. Rules run before learning, so a matched row
+// almost always got its category from the rule; the exception is a row learned before you made
+// the rule. It is reset too, and the next sync learns the same category back.
 // Transfer is left alone, as in planRuleReapply.
 export function planRuleRetire(rows: Row[], retired: Rule, rules: Rule[]): RowUpdate[] {
   const category = retired.set_category;
