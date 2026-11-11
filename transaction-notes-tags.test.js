@@ -65,38 +65,31 @@ function as(role, sub, q) {
 }
 const lit = (v) => (v === null || v === undefined ? 'null' : typeof v === 'object' ? `'${JSON.stringify(v).replace(/'/g, "''")}'` : `'${String(v).replace(/'/g, "''")}'`);
 
-// The transactions table and fx_rates as the earlier migrations leave them (the columns this
-// migration and its view read), with the same RLS policies.
-const BASE = `
-create table public.fx_rates (currency text, date date, rate_to_eur numeric, primary key (currency, date));
-create table public.transactions (
-  entry_reference text not null, account_uid uuid not null, user_id uuid not null references auth.users(id),
-  amount numeric not null, currency text not null, credit_debit_indicator text, creditor_name text,
-  debtor_name text, remittance_info text, booking_date date, value_date date, bank_transaction_code text,
-  category text, raw jsonb, created_at timestamptz default now(), transaction_type text, worth_it text,
-  personal_amount numeric, owed_by text, owed_settled boolean not null default false, settled_at timestamptz,
-  flow_type text, refund_of text, deleted_at timestamptz, custom_name text, own_counterparty boolean,
-  primary key (account_uid, entry_reference));
-alter table public.transactions enable row level security;
-create policy "Users can view own transactions" on public.transactions
-  for select using ((select auth.uid()) = user_id);
-create policy "Users can update own transactions" on public.transactions
-  for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
-`;
+// Every migration before this one, in order, on the shims: the real table, its triggers and the
+// views built on v_transactions_eur. pg_net and pg_cron are stubbed (see full-schema-shim.sql).
+const MIGRATIONS = fs.readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+const applySql = (file) =>
+  execFileSync('psql', [dbUrl(), '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-1'], {
+    input: fs.readFileSync(file, 'utf8').replace(/^create extension if not exists (pg_net|pg_cron).*$/gm, ''),
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
 
 test('notes and tags on a real Postgres', { skip }, async (t) => {
   psql(url, ['-c', `create database ${db}`]);
   t.after(() => psql(url, ['-c', `drop database if exists ${db} with (force)`]));
-  psql(dbUrl(), ['-f', 'supabase/tests/supabase-shim.sql', '-c', BASE]);
-  psql(dbUrl(), ['-1', '-f', MIGRATION]);
+  psql(dbUrl(), ['-f', 'supabase/tests/supabase-shim.sql', '-f', 'supabase/tests/full-schema-shim.sql']);
+  for (const f of MIGRATIONS.filter((f) => f < MIGRATION.split('/').pop())) applySql(`supabase/migrations/${f}`);
+  // Rows written before this migration.
   psql(dbUrl(), [
     '-c',
-    `insert into auth.users values ('${A}'), ('${B}');
+    `insert into auth.users (id) values ('${A}'), ('${B}');
+     insert into public.accounts (uid, user_id, currency) values ('${ACC_A}', '${A}', 'EUR'), ('bbbbbbbb-1111-0000-0000-000000000002', '${B}', 'EUR');
      insert into public.transactions (entry_reference, account_uid, user_id, amount, currency, credit_debit_indicator, booking_date)
      values ('ref-1', '${ACC_A}', '${A}', 12.5, 'EUR', 'DBIT', '2026-11-02'),
             ('ref-2', '${ACC_A}', '${A}', 3, 'EUR', 'DBIT', '2026-11-03'),
             ('ref-b', 'bbbbbbbb-1111-0000-0000-000000000002', '${B}', 9, 'EUR', 'DBIT', '2026-11-03');`,
   ]);
+  applySql(MIGRATION);
   const setA = (col, value, ref = 'ref-1') =>
     as('authenticated', A, `update public.transactions set ${col} = ${value} where entry_reference = '${ref}' returning 1`);
 
