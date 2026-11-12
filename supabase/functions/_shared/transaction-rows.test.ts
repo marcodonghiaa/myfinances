@@ -102,3 +102,13 @@ Deno.test("buildRows keeps own_counterparty but not the IBAN", async () => {
   assertEquals(row.own_counterparty, true);
   assertEquals("creditor_account" in (row.raw as object), false);
 });
+
+// protects=a sync re-run keeps the user's note and tags: the upsert only sets the columns its rows
+// carry (the Edge Function sync runs this builder); fails_when=a row starts carrying note or tags
+Deno.test("rows never carry note or tags", async () => {
+  for (const own of [undefined, new Set<string>()]) {
+    const [row] = await buildRows([tx()], "acc", "user", own);
+    assertEquals("note" in row, false);
+    assertEquals("tags" in row, false);
+  }
+});
