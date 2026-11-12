@@ -21,15 +21,17 @@ function psql(args) {
   }).trim();
 }
 const sql = (s) => psql(['-c', s]);
+// Verbose, so the error shows its code and CONSTRAINT NAME field (not just the message).
 const refused = (s) => {
   try {
-    sql(s);
+    psql(['-v', 'VERBOSITY=verbose', '-c', s]);
     return '';
   } catch (e) {
     return String(e.stderr);
   }
 };
 const LONG = 'x'.repeat(250);
+const CAP = /23514[\s\S]*CONSTRAINT NAME:\s+category_rules_match_text_length/;
 const insert = (text) =>
   `insert into public.category_rules (user_id, match_field, match_text, set_category) values ('${U}', 'any', '${text}', 'Food')`;
 
@@ -55,7 +57,7 @@ test('rule text cap only on new or changed text', { skip }, async (t) => {
   psql(['-f', 'supabase/migrations/20261210000000_income_kind_rules.sql']);
 
   await t.test('before the fix: an old long rule cannot be marked', () => {
-    assert.match(refused(`update public.category_rules set set_income_kind = 'regular' where match_text = '${LONG}'`), /category_rules_match_text_length/);
+    assert.match(refused(`update public.category_rules set set_income_kind = 'regular' where match_text = '${LONG}'`), CAP);
   });
 
   await t.test('applies twice', () => {
@@ -69,11 +71,11 @@ test('rule text cap only on new or changed text', { skip }, async (t) => {
   });
 
   await t.test('new or retyped text is still capped at 200 characters, and empty is refused', () => {
-    assert.match(refused(insert('y'.repeat(201))), /category_rules_match_text_length/);
-    assert.match(refused(insert('')), /category_rules_match_text_length/);
+    assert.match(refused(insert('y'.repeat(201))), CAP);
+    assert.match(refused(insert('')), CAP);
     sql(insert('z'.repeat(200)));
-    assert.match(refused(`update public.category_rules set match_text = '${LONG}y' where match_text = '${LONG}'`), /category_rules_match_text_length/);
-    assert.match(refused(`update public.category_rules set match_text = '' where match_text = '${LONG}'`), /23514|category_rules_match_text_length/);
+    assert.match(refused(`update public.category_rules set match_text = '${LONG}y' where match_text = '${LONG}'`), CAP);
+    assert.match(refused(`update public.category_rules set match_text = '' where match_text = '${LONG}'`), CAP);
     // Shortening an old rule is allowed.
     sql(`update public.category_rules set match_text = 'Netflix' where match_text = '${LONG}'`);
   });
@@ -87,10 +89,10 @@ test('rule text cap only on new or changed text', { skip }, async (t) => {
 
   await t.test('rollback restores the old check, and the fix re-applies', () => {
     psql(['-f', DOWN]);
-    assert.match(refused(insert('y'.repeat(201))), /category_rules_match_text_length/);
+    assert.match(refused(insert('y'.repeat(201))), CAP);
     assert.strictEqual(sql("select count(*) from pg_trigger where tgname = 'category_rules_match_text_length'"), '0');
     psql(['-f', UP]);
-    assert.match(refused(insert('y'.repeat(201))), /category_rules_match_text_length/);
+    assert.match(refused(insert('y'.repeat(201))), CAP);
     assert.strictEqual(sql("select count(*) from pg_constraint where conname = 'category_rules_match_text_length'"), '0');
   });
 });
