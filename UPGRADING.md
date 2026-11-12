@@ -10,6 +10,12 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Unreleased
 
+### Recurring calendar and regular income
+- **Migration:** `20261210000000_income_kind_rules`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard (the dashboard reads and writes the new column). No Edge Function changes.
+- Subscriptions has a Calendar view: the month's expected charges from your recurring streams, ticked once paid, and the income you get regularly.
+- Income splits Regular and One-off. A sender that paid you in at least 3 of the last 6 months counts as regular, whatever the amount. "Mark as regular" or "Mark as one-off" on a row saves a rule (`category_rules.set_income_kind`) that overrides the guess for that name.
+- **Roll back:** revert the dashboard first (it reads the new column on every rules load), then run `supabase/rollbacks/20261210000000_income_kind_rules.down.sql` and `supabase migration repair --status reverted 20261210000000 --linked` (so a later `db push` re-applies it). The down file deletes rules that only marked income; rules that also set a category, type or flow keep those and lose only the mark.
+
 ### Income shows who paid you
 - **Migration:** `20261209000000_transactions_payer_name`. Apply it with `supabase db push --linked` after `20261208120000_transaction_notes_tags` and BEFORE redeploying the dashboard: the new dashboard asks `v_transactions_eur` for `payer_name`, and an older database answers with an error, so the Income and Cash flow pages would not load.
 - `v_transactions_eur` gets one new column at the end, `payer_name`: the name you gave the row, or else who paid you (the bank's debtor name). On an incoming payment the old "creditor" name is often your own name or empty, so Income and Cash flow now name the payer instead. Nothing else in the view changes and no rows are touched.
