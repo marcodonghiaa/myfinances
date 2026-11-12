@@ -12,7 +12,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 - **Migration:** `20261208000000_income_kind_rules`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard (the dashboard reads and writes the new column). No Edge Function changes.
 - Subscriptions has a Calendar view: the month's expected charges from your recurring streams, ticked once paid, and the income you get regularly.
 - Income splits Regular and One-off. A sender that paid you in at least 3 of the last 6 months counts as regular, whatever the amount. "Mark as regular" or "Mark as one-off" on a row saves a rule (`category_rules.set_income_kind`) that overrides the guess for that name.
-- **Roll back:** revert the dashboard first (it reads the new column on every rules load), then run `supabase/rollbacks/20261208000000_income_kind_rules.down.sql`. It deletes rules that only marked income; rules that also set a category, type or flow keep those and lose only the mark.
+- **Roll back:** revert the dashboard first (it reads the new column on every rules load), then run `supabase/rollbacks/20261208000000_income_kind_rules.down.sql` and `supabase migration repair --status reverted 20261208000000 --linked` (so a later `db push` re-applies it). The down file deletes rules that only marked income; rules that also set a category, type or flow keep those and lose only the mark.
 
 ### Deleting a rule can re-sort the transactions it filed
 - No migration. Run `supabase functions deploy reapply-rules` BEFORE redeploying the dashboard (an older function ignores the new request and would preview your current rules instead).

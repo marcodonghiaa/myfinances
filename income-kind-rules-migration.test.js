@@ -30,4 +30,7 @@ test('UPGRADING says to revert the dashboard before rolling back', () => {
   const rollback = entry.slice(entry.indexOf('**Roll back:**'), entry.indexOf('\n###'));
   assert.match(rollback, /revert the dashboard first/i);
   assert.match(rollback, /20261208000000_income_kind_rules\.down\.sql/);
+  // Polish 5 E: without the repair, a later `db push` thinks the migration is still applied and
+  // never brings the column back.
+  assert.match(rollback, /supabase migration repair --status reverted 20261208000000/);
 });
