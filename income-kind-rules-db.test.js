@@ -10,8 +10,8 @@ const skip = url ? false : 'set RLS_TEST_DATABASE_URL to run';
 const U = 'aaaaaaaa-0000-0000-0000-000000000001';
 const db = `income_kind_${process.pid}`;
 const dbUrl = () => url.replace(/^(postgres(?:ql)?:\/\/[^/]*\/)[^?]*/, `$1${db}`);
-const UP = 'supabase/migrations/20261208000000_income_kind_rules.sql';
-const DOWN = 'supabase/rollbacks/20261208000000_income_kind_rules.down.sql';
+const UP = 'supabase/migrations/20261210000000_income_kind_rules.sql';
+const DOWN = 'supabase/rollbacks/20261210000000_income_kind_rules.down.sql';
 
 function psql(args) {
   return execFileSync('psql', [dbUrl(), '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', ...args], {

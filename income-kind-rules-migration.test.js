@@ -3,8 +3,8 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 
 const strip = (p) => fs.readFileSync(p, 'utf8').replace(/--.*$/gm, '');
-const up = strip('supabase/migrations/20261208000000_income_kind_rules.sql');
-const down = strip('supabase/rollbacks/20261208000000_income_kind_rules.down.sql');
+const up = strip('supabase/migrations/20261210000000_income_kind_rules.sql');
+const down = strip('supabase/rollbacks/20261210000000_income_kind_rules.down.sql');
 
 test('a rule can mark income regular or one-off, nothing else', () => {
   assert.match(up, /add column if not exists set_income_kind text check \(set_income_kind in \('regular', 'one_off'\)\)/);
@@ -29,8 +29,8 @@ test('UPGRADING says to revert the dashboard before rolling back', () => {
   const entry = notes.slice(notes.indexOf('### Recurring calendar and regular income'));
   const rollback = entry.slice(entry.indexOf('**Roll back:**'), entry.indexOf('\n###'));
   assert.match(rollback, /revert the dashboard first/i);
-  assert.match(rollback, /20261208000000_income_kind_rules\.down\.sql/);
+  assert.match(rollback, /20261210000000_income_kind_rules\.down\.sql/);
   // Polish 5 E: without the repair, a later `db push` thinks the migration is still applied and
   // never brings the column back.
-  assert.match(rollback, /supabase migration repair --status reverted 20261208000000/);
+  assert.match(rollback, /supabase migration repair --status reverted 20261210000000/);
 });
