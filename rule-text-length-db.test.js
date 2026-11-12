@@ -80,7 +80,7 @@ test('rule text cap only on new or changed text', { skip }, async (t) => {
     sql(`update public.category_rules set match_text = 'Netflix' where match_text = '${LONG}'`);
   });
 
-  await t.test('refused with the check-violation code the dashboard maps', () => {
+  await t.test('refused with check_violation (23514)', () => {
     assert.match(
       refused(`do $$ begin ${insert('y'.repeat(201))}; exception when check_violation then raise exception 'mapped'; end $$`),
       /mapped/,
