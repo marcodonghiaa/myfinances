@@ -1,7 +1,8 @@
 -- v_transactions_eur gains payer_name: who paid you on an incoming payment (the bank's
 -- debtor_name), or the name you gave the row. On a credit, creditor_name is often your own
 -- name or empty, so the Income and Cash flow pages could not say who the money came from.
--- Added as the last column, so create or replace keeps every existing column and dependent view.
+-- Added as the last column, after note and tags (20261208120000), so create or replace keeps every
+-- existing column and dependent view.
 create or replace view public.v_transactions_eur with (security_invoker = true) as
  select t.user_id,
     t.entry_reference,
@@ -23,6 +24,8 @@ create or replace view public.v_transactions_eur with (security_invoker = true) 
     t.owed_settled,
     t.settled_at,
     t.refund_of,
+    t.note,
+    t.tags,
     coalesce(t.custom_name, t.debtor_name) as payer_name
    from public.transactions t
      left join lateral (

@@ -33,7 +33,7 @@ create table public.transactions (
   category text, creditor_name text, debtor_name text, custom_name text, currency text not null,
   amount numeric not null, transaction_type text, credit_debit_indicator text, created_at timestamptz,
   worth_it text, personal_amount numeric, flow_type text, owed_by text, owed_settled boolean not null default false,
-  settled_at timestamptz, refund_of text, deleted_at timestamptz);
+  settled_at timestamptz, refund_of text, note text, tags text[], deleted_at timestamptz);
 alter table public.transactions enable row level security;
 create policy own on public.transactions for select using ((select auth.uid()) = user_id);
 grant select on public.transactions, public.fx_rates to authenticated;`;
@@ -43,7 +43,7 @@ test('v_transactions_eur payer_name', { skip }, async (t) => {
   t.after(() => psql(url, ['-c', `drop database if exists ${db} with (force)`]));
   psql(dbUrl(), ['-f', 'supabase/tests/supabase-shim.sql']);
   psql(dbUrl(), ['-c', TABLES]);
-  psql(dbUrl(), ['-f', 'supabase/migrations/20261208000000_transactions_payer_name.sql']);
+  psql(dbUrl(), ['-f', 'supabase/migrations/20261209000000_transactions_payer_name.sql']);
   psql(dbUrl(), [
     '-c',
     `insert into public.transactions (user_id, entry_reference, account_uid, booking_date, creditor_name, debtor_name, custom_name, currency, amount, credit_debit_indicator) values
@@ -66,8 +66,8 @@ test('v_transactions_eur payer_name', { skip }, async (t) => {
   });
 
   await t.test('re-applying the migration is safe', () => {
-    psql(dbUrl(), ['-f', 'supabase/migrations/20261208000000_transactions_payer_name.sql']);
-    psql(dbUrl(), ['-f', 'supabase/rollbacks/20261208000000_transactions_payer_name.down.sql']);
+    psql(dbUrl(), ['-f', 'supabase/migrations/20261209000000_transactions_payer_name.sql']);
+    psql(dbUrl(), ['-f', 'supabase/rollbacks/20261209000000_transactions_payer_name.down.sql']);
     assert.strictEqual(as(A, "select payer_name from public.v_transactions_eur where entry_reference = 'salary'"), 'Acme Srl');
   });
 });
