@@ -37,7 +37,7 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 Budgets, two-step sign-in, rules that match whole words, debts, transfers that stop counting as spending, safer imports and refunds.
 
-**Upgrade with the installer:** run `npx create-alopex@0.2.0` in the same folder you installed into. It keeps `backend/.env`, applies the new migrations, deploys the Edge Functions and redeploys the dashboard, in that order.
+**Upgrade with the installer:** run `npx create-alopex@0.2.0` from the same place as the first time, or inside the install folder. It keeps `backend/.env`, applies the new migrations, deploys the Edge Functions and redeploys the dashboard, in that order.
 
 **Upgrade by hand**, in this order:
 1. Backend: `git pull`, then `supabase db push --linked` (13 migrations, 20261124 to 20261207).

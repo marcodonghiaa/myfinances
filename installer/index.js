@@ -329,7 +329,7 @@ The APP_ID is the long id shown next to your app.`);
   }
   console.log();
   bold(`Done! ${origin || site || 'Open your Vercel project'} , sign in as ${saved.LOGIN_EMAIL}, then Accounts -> Connect a bank.`);
-  console.log(`Your keys are in ${envFile} (keep it private). To update ${APP} later, run the same command in the same folder.`);
+  console.log(`Your keys are in ${envFile} (keep it private). To update ${APP} later, run npx create-alopex@latest from the same place, or inside ${root}.`);
   console.log();
   bold('Protect the accounts that hold your data: turn on two-factor sign-in at');
   console.log('  Supabase: https://supabase.com/dashboard/account/security');
