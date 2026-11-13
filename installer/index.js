@@ -114,6 +114,8 @@ async function main() {
   }
   if (lib.nodeTooOld(process.version)) die(`Node 20 or newer is needed (you have ${process.version}): https://nodejs.org`);
   const root = lib.installRoot(start.folder, process.cwd(), fs.existsSync);
+  // Found by walking up from here: say which install before touching it.
+  if (root !== path.resolve(start.folder) && !(await yes(`Update the ${APP} install in ${root}?`, true))) die('Nothing changed.');
   const backend = path.join(root, 'backend');
   const dashboard = path.join(root, 'dashboard');
 

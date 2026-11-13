@@ -137,7 +137,9 @@ Options:
 // (polish-5 I1).
 function installRoot(folder, cwd, exists) {
   const root = path.resolve(cwd, folder);
-  const isInstall = (dir) => exists(path.join(dir, 'backend', '.env'));
+  // Saved answers plus both of our apps: another project's backend/.env alone is not one.
+  const isInstall = (dir) =>
+    ['backend/.env', 'backend/env-file.js', 'dashboard/package.json'].every((f) => exists(path.join(dir, f)));
   if (folder !== 'alopex' || isInstall(root)) return root;
   for (let dir = cwd; ; dir = path.dirname(dir)) {
     if (isInstall(dir)) return dir;

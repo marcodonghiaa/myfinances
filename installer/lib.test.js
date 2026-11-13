@@ -136,7 +136,8 @@ test('startup: help exits 0, a bad argument exits 1, anything else installs', ()
 // "Use a project you already have?" made a second Supabase project and Vercel deploy.
 // fails_when=run inside an install with no folder, it doesn't update that install
 test('installRoot: inside an install with no folder, updates that install', () => {
-  const at = (...installs) => (p) => installs.some((i) => p === path.join(i, 'backend', '.env'));
+  const marks = (i) => [path.join(i, 'backend', '.env'), path.join(i, 'backend', 'env-file.js'), path.join(i, 'dashboard', 'package.json')];
+  const at = (...installs) => (p) => installs.some((i) => marks(i).includes(p));
   assert.equal(lib.installRoot('alopex', '/home/me/alopex', at('/home/me/alopex')), '/home/me/alopex');
   // Not inside one: the folder as usual.
   assert.equal(lib.installRoot('alopex', '/home/me', at('/home/me/alopex')), path.resolve('/home/me', 'alopex'));
@@ -146,6 +147,9 @@ test('installRoot: inside an install with no folder, updates that install', () =
   // re-audit: from backend/ or dashboard/ of an install (env-check.js, .env edits), that install too.
   assert.equal(lib.installRoot('alopex', '/home/me/alopex/backend', at('/home/me/alopex')), '/home/me/alopex');
   assert.equal(lib.installRoot('alopex', '/home/me/alopex/dashboard/src', at('/home/me/alopex')), '/home/me/alopex');
+  // re-audit round 2: another project with only a backend/.env is not an install.
+  const other = (p) => p === path.join('/work/app', 'backend', '.env');
+  assert.equal(lib.installRoot('alopex', '/work/app/frontend/src', other), path.resolve('/work/app/frontend/src', 'alopex'));
 });
 
 // polish-5 I4: "-x%" was told to write ./-x%, which the % rule then refused.
