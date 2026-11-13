@@ -1,6 +1,8 @@
 // Pure helpers for the one-command installer (index.js), kept apart so they can be tested
 // without a network, a terminal or the Supabase / Vercel CLIs.
 
+const path = require('node:path');
+
 // "https://abcd.supabase.co/" -> "abcd" ('' when it isn't a Supabase project URL).
 function refFromUrl(url) {
   return String(url || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/)?.[1] || '';
@@ -100,4 +102,58 @@ async function checkGeminiKey(key, doFetch = fetch) {
   return { ok: false, message: 'Google rejected that key. Paste it again (copy the whole key), or press Enter to skip.' };
 }
 
-module.exports = { checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
+// The one argument is the install folder. -h/--help asks for usage, wherever it is; any other
+// word starting with "-" is an option we don't have, never a folder name (#132). After "--"
+// every word is a folder name.
+function parseArgs(argv) {
+  const end = argv.indexOf('--');
+  const options = end === -1 ? argv : argv.slice(0, end);
+  const words = end === -1 ? argv : [...options, ...argv.slice(end + 1)];
+  if (options.some((a) => a === '-h' || a === '--help')) return { help: true };
+  const option = options.find((a) => a.startsWith('-'));
+  if (option) {
+    // No hint for a word the % rule below would refuse anyway (polish-5 I4).
+    const hint =
+      option.startsWith('--') || option.includes('%') ? '' : ` For a folder starting with "-", write ./${option}.`;
+    return { error: `Unknown option ${option}.${hint}` };
+  }
+  if (words.length > 1) return { error: 'Give at most one folder.' };
+  // On Windows the folder reaches cmd (tar -C), which expands %VAR% even inside quotes.
+  if (words[0] && words[0].includes('%')) return { error: 'The folder name cannot contain %.' };
+  return { folder: words[0] || 'alopex' };
+}
+
+const USAGE = `Usage: npx create-alopex [options] [folder]
+
+Installs Alopex into [folder] (default: ./alopex), or updates the install already there.
+Run inside an install with no folder to update that one.
+
+Options:
+  -h, --help  Show this help.
+  --          Everything after it is the folder, even a name starting with "-".`;
+
+// Where to install. Run with no folder from inside an install, or any folder in it (backend/, to
+// update it), that install: not a new one in alopex/alopex with a second Supabase project
+// (polish-5 I1).
+function installRoot(folder, cwd, exists) {
+  const root = path.resolve(cwd, folder);
+  // Saved answers plus both of our apps: another project's backend/.env alone is not one.
+  const isInstall = (dir) =>
+    ['backend/.env', 'backend/env-file.js', 'dashboard/package.json'].every((f) => exists(path.join(dir, f)));
+  if (folder !== 'alopex' || isInstall(root)) return root;
+  for (let dir = cwd; ; dir = path.dirname(dir)) {
+    if (isInstall(dir)) return dir;
+    if (path.dirname(dir) === dir) return root;
+  }
+}
+
+// What main() does with its arguments, before it touches anything: print usage and stop, refuse
+// the arguments, or install into the folder.
+function startup(argv) {
+  const args = parseArgs(argv);
+  if (args.help) return { exit: 0, out: USAGE };
+  if (args.error) return { exit: 1, err: `${args.error}\n\n${USAGE}` };
+  return { folder: args.folder };
+}
+
+module.exports = { USAGE, startup, parseArgs, installRoot, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };

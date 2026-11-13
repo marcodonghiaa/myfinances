@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const lib = require('./lib');
+const path = require('node:path');
 
 test('refFromUrl reads the project ref, rejects anything else', () => {
   assert.equal(lib.refFromUrl('https://abcdefghijklmnopqrst.supabase.co'), 'abcdefghijklmnopqrst');
@@ -78,4 +79,80 @@ test('checkGeminiKey: ok, rejected, outage', async () => {
   assert.equal(bad.unreachable, undefined);
   assert.equal((await lib.checkGeminiKey('k', answer(503))).unreachable, true);
   assert.equal((await lib.checkGeminiKey('k', async () => { throw new Error('offline'); })).unreachable, true);
+});
+
+// #132: `--help` was taken as the folder name and installed into ./--help.
+test('parseArgs: help, unknown options and the folder', () => {
+  assert.deepEqual(lib.parseArgs([]), { folder: 'alopex' });
+  assert.deepEqual(lib.parseArgs(['my-money']), { folder: 'my-money' });
+  assert.deepEqual(lib.parseArgs(['--help']), { help: true });
+  assert.deepEqual(lib.parseArgs(['-h']), { help: true });
+  assert.match(lib.parseArgs(['--yes']).error, /Unknown option --yes/);
+  assert.match(lib.parseArgs(['a', 'b']).error, /at most one folder/);
+});
+
+// polish-1 B1: a flag after the folder said "Give at most one folder." instead of help.
+test('parseArgs: flags count wherever they are', () => {
+  assert.deepEqual(lib.parseArgs(['my-money', '--help']), { help: true });
+  assert.match(lib.parseArgs(['my-money', '--yes']).error, /Unknown option --yes/);
+});
+
+// polish-1 B2/B3: a folder starting with "-" needs a way in, and the refusal says which.
+test('parseArgs: -- ends options, and the error shows how to name a "-" folder', () => {
+  assert.deepEqual(lib.parseArgs(['--', '-money']), { folder: '-money' });
+  assert.deepEqual(lib.parseArgs(['--', '--help']), { folder: '--help' });
+  assert.match(lib.parseArgs(['-money']).error, /\.\/-money/);
+});
+
+// polish-2 S1: on Windows cmd expands %VAR% in the folder, so tar would unpack somewhere else.
+test('parseArgs: refuses a folder with %', () => {
+  assert.match(lib.parseArgs(['%USERPROFILE%x']).error, /%/);
+  assert.match(lib.parseArgs(['--', 'a%b']).error, /%/);
+});
+
+// polish-3 F12: the "./name" hint is for folder-looking words, not for --flags.
+test('parseArgs: no folder hint for a --flag', () => {
+  assert.doesNotMatch(lib.parseArgs(['--yes']).error, /\.\/--yes/);
+  assert.match(lib.parseArgs(['-money']).error, /\.\/-money/);
+});
+
+// polish-3 F9: usage lists the options there are.
+test('USAGE lists --help and --', () => {
+  assert.match(lib.USAGE, /-h, --help/);
+  assert.match(lib.USAGE, /--\s/);
+});
+
+// polish-3 F11: what main() does with the arguments, before anything is installed.
+test('startup: help exits 0, a bad argument exits 1, anything else installs', () => {
+  assert.deepEqual(lib.startup(['--help']), { exit: 0, out: lib.USAGE });
+  const bad = lib.startup(['--yes']);
+  assert.equal(bad.exit, 1);
+  assert.match(bad.err, /Unknown option --yes/);
+  assert.ok(bad.err.endsWith(lib.USAGE));
+  assert.deepEqual(lib.startup(['my-money']), { folder: 'my-money' });
+});
+
+// polish-5 I1: `cd alopex && npx create-alopex` to update installed into alopex/alopex, and Enter on
+// "Use a project you already have?" made a second Supabase project and Vercel deploy.
+// fails_when=run inside an install with no folder, it doesn't update that install
+test('installRoot: inside an install with no folder, updates that install', () => {
+  const marks = (i) => [path.join(i, 'backend', '.env'), path.join(i, 'backend', 'env-file.js'), path.join(i, 'dashboard', 'package.json')];
+  const at = (...installs) => (p) => installs.some((i) => marks(i).includes(p));
+  assert.equal(lib.installRoot('alopex', '/home/me/alopex', at('/home/me/alopex')), '/home/me/alopex');
+  // Not inside one: the folder as usual.
+  assert.equal(lib.installRoot('alopex', '/home/me', at('/home/me/alopex')), path.resolve('/home/me', 'alopex'));
+  // A folder of its own name wins, and so does a real install below.
+  assert.equal(lib.installRoot('other', '/home/me/alopex', at('/home/me/alopex')), path.resolve('/home/me/alopex', 'other'));
+  assert.equal(lib.installRoot('alopex', '/home/me', at('/home/me', '/home/me/alopex')), path.resolve('/home/me', 'alopex'));
+  // re-audit: from backend/ or dashboard/ of an install (env-check.js, .env edits), that install too.
+  assert.equal(lib.installRoot('alopex', '/home/me/alopex/backend', at('/home/me/alopex')), '/home/me/alopex');
+  assert.equal(lib.installRoot('alopex', '/home/me/alopex/dashboard/src', at('/home/me/alopex')), '/home/me/alopex');
+  // re-audit round 2: another project with only a backend/.env is not an install.
+  const other = (p) => p === path.join('/work/app', 'backend', '.env');
+  assert.equal(lib.installRoot('alopex', '/work/app/frontend/src', other), path.resolve('/work/app/frontend/src', 'alopex'));
+});
+
+// polish-5 I4: "-x%" was told to write ./-x%, which the % rule then refused.
+test('parseArgs: no folder hint for a word the % rule would refuse', () => {
+  assert.doesNotMatch(lib.parseArgs(['-x%']).error, /\.\//);
 });

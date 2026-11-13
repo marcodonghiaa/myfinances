@@ -3,7 +3,8 @@
 // Downloads both apps, creates (or reuses) your Supabase project with the schema, Edge Functions
 // and scheduled sync (pg_cron, so no computer or GitHub Actions has to run it), creates your
 // login, then puts the dashboard online on Vercel. Needs only Node 20+: the Supabase and Vercel
-// CLIs run through npx. Run it again in the same place to update: answers saved in .env are reused.
+// CLIs run through npx. Run it again (from the same place, or inside the install) to update: answers
+// saved in .env are reused.
 //
 // What it CANNOT automate: the Enable Banking sign-up and PSD2 app (a form on their site, no API).
 const { spawnSync } = require('child_process');
@@ -104,12 +105,24 @@ async function download(repo, dir, localDir) {
 }
 
 async function main() {
+  const start = lib.startup(process.argv.slice(2));
+  if (start.exit !== undefined) {
+    if (start.out) console.log(start.out);
+    if (start.err) console.error(start.err);
+    process.exitCode = start.exit;
+    return;
+  }
   if (lib.nodeTooOld(process.version)) die(`Node 20 or newer is needed (you have ${process.version}): https://nodejs.org`);
-  const root = path.resolve(process.argv[2] || 'alopex');
+  const root = lib.installRoot(start.folder, process.cwd(), fs.existsSync);
+  // Found by walking up from here: say which install before touching it.
+  if (root !== path.resolve(start.folder) && !(await yes(`Update the ${APP} install in ${root}?`, true))) {
+    console.log('Nothing changed. To install somewhere else, give the folder: npx create-alopex <folder>');
+    return;
+  }
   const backend = path.join(root, 'backend');
   const dashboard = path.join(root, 'dashboard');
 
-  bold(`${APP} setup: about 15 minutes, most of it on Enable Banking's site.`);
+  bold(`${APP} setup: about 30 minutes the first time, most of it on Enable Banking's site.`);
   console.log(`Installs into ${root}. Every question shows a recommended answer: press Enter to accept it.`);
   console.log('Answers are saved as you go: stop any time and run the same command again.');
 
@@ -321,7 +334,7 @@ The APP_ID is the long id shown next to your app.`);
   }
   console.log();
   bold(`Done! ${origin || site || 'Open your Vercel project'} , sign in as ${saved.LOGIN_EMAIL}, then Accounts -> Connect a bank.`);
-  console.log(`Your keys are in ${envFile} (keep it private). To update ${APP} later, run the same command in the same folder.`);
+  console.log(`Your keys are in ${envFile} (keep it private). To update ${APP} later, run npx create-alopex@latest from the same place, or inside ${root}.`);
   console.log();
   bold('Protect the accounts that hold your data: turn on two-factor sign-in at');
   console.log('  Supabase: https://supabase.com/dashboard/account/security');
