@@ -95,3 +95,10 @@ test('parseArgs: flags count wherever they are', () => {
   assert.deepEqual(lib.parseArgs(['my-money', '--help']), { help: true });
   assert.match(lib.parseArgs(['my-money', '--yes']).error, /Unknown option --yes/);
 });
+
+// polish-1 B2/B3: a folder starting with "-" needs a way in, and the refusal says which.
+test('parseArgs: -- ends options, and the error shows how to name a "-" folder', () => {
+  assert.deepEqual(lib.parseArgs(['--', '-money']), { folder: '-money' });
+  assert.deepEqual(lib.parseArgs(['--', '--help']), { folder: '--help' });
+  assert.match(lib.parseArgs(['-money']).error, /\.\/-money/);
+});

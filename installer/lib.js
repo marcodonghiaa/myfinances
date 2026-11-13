@@ -101,13 +101,19 @@ async function checkGeminiKey(key, doFetch = fetch) {
 }
 
 // The one argument is the install folder. -h/--help asks for usage, wherever it is; any other
-// word starting with "-" is an option we don't have, never a folder name (#132).
+// word starting with "-" is an option we don't have, never a folder name (#132). After "--"
+// every word is a folder name.
 function parseArgs(argv) {
-  if (argv.some((a) => a === '-h' || a === '--help')) return { help: true };
-  const option = argv.find((a) => a.startsWith('-'));
-  if (option) return { error: `Unknown option ${option}.` };
-  if (argv.length > 1) return { error: 'Give at most one folder.' };
-  return { folder: argv[0] || 'alopex' };
+  const end = argv.indexOf('--');
+  const options = end === -1 ? argv : argv.slice(0, end);
+  const words = end === -1 ? argv : [...options, ...argv.slice(end + 1)];
+  if (options.some((a) => a === '-h' || a === '--help')) return { help: true };
+  const option = options.find((a) => a.startsWith('-'));
+  if (option) {
+    return { error: `Unknown option ${option}. For a folder starting with "-", write ./${option}.` };
+  }
+  if (words.length > 1) return { error: 'Give at most one folder.' };
+  return { folder: words[0] || 'alopex' };
 }
 
 module.exports = { parseArgs, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
