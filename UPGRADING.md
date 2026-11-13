@@ -10,6 +10,11 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Unreleased
 
+### Old rules with long text can be changed again (#141)
+- **Migration:** `20261211000000_rule_text_length_on_change`. Apply it with `supabase db push --linked` after `20261210000000_income_kind_rules`. No dashboard or Edge Function changes.
+- Rules saved before the 200-character cap on rule text refused every change, even marking income regular or re-sorting. The cap now applies only to new or changed text, with the same limit and error.
+- **Roll back:** run `supabase/rollbacks/20261211000000_rule_text_length_on_change.down.sql` and `supabase migration repair --status reverted 20261211000000 --linked`.
+
 ### Recurring calendar and regular income
 - **Migration:** `20261210000000_income_kind_rules`. Apply it with `supabase db push --linked` BEFORE redeploying the dashboard (the dashboard reads and writes the new column). No Edge Function changes.
 - Subscriptions has a Calendar view: the month's expected charges from your recurring streams, ticked once paid, and the income you get regularly.
