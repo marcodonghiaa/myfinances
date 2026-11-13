@@ -117,7 +117,7 @@ async function main() {
   const backend = path.join(root, 'backend');
   const dashboard = path.join(root, 'dashboard');
 
-  bold(`${APP} setup: about 15 minutes, most of it on Enable Banking's site.`);
+  bold(`${APP} setup: about 30 minutes the first time, most of it on Enable Banking's site.`);
   console.log(`Installs into ${root}. Every question shows a recommended answer: press Enter to accept it.`);
   console.log('Answers are saved as you go: stop any time and run the same command again.');
 
