@@ -21,8 +21,9 @@ Needs Node 20+. No git, Docker, Homebrew or GitHub account: the Supabase and Ver
 | Scheduled sync (pg_cron in Supabase, every 6 h) | yes |
 | Dashboard on Vercel | opens your browser to sign in, then yes |
 
-Run the same command in the same folder again to update: it re-downloads the code, keeps
-`backend/.env`, applies new migrations and functions, and redeploys the dashboard.
+To update, run `npx create-alopex@latest` from the same place as the first time, or inside the
+install folder (`@latest` so npx doesn't reuse an older cached installer). It re-downloads the
+code, keeps `backend/.env`, applies new migrations and functions, and redeploys the dashboard.
 
 Each installer version downloads the release tag `v<version>` of both repos and runs exact
 Supabase / Vercel CLI versions, so nothing changes under you between releases.

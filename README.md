@@ -68,13 +68,13 @@ Bank linking and the dashboard's other server-side actions (account deletion, ho
 
 Want to look first? Try the [live demo](https://app.alopex.finance/demo): fake data, no sign-up.
 
-Your own copy takes about **30 minutes**, all in the browser: no computer has to stay on and nothing to install. Most of the time goes into Enable Banking's signup.
+Your own copy takes about **30 minutes**, and no computer has to stay on afterwards. Most of the time goes into Enable Banking's signup. The one command needs Node 20+ on your computer; the Codespaces path installs nothing.
 
 ### 1. Create the accounts (about 15 minutes)
 
 | Account | What it's for | Cost |
 |---|---|---|
-| [GitHub](https://github.com/signup) | runs the setup (Codespaces) and the sync (Actions) | free |
+| [GitHub](https://github.com/signup) | Codespaces path only: runs the setup (not needed for `npx create-alopex`) | free |
 | [Supabase](https://supabase.com/dashboard) | your database and login | free tier is enough |
 | [Enable Banking](https://enablebanking.com) | the PSD2 connection to your banks | free for your own accounts |
 | [Vercel](https://vercel.com/signup) (sign in with GitHub) | puts the dashboard online over HTTPS | free Hobby plan |
@@ -90,7 +90,7 @@ In Enable Banking, sign up only; setup tells you when to create the app and give
 npx create-alopex
 ```
 
-It downloads both apps into `./alopex`, signs you in to Supabase and Vercel in your browser, creates the project, tables, Edge Functions and your login, turns on the scheduled sync inside Supabase (pg_cron: no computer, fork or GitHub Actions needed), walks you through Enable Banking and puts the dashboard online. Run it again in the same folder to update. See [installer/README.md](installer/README.md).
+It downloads both apps into `./alopex`, signs you in to Supabase and Vercel in your browser, creates the project, tables, Edge Functions and your login, turns on the scheduled sync inside Supabase (pg_cron: no computer, fork or GitHub Actions needed), walks you through Enable Banking and puts the dashboard online. To update, run `npx create-alopex@latest` from the same place or inside the install. See [installer/README.md](installer/README.md).
 
 **Or the guided script in Codespaces:**
 
@@ -112,6 +112,8 @@ At the end it prints three values for the next step (also saved in `dashboard-va
 
 ### 3. Put the dashboard online (about 5 minutes)
 
+Used `npx create-alopex`? Skip this step: it already put the dashboard online.
+
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Falopex-web&project-name=alopex&repository-name=alopex-web&env=VITE_SUPABASE_URL%2CVITE_SUPABASE_PUBLISHABLE_KEY%2CVITE_VAPID_PUBLIC_KEY&envDescription=Printed+by+setup.sh%2C+also+in+dashboard-values.txt&envLink=https%3A%2F%2Fgithub.com%2Fmarcodonghiaa%2Falopex%23-getting-started)
 
 Click **GitHub** first, then **Install Vercel** (All repositories is fine). Paste the three values setup printed and deploy, then open the address under **Domains** on the project page (not a deployment URL) and sign in. Your dashboard tells your database its own address on that first sign-in, so there is nothing to copy back: setup sees it, prints `Done! Open <your address>, sign in as <email>` and bank linking sends you back there. Closed the terminal first? Nothing is lost, the sign-in alone finishes it.
@@ -124,7 +126,7 @@ Sign in on your dashboard. On **Accounts**, use **Connect a bank**: balances sho
 
 Bank access lasts 180 days. Two weeks before it ends the Accounts page shows a **Renew access** banner, and you get a push notification the day the banner appears, then 7 days, 1 day and on the day it expires.
 
-Run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`.
+Codespaces path: run `./setup.sh` again any time: it keeps what's in `.env`, asks only for what's missing, and applies new migrations and functions. Forgot your password? `./setup.sh --reset-password`.
 
 <details>
 <summary><b>On your own computer or server instead (Docker)</b></summary>
