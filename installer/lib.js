@@ -1,6 +1,8 @@
 // Pure helpers for the one-command installer (index.js), kept apart so they can be tested
 // without a network, a terminal or the Supabase / Vercel CLIs.
 
+const path = require('node:path');
+
 // "https://abcd.supabase.co/" -> "abcd" ('' when it isn't a Supabase project URL).
 function refFromUrl(url) {
   return String(url || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/)?.[1] || '';
@@ -129,6 +131,14 @@ Options:
   -h, --help  Show this help.
   --          Everything after it is the folder, even a name starting with "-".`;
 
+// Where to install. Run with no folder from inside an install (to update it), that install: not a
+// new one in alopex/alopex with a second Supabase project (polish-5 I1).
+function installRoot(folder, cwd, exists) {
+  const root = path.resolve(cwd, folder);
+  const isInstall = (dir) => exists(path.join(dir, 'backend', '.env'));
+  return folder === 'alopex' && !isInstall(root) && isInstall(cwd) ? cwd : root;
+}
+
 // What main() does with its arguments, before it touches anything: print usage and stop, refuse
 // the arguments, or install into the folder.
 function startup(argv) {
@@ -138,4 +148,4 @@ function startup(argv) {
   return { folder: args.folder };
 }
 
-module.exports = { USAGE, startup, parseArgs, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
+module.exports = { USAGE, startup, parseArgs, installRoot, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };

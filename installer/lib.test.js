@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const lib = require('./lib');
+const path = require('node:path');
 
 test('refFromUrl reads the project ref, rejects anything else', () => {
   assert.equal(lib.refFromUrl('https://abcdefghijklmnopqrst.supabase.co'), 'abcdefghijklmnopqrst');
@@ -129,6 +130,19 @@ test('startup: help exits 0, a bad argument exits 1, anything else installs', ()
   assert.match(bad.err, /Unknown option --yes/);
   assert.ok(bad.err.endsWith(lib.USAGE));
   assert.deepEqual(lib.startup(['my-money']), { folder: 'my-money' });
+});
+
+// polish-5 I1: `cd alopex && npx create-alopex` to update installed into alopex/alopex, and Enter on
+// "Use a project you already have?" made a second Supabase project and Vercel deploy.
+// fails_when=run inside an install with no folder, it doesn't update that install
+test('installRoot: inside an install with no folder, updates that install', () => {
+  const at = (...installs) => (p) => installs.some((i) => p === path.join(i, 'backend', '.env'));
+  assert.equal(lib.installRoot('alopex', '/home/me/alopex', at('/home/me/alopex')), '/home/me/alopex');
+  // Not inside one: the folder as usual.
+  assert.equal(lib.installRoot('alopex', '/home/me', at('/home/me/alopex')), path.resolve('/home/me', 'alopex'));
+  // A folder of its own name wins, and so does a real install below.
+  assert.equal(lib.installRoot('other', '/home/me/alopex', at('/home/me/alopex')), path.resolve('/home/me/alopex', 'other'));
+  assert.equal(lib.installRoot('alopex', '/home/me', at('/home/me', '/home/me/alopex')), path.resolve('/home/me', 'alopex'));
 });
 
 // polish-5 I4: "-x%" was told to write ./-x%, which the % rule then refused.

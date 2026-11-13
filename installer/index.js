@@ -3,7 +3,8 @@
 // Downloads both apps, creates (or reuses) your Supabase project with the schema, Edge Functions
 // and scheduled sync (pg_cron, so no computer or GitHub Actions has to run it), creates your
 // login, then puts the dashboard online on Vercel. Needs only Node 20+: the Supabase and Vercel
-// CLIs run through npx. Run it again in the same place to update: answers saved in .env are reused.
+// CLIs run through npx. Run it again (from the same place, or inside the install) to update: answers
+// saved in .env are reused.
 //
 // What it CANNOT automate: the Enable Banking sign-up and PSD2 app (a form on their site, no API).
 const { spawnSync } = require('child_process');
@@ -112,7 +113,7 @@ async function main() {
     return;
   }
   if (lib.nodeTooOld(process.version)) die(`Node 20 or newer is needed (you have ${process.version}): https://nodejs.org`);
-  const root = path.resolve(start.folder);
+  const root = lib.installRoot(start.folder, process.cwd(), fs.existsSync);
   const backend = path.join(root, 'backend');
   const dashboard = path.join(root, 'dashboard');
 
