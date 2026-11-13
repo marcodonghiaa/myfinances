@@ -130,3 +130,8 @@ test('startup: help exits 0, a bad argument exits 1, anything else installs', ()
   assert.ok(bad.err.endsWith(lib.USAGE));
   assert.deepEqual(lib.startup(['my-money']), { folder: 'my-money' });
 });
+
+// polish-5 I4: "-x%" was told to write ./-x%, which the % rule then refused.
+test('parseArgs: no folder hint for a word the % rule would refuse', () => {
+  assert.doesNotMatch(lib.parseArgs(['-x%']).error, /\.\//);
+});

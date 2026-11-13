@@ -110,7 +110,9 @@ function parseArgs(argv) {
   if (options.some((a) => a === '-h' || a === '--help')) return { help: true };
   const option = options.find((a) => a.startsWith('-'));
   if (option) {
-    const hint = option.startsWith('--') ? '' : ` For a folder starting with "-", write ./${option}.`;
+    // No hint for a word the % rule below would refuse anyway (polish-5 I4).
+    const hint =
+      option.startsWith('--') || option.includes('%') ? '' : ` For a folder starting with "-", write ./${option}.`;
     return { error: `Unknown option ${option}.${hint}` };
   }
   if (words.length > 1) return { error: 'Give at most one folder.' };
