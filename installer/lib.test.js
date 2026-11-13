@@ -89,3 +89,9 @@ test('parseArgs: help, unknown options and the folder', () => {
   assert.match(lib.parseArgs(['--yes']).error, /Unknown option --yes/);
   assert.match(lib.parseArgs(['a', 'b']).error, /at most one folder/);
 });
+
+// polish-1 B1: a flag after the folder said "Give at most one folder." instead of help.
+test('parseArgs: flags count wherever they are', () => {
+  assert.deepEqual(lib.parseArgs(['my-money', '--help']), { help: true });
+  assert.match(lib.parseArgs(['my-money', '--yes']).error, /Unknown option --yes/);
+});
