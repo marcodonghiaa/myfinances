@@ -132,12 +132,17 @@ Options:
   -h, --help  Show this help.
   --          Everything after it is the folder, even a name starting with "-".`;
 
-// Where to install. Run with no folder from inside an install (to update it), that install: not a
-// new one in alopex/alopex with a second Supabase project (polish-5 I1).
+// Where to install. Run with no folder from inside an install, or any folder in it (backend/, to
+// update it), that install: not a new one in alopex/alopex with a second Supabase project
+// (polish-5 I1).
 function installRoot(folder, cwd, exists) {
   const root = path.resolve(cwd, folder);
   const isInstall = (dir) => exists(path.join(dir, 'backend', '.env'));
-  return folder === 'alopex' && !isInstall(root) && isInstall(cwd) ? cwd : root;
+  if (folder !== 'alopex' || isInstall(root)) return root;
+  for (let dir = cwd; ; dir = path.dirname(dir)) {
+    if (isInstall(dir)) return dir;
+    if (path.dirname(dir) === dir) return root;
+  }
 }
 
 // What main() does with its arguments, before it touches anything: print usage and stop, refuse

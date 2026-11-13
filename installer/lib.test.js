@@ -143,6 +143,9 @@ test('installRoot: inside an install with no folder, updates that install', () =
   // A folder of its own name wins, and so does a real install below.
   assert.equal(lib.installRoot('other', '/home/me/alopex', at('/home/me/alopex')), path.resolve('/home/me/alopex', 'other'));
   assert.equal(lib.installRoot('alopex', '/home/me', at('/home/me', '/home/me/alopex')), path.resolve('/home/me', 'alopex'));
+  // re-audit: from backend/ or dashboard/ of an install (env-check.js, .env edits), that install too.
+  assert.equal(lib.installRoot('alopex', '/home/me/alopex/backend', at('/home/me/alopex')), '/home/me/alopex');
+  assert.equal(lib.installRoot('alopex', '/home/me/alopex/dashboard/src', at('/home/me/alopex')), '/home/me/alopex');
 });
 
 // polish-5 I4: "-x%" was told to write ./-x%, which the % rule then refused.
