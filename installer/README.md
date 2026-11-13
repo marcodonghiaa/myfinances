@@ -5,6 +5,7 @@ One command to self-host Alopex:
 ```bash
 npx create-alopex          # installs into ./alopex
 npx create-alopex ~/money  # or a folder you choose
+npx create-alopex --help   # usage
 ```
 
 Needs Node 20+. No git, Docker, Homebrew or GitHub account: the Supabase and Vercel CLIs run through npx.

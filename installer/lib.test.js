@@ -79,3 +79,13 @@ test('checkGeminiKey: ok, rejected, outage', async () => {
   assert.equal((await lib.checkGeminiKey('k', answer(503))).unreachable, true);
   assert.equal((await lib.checkGeminiKey('k', async () => { throw new Error('offline'); })).unreachable, true);
 });
+
+// #132: `--help` was taken as the folder name and installed into ./--help.
+test('parseArgs: help, unknown options and the folder', () => {
+  assert.deepEqual(lib.parseArgs([]), { folder: 'alopex' });
+  assert.deepEqual(lib.parseArgs(['my-money']), { folder: 'my-money' });
+  assert.deepEqual(lib.parseArgs(['--help']), { help: true });
+  assert.deepEqual(lib.parseArgs(['-h']), { help: true });
+  assert.match(lib.parseArgs(['--yes']).error, /Unknown option --yes/);
+  assert.match(lib.parseArgs(['a', 'b']).error, /at most one folder/);
+});

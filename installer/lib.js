@@ -100,4 +100,14 @@ async function checkGeminiKey(key, doFetch = fetch) {
   return { ok: false, message: 'Google rejected that key. Paste it again (copy the whole key), or press Enter to skip.' };
 }
 
-module.exports = { checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
+// The one argument is the install folder. -h/--help asks for usage; any other word starting with
+// "-" is an option we don't have, never a folder name (#132).
+function parseArgs(argv) {
+  const [arg, ...rest] = argv;
+  if (arg === '-h' || arg === '--help') return { help: true };
+  if (arg && arg.startsWith('-')) return { error: `Unknown option ${arg}.` };
+  if (rest.length) return { error: 'Give at most one folder.' };
+  return { folder: arg || 'alopex' };
+}
+
+module.exports = { parseArgs, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
