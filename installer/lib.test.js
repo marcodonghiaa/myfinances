@@ -108,3 +108,9 @@ test('parseArgs: refuses a folder with %', () => {
   assert.match(lib.parseArgs(['%USERPROFILE%x']).error, /%/);
   assert.match(lib.parseArgs(['--', 'a%b']).error, /%/);
 });
+
+// polish-3 F12: the "./name" hint is for folder-looking words, not for --flags.
+test('parseArgs: no folder hint for a --flag', () => {
+  assert.doesNotMatch(lib.parseArgs(['--yes']).error, /\.\/--yes/);
+  assert.match(lib.parseArgs(['-money']).error, /\.\/-money/);
+});

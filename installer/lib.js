@@ -110,7 +110,8 @@ function parseArgs(argv) {
   if (options.some((a) => a === '-h' || a === '--help')) return { help: true };
   const option = options.find((a) => a.startsWith('-'));
   if (option) {
-    return { error: `Unknown option ${option}. For a folder starting with "-", write ./${option}.` };
+    const hint = option.startsWith('--') ? '' : ` For a folder starting with "-", write ./${option}.`;
+    return { error: `Unknown option ${option}.${hint}` };
   }
   if (words.length > 1) return { error: 'Give at most one folder.' };
   // On Windows the folder reaches cmd (tar -C), which expands %VAR% even inside quotes.
