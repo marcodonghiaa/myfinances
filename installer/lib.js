@@ -126,6 +126,7 @@ function parseArgs(argv) {
 const USAGE = `Usage: npx create-alopex [options] [folder]
 
 Installs Alopex into [folder] (default: ./alopex), or updates the install already there.
+Run inside an install with no folder to update that one.
 
 Options:
   -h, --help  Show this help.
