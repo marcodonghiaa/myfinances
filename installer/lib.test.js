@@ -102,3 +102,9 @@ test('parseArgs: -- ends options, and the error shows how to name a "-" folder',
   assert.deepEqual(lib.parseArgs(['--', '--help']), { folder: '--help' });
   assert.match(lib.parseArgs(['-money']).error, /\.\/-money/);
 });
+
+// polish-2 S1: on Windows cmd expands %VAR% in the folder, so tar would unpack somewhere else.
+test('parseArgs: refuses a folder with %', () => {
+  assert.match(lib.parseArgs(['%USERPROFILE%x']).error, /%/);
+  assert.match(lib.parseArgs(['--', 'a%b']).error, /%/);
+});

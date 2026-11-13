@@ -113,6 +113,8 @@ function parseArgs(argv) {
     return { error: `Unknown option ${option}. For a folder starting with "-", write ./${option}.` };
   }
   if (words.length > 1) return { error: 'Give at most one folder.' };
+  // On Windows the folder reaches cmd (tar -C), which expands %VAR% even inside quotes.
+  if (words[0] && words[0].includes('%')) return { error: 'The folder name cannot contain %.' };
   return { folder: words[0] || 'alopex' };
 }
 
