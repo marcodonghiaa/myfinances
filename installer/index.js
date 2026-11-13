@@ -103,23 +103,16 @@ async function download(repo, dir, localDir) {
   fs.rmSync(file, { force: true });
 }
 
-const USAGE = `Usage: npx create-alopex [folder]
-
-Installs Alopex into [folder] (default: ./alopex), or updates the install already there.`;
-
 async function main() {
-  const args = lib.parseArgs(process.argv.slice(2));
-  if (args.help) {
-    console.log(USAGE);
-    return;
-  }
-  if (args.error) {
-    console.error(`${args.error}\n\n${USAGE}`);
-    process.exitCode = 1;
+  const start = lib.startup(process.argv.slice(2));
+  if (start.exit !== undefined) {
+    if (start.out) console.log(start.out);
+    if (start.err) console.error(start.err);
+    process.exitCode = start.exit;
     return;
   }
   if (lib.nodeTooOld(process.version)) die(`Node 20 or newer is needed (you have ${process.version}): https://nodejs.org`);
-  const root = path.resolve(args.folder);
+  const root = path.resolve(start.folder);
   const backend = path.join(root, 'backend');
   const dashboard = path.join(root, 'dashboard');
 

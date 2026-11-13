@@ -119,4 +119,21 @@ function parseArgs(argv) {
   return { folder: words[0] || 'alopex' };
 }
 
-module.exports = { parseArgs, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };
+const USAGE = `Usage: npx create-alopex [options] [folder]
+
+Installs Alopex into [folder] (default: ./alopex), or updates the install already there.
+
+Options:
+  -h, --help  Show this help.
+  --          Everything after it is the folder, even a name starting with "-".`;
+
+// What main() does with its arguments, before it touches anything: print usage and stop, refuse
+// the arguments, or install into the folder.
+function startup(argv) {
+  const args = parseArgs(argv);
+  if (args.help) return { exit: 0, out: USAGE };
+  if (args.error) return { exit: 1, err: `${args.error}\n\n${USAGE}` };
+  return { folder: args.folder };
+}
+
+module.exports = { USAGE, startup, parseArgs, checkGeminiKey,  cleanPath, secretsEnv, pickAlias, refFromUrl, pickKeys, vaultSql, authConfigToml, vercelUrl, projectSlug, nodeTooOld, tarballUrl, sqlString };

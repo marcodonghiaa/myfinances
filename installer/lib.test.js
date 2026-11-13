@@ -114,3 +114,19 @@ test('parseArgs: no folder hint for a --flag', () => {
   assert.doesNotMatch(lib.parseArgs(['--yes']).error, /\.\/--yes/);
   assert.match(lib.parseArgs(['-money']).error, /\.\/-money/);
 });
+
+// polish-3 F9: usage lists the options there are.
+test('USAGE lists --help and --', () => {
+  assert.match(lib.USAGE, /-h, --help/);
+  assert.match(lib.USAGE, /--\s/);
+});
+
+// polish-3 F11: what main() does with the arguments, before anything is installed.
+test('startup: help exits 0, a bad argument exits 1, anything else installs', () => {
+  assert.deepEqual(lib.startup(['--help']), { exit: 0, out: lib.USAGE });
+  const bad = lib.startup(['--yes']);
+  assert.equal(bad.exit, 1);
+  assert.match(bad.err, /Unknown option --yes/);
+  assert.ok(bad.err.endsWith(lib.USAGE));
+  assert.deepEqual(lib.startup(['my-money']), { folder: 'my-money' });
+});
