@@ -8,7 +8,25 @@ To roll a change back: run its file from `supabase/rollbacks/` in the Supabase S
 
 ## Release notes, newest first
 
-## Unreleased
+## v0.3.0 (14 Nov 2026)
+
+Notes and tags, a Cash flow page, a recurring calendar with regular income, who paid you on income, and a round of fixes (dark-mode toasts, Back closes dialogs, a safer installer).
+
+**Upgrade with the installer:** run `npx create-alopex@0.3.0` from the same place as the first time, or inside the install folder. It keeps `backend/.env`, applies the new migrations, deploys the Edge Functions and redeploys the dashboard, in that order.
+
+**Upgrade by hand**, in this order:
+1. Backend: `git pull`, then `supabase db push --linked` (4 migrations, 20261208120000 to 20261211000000). Do this BEFORE the dashboard: the new dashboard reads the new columns and its Transactions, Income and Cash flow pages fail on an older database.
+2. No Edge Function changes in this release.
+3. Dashboard: `git pull` and redeploy.
+4. Docker or launchd sync only: nothing changed, no restart needed.
+
+### Installer: `--help`, safer arguments and updating from inside the install (#132)
+- No migration, no dashboard change. `npx create-alopex --help` prints usage; an unknown option (`--yes`) or two folder names stops with an error before anything is downloaded. A folder name starting with `-` goes after `--`; a folder containing `%` is refused (Windows would expand it).
+- Run with no folder from inside an install (or its `backend/` or `dashboard/`), it asks to update that install instead of creating a new one inside it.
+
+### Dashboard fixes
+- No migration. Toasts follow dark mode and the app's font; browser or phone Back closes an open dialog instead of leaving the page, and focus returns to what opened it; "1 row" instead of "1 rows"; the demo says up front that bank connection is off; scrubbing Net Worth to a day before your first breakdown says so instead of showing another day's mix.
+
 
 ### Old rules with long text can be changed again (#141)
 - **Migration:** `20261211000000_rule_text_length_on_change`. Apply it with `supabase db push --linked` after `20261210000000_income_kind_rules`. No dashboard or Edge Function changes.
